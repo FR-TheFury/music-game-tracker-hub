@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ExternalLink, Trash2, Music, Calendar, Users, Star } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ExternalLink, Trash2, Music, Calendar, Users, Star, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface Artist {
   id: string;
@@ -34,15 +35,25 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
   const getPlatformColor = (platform: string) => {
     switch (platform.toLowerCase()) {
       case 'spotify':
-        return 'from-green-500 to-green-600';
+        return 'bg-green-600';
       case 'apple music':
-        return 'from-red-500 to-pink-600';
+        return 'bg-red-500';
       case 'deezer':
-        return 'from-orange-500 to-red-500';
+        return 'bg-orange-600';
+      case 'youtube':
+        return 'bg-red-600';
       case 'youtube music':
-        return 'from-red-600 to-red-700';
+        return 'bg-red-700';
+      case 'amazon music':
+        return 'bg-blue-600';
+      case 'apple':
+        return 'bg-red-500';
+      case 'tidal':
+        return 'bg-black';
+      case 'soundcloud':
+        return 'bg-orange-500';
       default:
-        return 'from-purple-500 to-pink-500';
+        return 'bg-purple-500';
     }
   };
 
@@ -69,34 +80,36 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
     return count.toString();
   };
 
-  // Calculate cumulative followers from all platforms
-  const calculateTotalFollowers = () => {
-    let total = artist.followersCount || 0;
+  // Créer la liste complète des plateformes avec le statut vérifié
+  const getAllPlatforms = () => {
+    const platforms = [];
     
-    // Add followers from additional platforms if they exist
-    // This would be expanded when we have data from multiple platforms
-    if (artist.multipleUrls && artist.multipleUrls.length > 0) {
-      // For now, we just show the main platform count
-      // In the future, we'd fetch and sum all platform counts
+    // Plateforme principale (toujours vérifiée)
+    platforms.push({
+      name: artist.platform,
+      url: artist.url,
+      verified: true
+    });
+    
+    // Plateformes additionnelles
+    if (artist.multipleUrls) {
+      artist.multipleUrls.forEach(platformUrl => {
+        // Éviter les doublons avec la plateforme principale
+        if (platformUrl.platform.toLowerCase() !== artist.platform.toLowerCase()) {
+          platforms.push({
+            name: platformUrl.platform,
+            url: platformUrl.url,
+            verified: true // Les URLs dans multipleUrls sont considérées comme vérifiées
+          });
+        }
+      });
     }
     
-    return total;
+    return platforms;
   };
 
-  const totalFollowers = calculateTotalFollowers();
-
-  // Calculate correct platform counts
-  const getTotalPlatformCount = () => {
-    // Always count the main platform (artist.platform) + additional platforms
-    return 1 + (artist.multipleUrls?.length || 0);
-  };
-
-  const getAdditionalPlatformCount = () => {
-    return artist.multipleUrls?.length || 0;
-  };
-
-  const totalPlatformCount = getTotalPlatformCount();
-  const additionalPlatformCount = getAdditionalPlatformCount();
+  const allPlatforms = getAllPlatforms();
+  const totalPlatformCount = allPlatforms.length;
 
   const handleCardClick = () => {
     navigate(`/artist/${artist.id}`);
@@ -127,12 +140,13 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
                   className="w-12 h-12 rounded-full object-cover"
                 />
               ) : (
-                <div className={`w-12 h-12 rounded-full bg-gradient-to-r ${getPlatformColor(artist.platform)} flex items-center justify-center`}>
+                <div className={`w-12 h-12 rounded-full ${getPlatformColor(artist.platform)} flex items-center justify-center`}>
                   <Music className="h-6 w-6 text-white" />
                 </div>
               )}
-              {/* Platform indicator for multi-platform artists */}
-              {additionalPlatformCount > 0 && (
+              
+              {/* Indicateur multi-plateformes */}
+              {totalPlatformCount > 1 && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -152,10 +166,7 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
                 {artist.name}
               </h3>
               <p className="text-sm text-gray-400">
-                {artist.platform}
-                {additionalPlatformCount > 0 && (
-                  <span className="text-purple-400 ml-1">+{additionalPlatformCount}</span>
-                )}
+                Plateforme principale: {artist.platform}
               </p>
               {artist.genres && artist.genres.length > 0 && (
                 <p className="text-xs text-gray-500 mt-1">
@@ -174,22 +185,43 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
           </Button>
         </div>
 
-        {/* Statistiques avec cumul */}
-        {(totalFollowers || artist.popularity) && (
+        {/* Toutes les plateformes disponibles */}
+        <div className="mb-4">
+          <div className="flex flex-wrap gap-1">
+            {allPlatforms.map((platform, index) => (
+              <Badge
+                key={`${platform.name}-${index}`}
+                className={`${getPlatformColor(platform.name)} text-white text-xs flex items-center gap-1`}
+              >
+                {platform.verified ? (
+                  <CheckCircle className="h-3 w-3" />
+                ) : (
+                  <AlertCircle className="h-3 w-3" />
+                )}
+                {platform.name}
+              </Badge>
+            ))}
+          </div>
+          <div className="text-xs text-purple-400 mt-1">
+            {totalPlatformCount} plateforme{totalPlatformCount > 1 ? 's' : ''} disponible{totalPlatformCount > 1 ? 's' : ''}
+          </div>
+        </div>
+
+        {/* Statistiques */}
+        {(artist.followersCount || artist.popularity) && (
           <div className="mb-4 flex gap-4 text-sm text-gray-400">
-            {totalFollowers && totalFollowers > 0 && (
+            {artist.followersCount && artist.followersCount > 0 && (
               <div className="flex items-center gap-1">
                 <Users className="h-3 w-3" />
-                <span>{formatFollowersCount(totalFollowers)}</span>
-                {additionalPlatformCount > 0 && (
-                  <span className="text-purple-400 text-xs">cumul</span>
-                )}
+                <span>{formatFollowersCount(artist.followersCount)}</span>
+                <span className="text-purple-400 text-xs">followers</span>
               </div>
             )}
             {artist.popularity && artist.popularity > 0 && (
               <div className="flex items-center gap-1">
                 <Star className="h-3 w-3" />
                 <span>{artist.popularity}%</span>
+                <span className="text-yellow-400 text-xs">popularité</span>
               </div>
             )}
           </div>
@@ -215,18 +247,55 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
           <div className="text-xs text-gray-500">
             Ajouté le {formatDate(artist.addedAt)}
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            asChild
-            onClick={handleLinkClick}
-            className="border-purple-500/30 text-purple-300 hover:bg-purple-500/10 hover:border-purple-400"
-          >
-            <a href={artist.url} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Voir
-            </a>
-          </Button>
+          <div className="flex gap-2">
+            {/* Lien vers la plateforme principale */}
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              onClick={handleLinkClick}
+              className="border-purple-500/30 text-purple-300 hover:bg-purple-500/10 hover:border-purple-400"
+            >
+              <a href={artist.url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                {artist.platform}
+              </a>
+            </Button>
+            
+            {/* Menu dropdown pour les autres plateformes si plus d'une */}
+            {totalPlatformCount > 1 && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleLinkClick}
+                      className="border-slate-600 text-gray-300 hover:bg-slate-600"
+                    >
+                      +{totalPlatformCount - 1}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <div className="space-y-1">
+                      {allPlatforms.slice(1).map((platform, index) => (
+                        <div key={index} className="text-xs">
+                          <a 
+                            href={platform.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-purple-300 hover:text-purple-100"
+                          >
+                            {platform.name} →
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
