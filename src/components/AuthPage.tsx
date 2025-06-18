@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -69,14 +70,25 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center px-4">
-      <Card className="w-full max-w-md bg-slate-800/90 border-slate-700 backdrop-blur-sm">
+    <div className="min-h-screen bg-gradient-to-br from-black via-[#FF0751]/20 to-black flex items-center justify-center px-4 relative overflow-hidden">
+      {/* Animated background effects */}
+      <div className="absolute inset-0 opacity-30">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#FF0751]/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#FF3971]/15 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-[#FF0751]/10 to-transparent rounded-full"></div>
+      </div>
+      
+      <Card className="w-full max-w-md card-3d z-10 relative">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <Music className="h-8 w-8 text-purple-400" />
-            <Gamepad2 className="h-8 w-8 text-blue-400" />
+            <div className="p-2 rounded-full bg-gradient-to-r from-[#FF0751] to-[#FF3971] rose-glow">
+              <Music className="h-8 w-8 text-white" />
+            </div>
+            <div className="p-2 rounded-full bg-gradient-to-r from-[#FF6B9D] to-[#FFB3CD]">
+              <Gamepad2 className="h-8 w-8 text-white" />
+            </div>
           </div>
-          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-[#FF0751] to-[#FF6B9D] bg-clip-text text-transparent">
             {isLogin ? 'Connexion' : 'Inscription'}
           </CardTitle>
           <p className="text-gray-400">
@@ -96,7 +108,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required={!isLogin}
-                  className="bg-slate-700 border-slate-600 text-white"
+                  className="input-3d text-white"
                   placeholder="Votre nom d'utilisateur"
                 />
               </div>
@@ -112,7 +124,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="bg-slate-700 border-slate-600 text-white"
+                className="input-3d text-white"
                 placeholder="votre@email.com"
               />
             </div>
@@ -128,7 +140,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="bg-slate-700 border-slate-600 text-white pr-10"
+                  className="input-3d text-white pr-10"
                   placeholder="••••••••"
                 />
                 <Button
@@ -147,7 +159,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
               type="submit"
               disabled={loading}
               variant="primary-3d"
-              className="w-full"
+              className="w-full rose-glow"
             >
               {loading ? 'Chargement...' : isLogin ? 'Se connecter' : "S'inscrire"}
             </Button>
