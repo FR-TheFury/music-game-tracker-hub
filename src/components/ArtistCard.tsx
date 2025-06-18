@@ -3,6 +3,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ExternalLink, Trash2, Music, Calendar, Users, Star } from 'lucide-react';
 
 interface Artist {
@@ -74,7 +75,7 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
     
     // Add followers from additional platforms if they exist
     // This would be expanded when we have data from multiple platforms
-    if (artist.multipleUrls && artist.multipleUrls.length > 1) {
+    if (artist.multipleUrls && artist.multipleUrls.length > 0) {
       // For now, we just show the main platform count
       // In the future, we'd fetch and sum all platform counts
     }
@@ -83,6 +84,19 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
   };
 
   const totalFollowers = calculateTotalFollowers();
+
+  // Calculate correct platform counts
+  const getTotalPlatformCount = () => {
+    // Always count the main platform (artist.platform) + additional platforms
+    return 1 + (artist.multipleUrls?.length || 0);
+  };
+
+  const getAdditionalPlatformCount = () => {
+    return artist.multipleUrls?.length || 0;
+  };
+
+  const totalPlatformCount = getTotalPlatformCount();
+  const additionalPlatformCount = getAdditionalPlatformCount();
 
   const handleCardClick = () => {
     navigate(`/artist/${artist.id}`);
@@ -118,10 +132,19 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
                 </div>
               )}
               {/* Platform indicator for multi-platform artists */}
-              {artist.multipleUrls && artist.multipleUrls.length > 1 && (
-                <div className="absolute -bottom-1 -right-1 bg-purple-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                  {artist.multipleUrls.length}
-                </div>
+              {additionalPlatformCount > 0 && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="absolute -bottom-1 -right-1 bg-purple-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                        {totalPlatformCount}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Disponible sur {totalPlatformCount} plateformes</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
             </div>
             <div>
@@ -130,8 +153,8 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
               </h3>
               <p className="text-sm text-gray-400">
                 {artist.platform}
-                {artist.multipleUrls && artist.multipleUrls.length > 1 && (
-                  <span className="text-purple-400 ml-1">+{artist.multipleUrls.length - 1}</span>
+                {additionalPlatformCount > 0 && (
+                  <span className="text-purple-400 ml-1">+{additionalPlatformCount}</span>
                 )}
               </p>
               {artist.genres && artist.genres.length > 0 && (
@@ -158,7 +181,7 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
               <div className="flex items-center gap-1">
                 <Users className="h-3 w-3" />
                 <span>{formatFollowersCount(totalFollowers)}</span>
-                {artist.multipleUrls && artist.multipleUrls.length > 1 && (
+                {additionalPlatformCount > 0 && (
                   <span className="text-purple-400 text-xs">cumul</span>
                 )}
               </div>
