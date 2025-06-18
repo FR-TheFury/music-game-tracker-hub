@@ -1,4 +1,3 @@
-
 import { useAuth } from "@/hooks/useAuth";
 import { AuthPage } from "@/components/AuthPage";
 import { RoleGuard } from "@/components/RoleGuard";
@@ -55,9 +54,8 @@ const Index = () => {
                 {userRole === 'admin' && (
                   <Button
                     onClick={() => navigate('/admin')}
-                    variant="outline"
+                    variant="primary-3d"
                     size="sm"
-                    className="border-purple-400 text-purple-400 hover:bg-purple-400/10"
                   >
                     <Shield className="h-4 w-4 mr-2" />
                     Administration
@@ -68,9 +66,8 @@ const Index = () => {
                 <Dialog>
                   <DialogTrigger asChild>
                     <Button 
-                      variant="outline" 
+                      variant="secondary-3d" 
                       size="sm"
-                      className="border-slate-600 text-slate-300 hover:bg-slate-700"
                     >
                       <Settings className="h-4 w-4 mr-2" />
                       Mon Profil
@@ -86,9 +83,8 @@ const Index = () => {
                 </span>
                 <Button 
                   onClick={signOut}
-                  variant="outline" 
+                  variant="ghost-3d" 
                   size="sm"
-                  className="border-slate-600 text-slate-300 hover:bg-slate-700"
                 >
                   <LogOut className="h-4 w-4 mr-2" />
                   Déconnexion

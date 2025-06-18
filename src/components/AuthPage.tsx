@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -147,7 +146,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              variant="primary-3d"
+              className="w-full"
             >
               {loading ? 'Chargement...' : isLogin ? 'Se connecter' : "S'inscrire"}
             </Button>
@@ -155,9 +155,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
 
           <div className="mt-6 text-center">
             <Button
-              variant="ghost"
+              variant="ghost-3d"
               onClick={() => setIsLogin(!isLogin)}
-              className="text-gray-400 hover:text-white"
             >
               {isLogin ? "Pas de compte ? S'inscrire" : "Déjà un compte ? Se connecter"}
             </Button>

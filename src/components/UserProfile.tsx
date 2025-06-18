@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -77,9 +76,8 @@ export const UserProfile: React.FC = () => {
                 <Button
                   onClick={handleRefreshRole}
                   disabled={refreshing}
-                  variant="ghost"
+                  variant="ghost-3d"
                   size="sm"
-                  className="text-gray-400 hover:text-white"
                 >
                   <RefreshCw className={`h-3 w-3 ${refreshing ? 'animate-spin' : ''}`} />
                 </Button>
@@ -92,7 +90,8 @@ export const UserProfile: React.FC = () => {
             <Button
               onClick={handlePasswordReset}
               disabled={resetPasswordLoading}
-              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+              variant="primary-3d"
+              className="flex items-center gap-2"
             >
               <Key className="h-4 w-4" />
               {resetPasswordLoading ? 'Envoi en cours...' : 'Réinitialiser le mot de passe'}

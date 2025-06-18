@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -40,9 +39,8 @@ const Admin = () => {
               <div className="flex items-center gap-3">
                 <Button
                   onClick={() => navigate('/')}
-                  variant="ghost"
+                  variant="ghost-3d"
                   size="sm"
-                  className="text-gray-300 hover:text-white"
                 >
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Retour
@@ -117,27 +115,25 @@ const Admin = () => {
                             <div className="flex gap-2">
                               <Button
                                 size="sm"
-                                variant="outline"
+                                variant="outline-3d"
                                 onClick={() => handleApprove(validation.user_id, 'viewer')}
-                                className="text-blue-400 border-blue-400 hover:bg-blue-400/10"
+                                className="text-blue-400 border-blue-400 hover:border-blue-300"
                               >
                                 <Check className="h-4 w-4 mr-1" />
                                 Lecteur
                               </Button>
                               <Button
                                 size="sm"
-                                variant="outline"
+                                variant="success-3d"
                                 onClick={() => handleApprove(validation.user_id, 'editor')}
-                                className="text-green-400 border-green-400 hover:bg-green-400/10"
                               >
                                 <Check className="h-4 w-4 mr-1" />
                                 Éditeur
                               </Button>
                               <Button
                                 size="sm"
-                                variant="outline"
+                                variant="danger-3d"
                                 onClick={() => handleReject(validation.user_id)}
-                                className="text-red-400 border-red-400 hover:bg-red-400/10"
                               >
                                 <X className="h-4 w-4 mr-1" />
                                 Rejeter
