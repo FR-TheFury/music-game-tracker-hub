@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +11,7 @@ import { Shield, Users, Clock, Check, X, Settings, ArrowLeft, UserCheck } from '
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import type { User as AuthUser } from '@supabase/supabase-js';
 
 interface User {
   id: string;
@@ -69,9 +71,9 @@ const Admin = () => {
       if (authError) throw authError;
 
       // Combiner toutes les données avec un typage strict
-      const combinedUsers: User[] = (usersData as UserRoleData[]).map((userRoleItem: UserRoleData) => {
-        const authUser = authData.users.find(au => au.id === userRoleItem.user_id);
-        const profile = (profilesData as ProfileData[] | null)?.find((p: ProfileData) => p.id === userRoleItem.user_id);
+      const combinedUsers: User[] = (usersData || []).map((userRoleItem: UserRoleData) => {
+        const authUser: AuthUser | undefined = authData.users.find((au: AuthUser) => au.id === userRoleItem.user_id);
+        const profile: ProfileData | undefined = (profilesData || []).find((p: ProfileData) => p.id === userRoleItem.user_id);
         
         return {
           id: userRoleItem.user_id,
