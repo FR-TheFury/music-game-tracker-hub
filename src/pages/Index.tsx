@@ -1,3 +1,4 @@
+
 import { useAuth } from "@/hooks/useAuth";
 import { AuthPage } from "@/components/AuthPage";
 import { RoleGuard } from "@/components/RoleGuard";
@@ -5,8 +6,8 @@ import { AdminPanel } from "@/components/AdminPanel";
 import { UserStatus } from "@/components/UserStatus";
 import { Music, Gamepad2, LogOut } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { AddArtistForm } from "@/components/AddArtistForm";
-import { AddGameForm } from "@/components/AddGameForm";
+import { AddArtistFormWrapper } from "@/components/AddArtistFormWrapper";
+import { AddGameFormWrapper } from "@/components/AddGameFormWrapper";
 import { ArtistsGrid } from "@/components/ArtistsGrid";
 import { GamesGrid } from "@/components/GamesGrid";
 
@@ -70,7 +71,7 @@ const Index = () => {
                   Mes Artistes
                 </h2>
                 <RoleGuard allowedRoles={['admin', 'editor']}>
-                  <AddArtistForm onArtistAdded={() => {}} />
+                  <AddArtistFormWrapper />
                 </RoleGuard>
               </div>
               
@@ -87,7 +88,7 @@ const Index = () => {
                   Ma Liste de Souhaits
                 </h2>
                 <RoleGuard allowedRoles={['admin', 'editor']}>
-                  <AddGameForm onGameAdded={() => {}} />
+                  <AddGameFormWrapper />
                 </RoleGuard>
               </div>
               
