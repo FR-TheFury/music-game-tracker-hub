@@ -87,6 +87,36 @@ export type Database = {
         }
         Relationships: []
       }
+      pending_validations: {
+        Row: {
+          created_at: string | null
+          id: string
+          status: string | null
+          updated_at: string | null
+          user_email: string
+          user_id: string
+          username: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          status?: string | null
+          updated_at?: string | null
+          user_email: string
+          user_id: string
+          username?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          status?: string | null
+          updated_at?: string | null
+          user_email?: string
+          user_id?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -111,15 +141,59 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
+      has_role: {
+        Args: {
+          _user_id: string
+          _role: Database["public"]["Enums"]["user_role"]
+        }
+        Returns: boolean
+      }
+      is_admin: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      user_role: "admin" | "editor" | "viewer" | "pending"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -234,6 +308,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      user_role: ["admin", "editor", "viewer", "pending"],
+    },
   },
 } as const
