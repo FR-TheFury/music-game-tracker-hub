@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +9,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Music, X, Plus, Search, Loader2, Trash2 } from 'lucide-react';
 import { useSpotify } from '@/hooks/useSpotify';
 import { useDeezer } from '@/hooks/useDeezer';
+import { useYouTube } from '@/hooks/useYouTube';
+import { useYouTubeMusic } from '@/hooks/useYouTubeMusic';
+import { useAmazonMusic } from '@/hooks/useAmazonMusic';
 
 interface Artist {
   name: string;
@@ -52,11 +54,17 @@ export const AddArtistForm: React.FC<AddArtistFormProps> = ({ onSubmit, onCancel
   const [searchQuery, setSearchQuery] = useState('');
   const [spotifyResults, setSpotifyResults] = useState<any[]>([]);
   const [deezerResults, setDeezerResults] = useState<any[]>([]);
+  const [youtubeResults, setYoutubeResults] = useState<any[]>([]);
+  const [youtubeMusicResults, setYoutubeMusicResults] = useState<any[]>([]);
+  const [amazonMusicResults, setAmazonMusicResults] = useState<any[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [activeTab, setActiveTab] = useState('spotify');
   
   const { searchArtists: searchSpotifyArtists, loading: spotifyLoading } = useSpotify();
   const { searchArtists: searchDeezerArtists, loading: deezerLoading } = useDeezer();
+  const { searchArtists: searchYouTubeArtists, loading: youtubeLoading } = useYouTube();
+  const { searchArtists: searchYouTubeMusicArtists, loading: youtubeMusicLoading } = useYouTubeMusic();
+  const { searchArtists: searchAmazonMusicArtists, loading: amazonMusicLoading } = useAmazonMusic();
 
   const platforms = [
     'Spotify',
@@ -115,13 +123,19 @@ export const AddArtistForm: React.FC<AddArtistFormProps> = ({ onSubmit, onCancel
   const searchArtists = async () => {
     if (!searchQuery.trim()) return;
     
-    const [spotifyRes, deezerRes] = await Promise.all([
+    const [spotifyRes, deezerRes, youtubeRes, youtubeMusicRes, amazonMusicRes] = await Promise.all([
       searchSpotifyArtists(searchQuery),
-      searchDeezerArtists(searchQuery)
+      searchDeezerArtists(searchQuery),
+      searchYouTubeArtists(searchQuery),
+      searchYouTubeMusicArtists(searchQuery),
+      searchAmazonMusicArtists(searchQuery)
     ]);
     
     setSpotifyResults(spotifyRes);
     setDeezerResults(deezerRes);
+    setYoutubeResults(youtubeRes);
+    setYoutubeMusicResults(youtubeMusicRes);
+    setAmazonMusicResults(amazonMusicRes);
     setShowResults(true);
   };
 
@@ -160,6 +174,62 @@ export const AddArtistForm: React.FC<AddArtistFormProps> = ({ onSubmit, onCancel
       url: artist.link || '',
       deezerId: artist.id,
       followersCount: artist.nb_fan || 0,
+      profileImageUrl: imageUrl,
+      multipleUrls,
+    }));
+    setShowResults(false);
+    setSearchQuery(artist.name);
+  };
+
+  const selectYouTubeArtist = (artist: any) => {
+    const imageUrl = artist.thumbnails?.[0]?.url || '';
+    const multipleUrls = [
+      { platform: 'YouTube', url: artist.channelUrl || '' }
+    ];
+
+    setFormData(prev => ({
+      ...prev,
+      name: artist.name,
+      platform: 'YouTube',
+      url: artist.channelUrl || '',
+      followersCount: parseInt(artist.subscriberCount) || 0,
+      profileImageUrl: imageUrl,
+      multipleUrls,
+    }));
+    setShowResults(false);
+    setSearchQuery(artist.name);
+  };
+
+  const selectYouTubeMusicArtist = (artist: any) => {
+    const imageUrl = artist.thumbnails?.[0]?.url || '';
+    const multipleUrls = [
+      { platform: 'YouTube Music', url: artist.channelUrl || '' }
+    ];
+
+    setFormData(prev => ({
+      ...prev,
+      name: artist.name,
+      platform: 'YouTube Music',
+      url: artist.channelUrl || '',
+      profileImageUrl: imageUrl,
+      multipleUrls,
+    }));
+    setShowResults(false);
+    setSearchQuery(artist.name);
+  };
+
+  const selectAmazonMusicArtist = (artist: any) => {
+    const imageUrl = artist.imageUrl || '';
+    const multipleUrls = [
+      { platform: 'Amazon Music', url: artist.artistUrl || '' }
+    ];
+
+    setFormData(prev => ({
+      ...prev,
+      name: artist.name,
+      platform: 'Amazon Music',
+      url: artist.artistUrl || '',
+      followersCount: artist.followers || 0,
       profileImageUrl: imageUrl,
       multipleUrls,
     }));
@@ -221,7 +291,7 @@ export const AddArtistForm: React.FC<AddArtistFormProps> = ({ onSubmit, onCancel
                 className="bg-slate-700/50 border-slate-600 text-white placeholder:text-gray-400 pr-10"
               />
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                {(spotifyLoading || deezerLoading) ? (
+                {(spotifyLoading || deezerLoading || youtubeLoading || youtubeMusicLoading || amazonMusicLoading) ? (
                   <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
                 ) : (
                   <Search className="h-4 w-4 text-gray-400" />
@@ -229,15 +299,24 @@ export const AddArtistForm: React.FC<AddArtistFormProps> = ({ onSubmit, onCancel
               </div>
             </div>
             
-            {/* Résultats de recherche avec onglets */}
-            {showResults && (spotifyResults.length > 0 || deezerResults.length > 0) && (
+            {/* Résultats de recherche avec onglets étendus */}
+            {showResults && (spotifyResults.length > 0 || deezerResults.length > 0 || youtubeResults.length > 0 || youtubeMusicResults.length > 0 || amazonMusicResults.length > 0) && (
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 bg-slate-700">
+                <TabsList className="grid w-full grid-cols-5 bg-slate-700">
                   <TabsTrigger value="spotify" className="text-white data-[state=active]:bg-green-600">
                     Spotify ({spotifyResults.length})
                   </TabsTrigger>
                   <TabsTrigger value="deezer" className="text-white data-[state=active]:bg-orange-600">
                     Deezer ({deezerResults.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="youtube" className="text-white data-[state=active]:bg-red-600">
+                    YouTube ({youtubeResults.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="youtube-music" className="text-white data-[state=active]:bg-red-700">
+                    YT Music ({youtubeMusicResults.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="amazon" className="text-white data-[state=active]:bg-blue-600">
+                    Amazon ({amazonMusicResults.length})
                   </TabsTrigger>
                 </TabsList>
                 
@@ -286,6 +365,84 @@ export const AddArtistForm: React.FC<AddArtistFormProps> = ({ onSubmit, onCancel
                           <div className="text-white font-medium">{artist.name}</div>
                           <div className="text-gray-400 text-sm">
                             {artist.nb_fan ? `${Math.floor(artist.nb_fan / 1000)}k fans` : ''}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="youtube" className="mt-2">
+                  <div className="bg-slate-700 border border-slate-600 rounded-md max-h-48 overflow-y-auto">
+                    {youtubeResults.map((artist) => (
+                      <div
+                        key={artist.id}
+                        onClick={() => selectYouTubeArtist(artist)}
+                        className="p-3 hover:bg-slate-600 cursor-pointer flex items-center gap-3"
+                      >
+                        {artist.thumbnails?.[0] && (
+                          <img 
+                            src={artist.thumbnails[0].url} 
+                            alt={artist.name}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        )}
+                        <div>
+                          <div className="text-white font-medium">{artist.name}</div>
+                          <div className="text-gray-400 text-sm">
+                            {artist.subscriberCount ? `${artist.subscriberCount} abonnés` : ''}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="youtube-music" className="mt-2">
+                  <div className="bg-slate-700 border border-slate-600 rounded-md max-h-48 overflow-y-auto">
+                    {youtubeMusicResults.map((artist) => (
+                      <div
+                        key={artist.id}
+                        onClick={() => selectYouTubeMusicArtist(artist)}
+                        className="p-3 hover:bg-slate-600 cursor-pointer flex items-center gap-3"
+                      >
+                        {artist.thumbnails?.[0] && (
+                          <img 
+                            src={artist.thumbnails[0].url} 
+                            alt={artist.name}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        )}
+                        <div>
+                          <div className="text-white font-medium">{artist.name}</div>
+                          <div className="text-gray-400 text-sm">
+                            {artist.subscribers || 'YouTube Music'}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="amazon" className="mt-2">
+                  <div className="bg-slate-700 border border-slate-600 rounded-md max-h-48 overflow-y-auto">
+                    {amazonMusicResults.map((artist) => (
+                      <div
+                        key={artist.id}
+                        onClick={() => selectAmazonMusicArtist(artist)}
+                        className="p-3 hover:bg-slate-600 cursor-pointer flex items-center gap-3"
+                      >
+                        {artist.imageUrl && (
+                          <img 
+                            src={artist.imageUrl} 
+                            alt={artist.name}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        )}
+                        <div>
+                          <div className="text-white font-medium">{artist.name}</div>
+                          <div className="text-gray-400 text-sm">
+                            {artist.followers ? `${Math.floor(artist.followers / 1000)}k followers` : 'Amazon Music'}
                           </div>
                         </div>
                       </div>
