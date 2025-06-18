@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useUserRole, UserRole } from '@/hooks/useUserRole';
+import { useUserRoleContext, UserRole } from '@/contexts/UserRoleContext';
 import { useAuth } from '@/hooks/useAuth';
 import { RoleGuard } from '@/components/RoleGuard';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
@@ -23,7 +24,7 @@ interface User {
 }
 
 const Admin = () => {
-  const { userRole, pendingValidations, approveUser, rejectUser, loading } = useUserRole();
+  const { userRole, pendingValidations, approveUser, rejectUser, loading } = useUserRoleContext();
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -37,7 +38,6 @@ const Admin = () => {
     try {
       console.log('Récupération de tous les utilisateurs...');
 
-      // Récupérer les données depuis user_roles avec jointure sur profiles
       const { data: userData, error: userError } = await supabase
         .from('user_roles')
         .select(`
@@ -59,13 +59,9 @@ const Admin = () => {
 
       console.log('Données utilisateurs récupérées:', userData);
 
-      // Créer la liste des utilisateurs avec les données disponibles
       const combinedUsers: User[] = (userData || []).map((item: any) => {
         const username = item.profiles?.username || 'Utilisateur';
-        // Générer un email basé sur l'ID utilisateur
         const email = `user-${item.user_id.slice(0, 8)}@domain.local`;
-        
-        console.log(`Utilisateur ${item.user_id}: username = ${username}, email = ${email}`);
         
         return {
           id: item.user_id,
@@ -335,7 +331,8 @@ const Admin = () => {
                               <Badge 
                                 variant="outline" 
                                 className={`transition-all duration-300 ${
-                                  userItem.role === 'admin' ? 'border-[#FF0751] text-[#FF0751] bg-[#FF0751]/10 hover:bg-[#FF0751]/20' :
+                                  userItem.role === '
+' ? 'border-[#FF0751] text-[#FF0751] bg-[#FF0751]/10 hover:bg-[#FF0751]/20' :
                                   userItem.role === 'editor' ? 'border-green-400 text-green-400 bg-green-400/10 hover:bg-green-400/20' :
                                   userItem.role === 'viewer' ? 'border-blue-400 text-blue-400 bg-blue-400/10 hover:bg-blue-400/20' :
                                   'border-orange-400 text-orange-400 bg-orange-400/10 hover:bg-orange-400/20'

@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { useUserRole, UserRole } from '@/hooks/useUserRole';
+import React from 'react';
+import { useUserRoleContext, UserRole } from '@/contexts/UserRoleContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { Clock, AlertCircle } from 'lucide-react';
@@ -16,9 +16,7 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
   allowedRoles = ['admin', 'editor', 'viewer'], 
   fallback 
 }) => {
-  const { userRole, loading } = useUserRole();
-
-  console.log('RoleGuard - Rôle utilisateur:', userRole, 'Chargement:', loading, 'Rôles autorisés:', allowedRoles);
+  const { userRole, loading } = useUserRoleContext();
 
   // Pendant le chargement
   if (loading) {
@@ -31,7 +29,6 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
 
   // Utilisateur en attente de validation
   if (!userRole || userRole === 'pending') {
-    console.log('RoleGuard - Utilisateur en attente ou sans rôle');
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-[#FF0751] to-slate-900 flex items-center justify-center px-4">
         <Card className="w-full max-w-md bg-slate-800/90 border-[#FF0751]/30 shadow-2xl backdrop-blur-sm">
@@ -58,7 +55,6 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
 
   // Accès refusé
   if (!allowedRoles.includes(userRole)) {
-    console.log('RoleGuard - Accès refusé pour le rôle:', userRole);
     return fallback || (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-[#FF0751] to-slate-900 flex items-center justify-center px-4">
         <Card className="w-full max-w-md bg-slate-800/90 border-[#FF0751]/30 shadow-2xl backdrop-blur-sm">
@@ -84,6 +80,5 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
   }
 
   // Accès autorisé
-  console.log('RoleGuard - Accès autorisé pour le rôle:', userRole);
   return <>{children}</>;
 };

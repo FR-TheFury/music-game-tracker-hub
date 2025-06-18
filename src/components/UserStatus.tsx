@@ -1,11 +1,11 @@
 
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { useUserRole } from '@/hooks/useUserRole';
+import { useUserRoleContext } from '@/contexts/UserRoleContext';
 import { Shield, Eye, Edit, Clock } from 'lucide-react';
 
 export const UserStatus: React.FC = () => {
-  const { userRole, loading } = useUserRole();
+  const { userRole, loading } = useUserRoleContext();
 
   if (loading || !userRole) {
     return null;
