@@ -1,151 +1,21 @@
-import React, { useState, useEffect } from 'react';
+
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useUserRoleContext, UserRole } from '@/contexts/UserRoleContext';
+import { useUserRoleContext } from '@/contexts/UserRoleContext';
 import { useAuth } from '@/hooks/useAuth';
 import { RoleGuard } from '@/components/RoleGuard';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { Shield, Users, Clock, Check, X, Settings, ArrowLeft, UserCheck } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-
-interface User {
-  id: string;
-  email: string;
-  username?: string;
-  role: UserRole;
-  created_at: string;
-  approved_at?: string;
-  approved_by?: string;
-}
+import { Settings, Clock, Users } from 'lucide-react';
+import { AdminHeader } from '@/components/admin/AdminHeader';
+import { PendingValidationsTab } from '@/components/admin/PendingValidationsTab';
+import { UsersManagementTab } from '@/components/admin/UsersManagementTab';
+import { useAdminUsers } from '@/hooks/useAdminUsers';
 
 const Admin = () => {
   const { userRole, pendingValidations, approveUser, rejectUser, loading } = useUserRoleContext();
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const [allUsers, setAllUsers] = useState<User[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
-
-  const fetchAllUsers = async () => {
-    if (!user || userRole !== 'admin') return;
-
-    setLoadingUsers(true);
-    try {
-      console.log('Récupération de tous les utilisateurs...');
-
-      // Étape 1: Récupérer tous les rôles utilisateur
-      const { data: userRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role, created_at, approved_at, approved_by')
-        .order('created_at', { ascending: false });
-
-      if (rolesError) {
-        console.error('Erreur lors de la récupération des rôles:', rolesError);
-        throw rolesError;
-      }
-
-      console.log('Rôles utilisateurs récupérés:', userRoles);
-
-      // Étape 2: Récupérer tous les profils
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, username');
-
-      if (profilesError) {
-        console.error('Erreur lors de la récupération des profils:', profilesError);
-        throw profilesError;
-      }
-
-      console.log('Profils récupérés:', profiles);
-
-      // Étape 3: Récupérer les métadonnées des utilisateurs depuis auth
-      const { data: { users: authUsers }, error: authError } = await supabase.auth.admin.listUsers();
-
-      if (authError) {
-        console.error('Erreur lors de la récupération des utilisateurs auth:', authError);
-        // Continue sans les données auth si erreur (pas d'accès admin)
-      }
-
-      console.log('Utilisateurs auth récupérés:', authUsers);
-
-      // Étape 4: Combiner toutes les données
-      const combinedUsers: User[] = (userRoles || []).map((roleItem) => {
-        // Trouver le profil correspondant
-        const profile = profiles?.find(p => p.id === roleItem.user_id);
-        
-        // Trouver les données auth correspondantes
-        const authUser = authUsers?.find(u => u.id === roleItem.user_id);
-        
-        // Utiliser l'email depuis auth.users, sinon générer un fallback
-        const email = authUser?.email || `user-${roleItem.user_id.slice(0, 8)}@domain.local`;
-        
-        // Utiliser le username depuis profiles, sinon depuis auth metadata, sinon 'Utilisateur'
-        const username = profile?.username || 
-                        authUser?.user_metadata?.username || 
-                        'Utilisateur';
-
-        return {
-          id: roleItem.user_id,
-          email: email,
-          username: username,
-          role: roleItem.role as UserRole,
-          created_at: roleItem.created_at || '',
-          approved_at: roleItem.approved_at || undefined,
-          approved_by: roleItem.approved_by || undefined,
-        };
-      });
-
-      console.log('Utilisateurs combinés final:', combinedUsers);
-      setAllUsers(combinedUsers);
-    } catch (error) {
-      console.error('Erreur lors de la récupération des utilisateurs:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les utilisateurs",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingUsers(false);
-    }
-  };
-
-  const updateUserRole = async (userId: string, newRole: UserRole) => {
-    try {
-      const { error } = await supabase
-        .from('user_roles')
-        .update({ 
-          role: newRole, 
-          approved_by: user?.id,
-          approved_at: new Date().toISOString()
-        })
-        .eq('user_id', userId);
-
-      if (error) throw error;
-
-      await fetchAllUsers();
-      toast({
-        title: "Rôle mis à jour",
-        description: `Le rôle a été modifié avec succès vers ${newRole}.`,
-      });
-    } catch (error) {
-      console.error('Error updating role:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de modifier le rôle",
-        variant: "destructive",
-      });
-    }
-  };
-
-  useEffect(() => {
-    if (userRole === 'admin') {
-      fetchAllUsers();
-    }
-  }, [userRole]);
+  const { allUsers, loadingUsers, fetchAllUsers, updateUserRole } = useAdminUsers(userRole);
 
   if (loading) {
     return (
@@ -166,38 +36,7 @@ const Admin = () => {
   return (
     <RoleGuard allowedRoles={['admin']}>
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-[#FF0751] to-slate-900">
-        <header className="bg-gradient-to-r from-[#FF0751]/20 to-slate-800/90 backdrop-blur-sm border-b border-[#FF0751]/30 shadow-lg">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
-              <div className="flex items-center gap-3">
-                <Button
-                  onClick={() => navigate('/')}
-                  variant="ghost"
-                  size="sm"
-                  className="text-gray-300 hover:text-white hover:bg-[#FF0751]/20 transition-all duration-300"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Retour
-                </Button>
-                <div className="p-2 rounded-full bg-gradient-to-r from-[#FF0751] to-[#FF3971] rose-glow">
-                  <Shield className="h-6 w-6 text-white" />
-                </div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF0751] to-[#FF6B9D] bg-clip-text text-transparent">
-                  Administration
-                </h1>
-              </div>
-              
-              <div className="flex items-center gap-4">
-                <span className="text-gray-300 text-sm">
-                  {user?.email}
-                </span>
-                <Badge variant="outline" className="border-[#FF0751] text-[#FF0751] bg-[#FF0751]/10 hover:bg-[#FF0751]/20 transition-all duration-300">
-                  Administrateur
-                </Badge>
-              </div>
-            </div>
-          </div>
-        </header>
+        <AdminHeader user={user} />
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Card className="bg-slate-800/90 border-[#FF0751]/30 shadow-2xl backdrop-blur-sm hover:shadow-[0_0_30px_rgba(255,7,81,0.3)] transition-all duration-500">
@@ -229,184 +68,21 @@ const Admin = () => {
                 </TabsList>
 
                 <TabsContent value="requests" className="mt-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold text-white">Demandes en attente</h3>
-                      <Badge variant="secondary" className="bg-[#FF6B9D]/20 text-[#FF6B9D] border-[#FF6B9D]/30">
-                        {pendingValidations.length} en attente
-                      </Badge>
-                    </div>
-                    
-                    {pendingValidations.length === 0 ? (
-                      <div className="text-center py-12">
-                        <div className="p-4 rounded-full bg-[#FF0751]/10 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                          <Check className="h-8 w-8 text-[#FF0751]" />
-                        </div>
-                        <p className="text-gray-400">Aucune demande en attente</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {pendingValidations.map((validation) => (
-                          <div 
-                            key={validation.id} 
-                            className="flex items-center justify-between p-4 bg-slate-700/50 border border-[#FF0751]/20 rounded-lg hover:bg-slate-700/70 hover:border-[#FF0751]/40 transition-all duration-300 hover:shadow-lg"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="p-2 rounded-full bg-orange-500/20">
-                                <Clock className="h-4 w-4 text-orange-400" />
-                              </div>
-                              <div>
-                                <p className="font-medium text-white">{validation.username || 'Sans nom'}</p>
-                                <p className="text-sm text-gray-300">{validation.user_email}</p>
-                                <p className="text-xs text-gray-400">
-                                  Demandé le {new Date(validation.created_at).toLocaleDateString()}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleApprove(validation.user_id, 'viewer')}
-                                className="text-blue-400 border-blue-400 hover:border-blue-300 hover:bg-blue-400/10 transition-all duration-300"
-                              >
-                                <Check className="h-4 w-4 mr-1" />
-                                Lecteur
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleApprove(validation.user_id, 'editor')}
-                                className="text-green-400 border-green-400 hover:border-green-300 hover:bg-green-400/10 transition-all duration-300"
-                              >
-                                <Check className="h-4 w-4 mr-1" />
-                                Éditeur
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleReject(validation.user_id)}
-                                className="text-red-400 border-red-400 hover:border-red-300 hover:bg-red-400/10 transition-all duration-300"
-                              >
-                                <X className="h-4 w-4 mr-1" />
-                                Rejeter
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <PendingValidationsTab
+                    pendingValidations={pendingValidations}
+                    onApprove={handleApprove}
+                    onReject={handleReject}
+                  />
                 </TabsContent>
 
                 <TabsContent value="users" className="mt-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold text-white">Tous les utilisateurs</h3>
-                      <Button
-                        onClick={fetchAllUsers}
-                        disabled={loadingUsers}
-                        variant="outline"
-                        size="sm"
-                        className="border-[#FF0751] text-[#FF0751] hover:bg-[#FF0751]/10 transition-all duration-300"
-                      >
-                        {loadingUsers ? (
-                          <div className="flex items-center gap-2">
-                            <LoadingSpinner size="sm" />
-                            Chargement...
-                          </div>
-                        ) : (
-                          'Actualiser'
-                        )}
-                      </Button>
-                    </div>
-                    
-                    {loadingUsers ? (
-                      <div className="text-center py-12">
-                        <LoadingSpinner size="md" className="mx-auto mb-4" />
-                        <p className="text-gray-400">Chargement des utilisateurs...</p>
-                      </div>
-                    ) : allUsers.length === 0 ? (
-                      <div className="text-center py-12">
-                        <div className="p-4 rounded-full bg-gray-500/10 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                          <Users className="h-8 w-8 text-gray-500" />
-                        </div>
-                        <p className="text-gray-400">Aucun utilisateur trouvé</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {allUsers.map((userItem) => (
-                          <div 
-                            key={userItem.id} 
-                            className="flex items-center justify-between p-4 bg-slate-700/50 border border-[#FF0751]/20 rounded-lg hover:bg-slate-700/70 hover:border-[#FF0751]/40 transition-all duration-300 hover:shadow-lg"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="p-2 rounded-full bg-green-500/20">
-                                <UserCheck className="h-4 w-4 text-green-400" />
-                              </div>
-                              <div>
-                                <p className="font-medium text-white">{userItem.username}</p>
-                                <p className="text-sm text-gray-300">{userItem.email}</p>
-                                <p className="text-xs text-gray-400">
-                                  Inscrit le {new Date(userItem.created_at).toLocaleDateString()}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <Badge 
-                                variant="outline" 
-                                className={
-                                  userItem.role === 'admin' 
-                                    ? 'border-[#FF0751] text-[#FF0751] bg-[#FF0751]/10 hover:bg-[#FF0751]/20' 
-                                    : userItem.role === 'editor' 
-                                    ? 'border-green-400 text-green-400 bg-green-400/10 hover:bg-green-400/20' 
-                                    : userItem.role === 'viewer' 
-                                    ? 'border-blue-400 text-blue-400 bg-blue-400/10 hover:bg-blue-400/20' 
-                                    : 'border-orange-400 text-orange-400 bg-orange-400/10 hover:bg-orange-400/20'
-                                }
-                              >
-                                {userItem.role}
-                              </Badge>
-                              {userItem.id !== user?.id && userItem.role !== 'pending' && (
-                                <div className="flex gap-1">
-                                  {userItem.role !== 'viewer' && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => updateUserRole(userItem.id, 'viewer')}
-                                      className="text-blue-400 border-blue-400 hover:border-blue-300 hover:bg-blue-400/10 transition-all duration-300"
-                                    >
-                                      Viewer
-                                    </Button>
-                                  )}
-                                  {userItem.role !== 'editor' && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => updateUserRole(userItem.id, 'editor')}
-                                      className="text-green-400 border-green-400 hover:border-green-300 hover:bg-green-400/10 transition-all duration-300"
-                                    >
-                                      Editor
-                                    </Button>
-                                  )}
-                                  {userItem.role !== 'admin' && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => updateUserRole(userItem.id, 'admin')}
-                                      className="text-[#FF0751] border-[#FF0751] hover:border-[#FF3971] hover:bg-[#FF0751]/10 transition-all duration-300"
-                                    >
-                                      Admin
-                                    </Button>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <UsersManagementTab
+                    allUsers={allUsers}
+                    loadingUsers={loadingUsers}
+                    currentUserId={user?.id}
+                    onRefresh={fetchAllUsers}
+                    onUpdateRole={updateUserRole}
+                  />
                 </TabsContent>
               </Tabs>
             </CardContent>
