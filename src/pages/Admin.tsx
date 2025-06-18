@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +21,19 @@ interface User {
   approved_by?: string;
 }
 
+interface UserRoleData {
+  user_id: string;
+  role: string;
+  created_at: string;
+  approved_at?: string;
+  approved_by?: string;
+}
+
+interface ProfileData {
+  id: string;
+  username?: string;
+}
+
 const Admin = () => {
   const { userRole, pendingValidations, approveUser, rejectUser, loading } = useUserRole();
   const { user } = useAuth();
@@ -35,21 +47,15 @@ const Admin = () => {
 
     setLoadingUsers(true);
     try {
-      // Récupérer les rôles des utilisateurs avec leurs profils
+      // Récupérer les rôles des utilisateurs
       const { data: usersData, error: usersError } = await supabase
         .from('user_roles')
-        .select(`
-          user_id,
-          role,
-          created_at,
-          approved_at,
-          approved_by
-        `)
+        .select('user_id, role, created_at, approved_at, approved_by')
         .order('created_at', { ascending: false });
 
       if (usersError) throw usersError;
 
-      // Récupérer les profils séparément
+      // Récupérer les profils
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('id, username');
@@ -62,19 +68,19 @@ const Admin = () => {
       const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
       if (authError) throw authError;
 
-      // Combiner toutes les données
-      const combinedUsers: User[] = usersData.map(userRole => {
-        const authUser = authData.users.find(au => au.id === userRole.user_id);
-        const profile = profilesData?.find(p => p.id === userRole.user_id);
+      // Combiner toutes les données avec un typage strict
+      const combinedUsers: User[] = (usersData as UserRoleData[]).map((userRoleItem: UserRoleData) => {
+        const authUser = authData.users.find(au => au.id === userRoleItem.user_id);
+        const profile = (profilesData as ProfileData[] | null)?.find((p: ProfileData) => p.id === userRoleItem.user_id);
         
         return {
-          id: userRole.user_id,
+          id: userRoleItem.user_id,
           email: authUser?.email || 'Email non trouvé',
           username: profile?.username || authUser?.user_metadata?.username || 'Sans nom',
-          role: userRole.role as UserRole,
-          created_at: userRole.created_at || '',
-          approved_at: userRole.approved_at || undefined,
-          approved_by: userRole.approved_by || undefined,
+          role: userRoleItem.role as UserRole,
+          created_at: userRoleItem.created_at || '',
+          approved_at: userRoleItem.approved_at || undefined,
+          approved_by: userRoleItem.approved_by || undefined,
         };
       });
 
@@ -127,7 +133,7 @@ const Admin = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-[#FF0751] to-slate-900">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#FF0751] rose-glow"></div>
       </div>
     );
@@ -143,8 +149,8 @@ const Admin = () => {
 
   return (
     <RoleGuard allowedRoles={['admin']}>
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        <header className="bg-gradient-to-r from-slate-800/90 to-slate-700/90 backdrop-blur-sm border-b border-slate-600 shadow-lg">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-[#FF0751] to-slate-900">
+        <header className="bg-gradient-to-r from-[#FF0751]/20 to-slate-800/90 backdrop-blur-sm border-b border-[#FF0751]/30 shadow-lg">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center gap-3">
@@ -152,12 +158,14 @@ const Admin = () => {
                   onClick={() => navigate('/')}
                   variant="ghost"
                   size="sm"
-                  className="text-gray-300 hover:text-white hover:bg-slate-700/50"
+                  className="text-gray-300 hover:text-white hover:bg-[#FF0751]/20 transition-all duration-300"
                 >
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Retour
                 </Button>
-                <Shield className="h-8 w-8 text-[#FF0751] drop-shadow-lg" />
+                <div className="p-2 rounded-full bg-gradient-to-r from-[#FF0751] to-[#FF3971] rose-glow">
+                  <Shield className="h-6 w-6 text-white" />
+                </div>
                 <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF0751] to-[#FF6B9D] bg-clip-text text-transparent">
                   Administration
                 </h1>
@@ -167,7 +175,7 @@ const Admin = () => {
                 <span className="text-gray-300 text-sm">
                   {user?.email}
                 </span>
-                <Badge variant="outline" className="border-[#FF0751] text-[#FF0751] bg-[#FF0751]/10">
+                <Badge variant="outline" className="border-[#FF0751] text-[#FF0751] bg-[#FF0751]/10 hover:bg-[#FF0751]/20 transition-all duration-300">
                   Administrateur
                 </Badge>
               </div>
@@ -176,27 +184,35 @@ const Admin = () => {
         </header>
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <Card className="bg-slate-800/90 border-slate-700 shadow-2xl backdrop-blur-sm">
-            <CardHeader>
+          <Card className="bg-slate-800/90 border-[#FF0751]/30 shadow-2xl backdrop-blur-sm hover:shadow-[0_0_30px_rgba(255,7,81,0.3)] transition-all duration-500">
+            <CardHeader className="bg-gradient-to-r from-[#FF0751]/10 to-transparent border-b border-[#FF0751]/20">
               <CardTitle className="flex items-center gap-2 text-white">
-                <Settings className="h-5 w-5" />
+                <div className="p-2 rounded-full bg-gradient-to-r from-[#FF0751] to-[#FF3971] rose-glow">
+                  <Settings className="h-4 w-4 text-white" />
+                </div>
                 Panneau d'Administration
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               <Tabs defaultValue="requests" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 bg-slate-700/50 border border-slate-600">
-                  <TabsTrigger value="requests" className="flex items-center gap-2 text-gray-300 data-[state=active]:text-white data-[state=active]:bg-[#FF0751]/20">
+                <TabsList className="grid w-full grid-cols-2 bg-slate-700/50 border border-[#FF0751]/30">
+                  <TabsTrigger 
+                    value="requests" 
+                    className="flex items-center gap-2 text-gray-300 data-[state=active]:text-white data-[state=active]:bg-[#FF0751]/20 data-[state=active]:shadow-lg transition-all duration-300"
+                  >
                     <Clock className="h-4 w-4" />
                     Demandes d'accès
                   </TabsTrigger>
-                  <TabsTrigger value="users" className="flex items-center gap-2 text-gray-300 data-[state=active]:text-white data-[state=active]:bg-[#FF0751]/20">
+                  <TabsTrigger 
+                    value="users" 
+                    className="flex items-center gap-2 text-gray-300 data-[state=active]:text-white data-[state=active]:bg-[#FF0751]/20 data-[state=active]:shadow-lg transition-all duration-300"
+                  >
                     <Users className="h-4 w-4" />
                     Gestion des utilisateurs
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="requests" className="mt-4">
+                <TabsContent value="requests" className="mt-6">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-semibold text-white">Demandes en attente</h3>
@@ -206,16 +222,23 @@ const Admin = () => {
                     </div>
                     
                     {pendingValidations.length === 0 ? (
-                      <p className="text-gray-400 text-center py-8">Aucune demande en attente</p>
+                      <div className="text-center py-12">
+                        <div className="p-4 rounded-full bg-[#FF0751]/10 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                          <Check className="h-8 w-8 text-[#FF0751]" />
+                        </div>
+                        <p className="text-gray-400">Aucune demande en attente</p>
+                      </div>
                     ) : (
                       <div className="space-y-3">
                         {pendingValidations.map((validation) => (
                           <div 
                             key={validation.id} 
-                            className="flex items-center justify-between p-4 bg-slate-700/50 border border-slate-600 rounded-lg hover:bg-slate-700/70 transition-colors"
+                            className="flex items-center justify-between p-4 bg-slate-700/50 border border-[#FF0751]/20 rounded-lg hover:bg-slate-700/70 hover:border-[#FF0751]/40 transition-all duration-300 hover:shadow-lg"
                           >
                             <div className="flex items-center gap-3">
-                              <Clock className="h-4 w-4 text-orange-400" />
+                              <div className="p-2 rounded-full bg-orange-500/20">
+                                <Clock className="h-4 w-4 text-orange-400" />
+                              </div>
                               <div>
                                 <p className="font-medium text-white">{validation.username || 'Sans nom'}</p>
                                 <p className="text-sm text-gray-300">{validation.user_email}</p>
@@ -229,7 +252,7 @@ const Admin = () => {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleApprove(validation.user_id, 'viewer')}
-                                className="text-blue-400 border-blue-400 hover:border-blue-300 hover:bg-blue-400/10"
+                                className="text-blue-400 border-blue-400 hover:border-blue-300 hover:bg-blue-400/10 transition-all duration-300"
                               >
                                 <Check className="h-4 w-4 mr-1" />
                                 Lecteur
@@ -238,7 +261,7 @@ const Admin = () => {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleApprove(validation.user_id, 'editor')}
-                                className="text-green-400 border-green-400 hover:border-green-300 hover:bg-green-400/10"
+                                className="text-green-400 border-green-400 hover:border-green-300 hover:bg-green-400/10 transition-all duration-300"
                               >
                                 <Check className="h-4 w-4 mr-1" />
                                 Éditeur
@@ -247,7 +270,7 @@ const Admin = () => {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleReject(validation.user_id)}
-                                className="text-red-400 border-red-400 hover:border-red-300 hover:bg-red-400/10"
+                                className="text-red-400 border-red-400 hover:border-red-300 hover:bg-red-400/10 transition-all duration-300"
                               >
                                 <X className="h-4 w-4 mr-1" />
                                 Rejeter
@@ -260,7 +283,7 @@ const Admin = () => {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="users" className="mt-4">
+                <TabsContent value="users" className="mt-6">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-semibold text-white">Tous les utilisateurs</h3>
@@ -269,25 +292,35 @@ const Admin = () => {
                         disabled={loadingUsers}
                         variant="outline"
                         size="sm"
-                        className="border-[#FF0751] text-[#FF0751] hover:bg-[#FF0751]/10"
+                        className="border-[#FF0751] text-[#FF0751] hover:bg-[#FF0751]/10 transition-all duration-300"
                       >
                         {loadingUsers ? 'Chargement...' : 'Actualiser'}
                       </Button>
                     </div>
                     
                     {loadingUsers ? (
-                      <p className="text-gray-400 text-center py-8">Chargement des utilisateurs...</p>
+                      <div className="text-center py-12">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FF0751] mx-auto mb-4"></div>
+                        <p className="text-gray-400">Chargement des utilisateurs...</p>
+                      </div>
                     ) : allUsers.length === 0 ? (
-                      <p className="text-gray-400 text-center py-8">Aucun utilisateur trouvé</p>
+                      <div className="text-center py-12">
+                        <div className="p-4 rounded-full bg-gray-500/10 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                          <Users className="h-8 w-8 text-gray-500" />
+                        </div>
+                        <p className="text-gray-400">Aucun utilisateur trouvé</p>
+                      </div>
                     ) : (
                       <div className="space-y-3">
                         {allUsers.map((userItem) => (
                           <div 
                             key={userItem.id} 
-                            className="flex items-center justify-between p-4 bg-slate-700/50 border border-slate-600 rounded-lg hover:bg-slate-700/70 transition-colors"
+                            className="flex items-center justify-between p-4 bg-slate-700/50 border border-[#FF0751]/20 rounded-lg hover:bg-slate-700/70 hover:border-[#FF0751]/40 transition-all duration-300 hover:shadow-lg"
                           >
                             <div className="flex items-center gap-3">
-                              <UserCheck className="h-4 w-4 text-green-400" />
+                              <div className="p-2 rounded-full bg-green-500/20">
+                                <UserCheck className="h-4 w-4 text-green-400" />
+                              </div>
                               <div>
                                 <p className="font-medium text-white">{userItem.username}</p>
                                 <p className="text-sm text-gray-300">{userItem.email}</p>
@@ -299,11 +332,11 @@ const Admin = () => {
                             <div className="flex items-center gap-3">
                               <Badge 
                                 variant="outline" 
-                                className={`${
-                                  userItem.role === 'admin' ? 'border-[#FF0751] text-[#FF0751] bg-[#FF0751]/10' :
-                                  userItem.role === 'editor' ? 'border-green-400 text-green-400 bg-green-400/10' :
-                                  userItem.role === 'viewer' ? 'border-blue-400 text-blue-400 bg-blue-400/10' :
-                                  'border-orange-400 text-orange-400 bg-orange-400/10'
+                                className={`transition-all duration-300 ${
+                                  userItem.role === 'admin' ? 'border-[#FF0751] text-[#FF0751] bg-[#FF0751]/10 hover:bg-[#FF0751]/20' :
+                                  userItem.role === 'editor' ? 'border-green-400 text-green-400 bg-green-400/10 hover:bg-green-400/20' :
+                                  userItem.role === 'viewer' ? 'border-blue-400 text-blue-400 bg-blue-400/10 hover:bg-blue-400/20' :
+                                  'border-orange-400 text-orange-400 bg-orange-400/10 hover:bg-orange-400/20'
                                 }`}
                               >
                                 {userItem.role}
@@ -315,7 +348,7 @@ const Admin = () => {
                                       size="sm"
                                       variant="outline"
                                       onClick={() => updateUserRole(userItem.id, 'viewer')}
-                                      className="text-blue-400 border-blue-400 hover:border-blue-300 hover:bg-blue-400/10"
+                                      className="text-blue-400 border-blue-400 hover:border-blue-300 hover:bg-blue-400/10 transition-all duration-300"
                                     >
                                       Viewer
                                     </Button>
@@ -325,7 +358,7 @@ const Admin = () => {
                                       size="sm"
                                       variant="outline"
                                       onClick={() => updateUserRole(userItem.id, 'editor')}
-                                      className="text-green-400 border-green-400 hover:border-green-300 hover:bg-green-400/10"
+                                      className="text-green-400 border-green-400 hover:border-green-300 hover:bg-green-400/10 transition-all duration-300"
                                     >
                                       Editor
                                     </Button>
@@ -335,7 +368,7 @@ const Admin = () => {
                                       size="sm"
                                       variant="outline"
                                       onClick={() => updateUserRole(userItem.id, 'admin')}
-                                      className="text-[#FF0751] border-[#FF0751] hover:border-[#FF3971] hover:bg-[#FF0751]/10"
+                                      className="text-[#FF0751] border-[#FF0751] hover:border-[#FF3971] hover:bg-[#FF0751]/10 transition-all duration-300"
                                     >
                                       Admin
                                     </Button>
