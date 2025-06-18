@@ -73,6 +73,7 @@ export type Database = {
           id: string
           image_url: string | null
           last_release: string | null
+          lifetime_plays: number | null
           multiple_urls: Json | null
           name: string
           platform: string
@@ -81,6 +82,7 @@ export type Database = {
           profile_image_url: string | null
           spotify_id: string | null
           total_followers: number | null
+          total_plays: number | null
           updated_at: string | null
           url: string
           user_id: string
@@ -95,6 +97,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           last_release?: string | null
+          lifetime_plays?: number | null
           multiple_urls?: Json | null
           name: string
           platform: string
@@ -103,6 +106,7 @@ export type Database = {
           profile_image_url?: string | null
           spotify_id?: string | null
           total_followers?: number | null
+          total_plays?: number | null
           updated_at?: string | null
           url: string
           user_id: string
@@ -117,6 +121,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           last_release?: string | null
+          lifetime_plays?: number | null
           multiple_urls?: Json | null
           name?: string
           platform?: string
@@ -125,6 +130,7 @@ export type Database = {
           profile_image_url?: string | null
           spotify_id?: string | null
           total_followers?: number | null
+          total_plays?: number | null
           updated_at?: string | null
           url?: string
           user_id?: string
