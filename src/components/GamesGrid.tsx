@@ -4,7 +4,7 @@ import { useGames } from '@/hooks/useGames';
 import { GameCard } from '@/components/GameCard';
 
 export const GamesGrid: React.FC = () => {
-  const { games, loading } = useGames();
+  const { games, loading, removeGame } = useGames();
 
   if (loading) {
     return (
@@ -28,7 +28,7 @@ export const GamesGrid: React.FC = () => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {games.map((game) => (
-        <GameCard key={game.id} game={game} />
+        <GameCard key={game.id} game={game} onRemove={removeGame} />
       ))}
     </div>
   );

@@ -17,39 +17,47 @@ export const useAuth = () => {
         setLoading(false);
 
         // Send notification email for new user registration
-        if (event === 'SIGNED_UP' && session?.user) {
-          setTimeout(async () => {
-            try {
-              // Get admin email (first user)
-              const { data: adminData } = await supabase
-                .from('user_roles')
-                .select('user_id')
-                .eq('role', 'admin')
-                .limit(1)
-                .single();
-
-              if (adminData) {
-                const { data: adminProfile } = await supabase
-                  .from('profiles')
-                  .select('id')
-                  .eq('id', adminData.user_id)
+        if (event === 'SIGNED_IN' && session?.user) {
+          // Check if this is a new user by looking at their metadata or created timestamp
+          const userCreatedAt = new Date(session.user.created_at);
+          const now = new Date();
+          const timeDiff = now.getTime() - userCreatedAt.getTime();
+          const isNewUser = timeDiff < 60000; // Less than 1 minute old = new user
+          
+          if (isNewUser) {
+            setTimeout(async () => {
+              try {
+                // Get admin email (first user)
+                const { data: adminData } = await supabase
+                  .from('user_roles')
+                  .select('user_id')
+                  .eq('role', 'admin')
+                  .limit(1)
                   .single();
 
-                if (adminProfile) {
-                  // Call edge function to send notification
-                  await supabase.functions.invoke('send-admin-notification', {
-                    body: {
-                      userEmail: session.user.email,
-                      username: session.user.user_metadata?.username || '',
-                      adminEmail: 'admin@yourdomain.com' // You'll need to replace this with actual admin email
-                    }
-                  });
+                if (adminData) {
+                  const { data: adminProfile } = await supabase
+                    .from('profiles')
+                    .select('id')
+                    .eq('id', adminData.user_id)
+                    .single();
+
+                  if (adminProfile) {
+                    // Call edge function to send notification
+                    await supabase.functions.invoke('send-admin-notification', {
+                      body: {
+                        userEmail: session.user.email,
+                        username: session.user.user_metadata?.username || '',
+                        adminEmail: 'admin@yourdomain.com' // You'll need to replace this with actual admin email
+                      }
+                    });
+                  }
                 }
+              } catch (error) {
+                console.error('Error sending admin notification:', error);
               }
-            } catch (error) {
-              console.error('Error sending admin notification:', error);
-            }
-          }, 1000);
+            }, 1000);
+          }
         }
       }
     );
