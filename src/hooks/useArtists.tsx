@@ -66,7 +66,7 @@ export const useArtists = () => {
         genres: artist.genres,
         popularity: artist.popularity,
         followersCount: artist.followers_count,
-        multipleUrls: artist.multiple_urls,
+        multipleUrls: Array.isArray(artist.multiple_urls) ? artist.multiple_urls : [],
         profileImageUrl: artist.profile_image_url,
       }));
 
@@ -106,7 +106,7 @@ export const useArtists = () => {
             genres: artistData.genres,
             popularity: artistData.popularity,
             followers_count: artistData.followersCount,
-            multiple_urls: artistData.multipleUrls,
+            multiple_urls: artistData.multipleUrls || [],
             profile_image_url: artistData.profileImageUrl,
           },
         ])
@@ -128,7 +128,7 @@ export const useArtists = () => {
         genres: data.genres,
         popularity: data.popularity,
         followersCount: data.followers_count,
-        multipleUrls: data.multiple_urls,
+        multipleUrls: Array.isArray(data.multiple_urls) ? data.multiple_urls : [],
         profileImageUrl: data.profile_image_url,
       };
 
