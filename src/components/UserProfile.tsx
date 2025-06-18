@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -53,7 +54,7 @@ export const UserProfile: React.FC = () => {
   };
 
   return (
-    <Card className="bg-slate-800/90 border-slate-700">
+    <Card className="card-3d transform-none transition-none hover:transform-none hover:shadow-none">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-white">
           <User className="h-5 w-5" />
@@ -70,7 +71,7 @@ export const UserProfile: React.FC = () => {
               </p>
               <div className="flex items-center gap-2">
                 <span className="text-gray-400">Rôle:</span>
-                <Badge variant="outline" className="border-purple-400 text-purple-400">
+                <Badge variant="outline" className="border-[#FF0751] text-[#FF0751]">
                   {userRole}
                 </Badge>
                 <Button

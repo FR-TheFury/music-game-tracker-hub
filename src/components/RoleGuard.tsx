@@ -21,8 +21,8 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-600"></div>
+      <div className="flex items-center justify-center min-h-screen bg-3d-main">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#FF0751] rose-glow"></div>
       </div>
     );
   }
@@ -30,8 +30,8 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
   if (!userRole || userRole === 'pending') {
     console.log('RoleGuard - Utilisateur en attente ou sans rôle');
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center px-4">
-        <Card className="w-full max-w-md bg-slate-800/90 border-slate-700 backdrop-blur-sm">
+      <div className="min-h-screen bg-3d-main flex items-center justify-center px-4">
+        <Card className="w-full max-w-md card-3d">
           <CardHeader className="text-center">
             <div className="flex items-center justify-center mb-4">
               <Clock className="h-12 w-12 text-orange-400" />
@@ -56,8 +56,8 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
   if (!allowedRoles.includes(userRole)) {
     console.log('RoleGuard - Accès refusé pour le rôle:', userRole);
     return fallback || (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center px-4">
-        <Card className="w-full max-w-md bg-slate-800/90 border-slate-700 backdrop-blur-sm">
+      <div className="min-h-screen bg-3d-main flex items-center justify-center px-4">
+        <Card className="w-full max-w-md card-3d">
           <CardHeader className="text-center">
             <div className="flex items-center justify-center mb-4">
               <AlertCircle className="h-12 w-12 text-red-400" />

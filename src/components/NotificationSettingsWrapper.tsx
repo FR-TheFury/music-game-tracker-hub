@@ -1,29 +1,24 @@
 
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Settings } from 'lucide-react';
-import { NotificationSettings } from '@/components/NotificationSettings';
+import React from 'react';
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Bell } from 'lucide-react';
+import { NotificationSettings } from './NotificationSettings';
 
 export const NotificationSettingsWrapper: React.FC = () => {
-  const [open, setOpen] = useState(false);
-
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog>
       <DialogTrigger asChild>
-        <Button
-          variant="outline"
+        <Button 
+          variant="primary-3d" 
           size="sm"
-          className="border-slate-600 text-slate-300 hover:bg-slate-700"
+          className="rose-glow"
         >
-          <Settings className="h-4 w-4 mr-2" />
+          <Bell className="h-4 w-4 mr-2" />
           Notifications
         </Button>
       </DialogTrigger>
-      <DialogContent className="bg-slate-900 border-slate-700 max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="text-white">Paramètres de Notification</DialogTitle>
-        </DialogHeader>
+      <DialogContent className="max-w-2xl card-3d">
         <NotificationSettings />
       </DialogContent>
     </Dialog>
