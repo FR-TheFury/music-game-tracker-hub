@@ -161,8 +161,11 @@ export const useUserRole = () => {
   useEffect(() => {
     if (!user) return;
 
+    // Créer un canal avec un nom unique incluant l'ID utilisateur
+    const channelName = `user-role-changes-${user.id}`;
+    
     const subscription = supabase
-      .channel('user-role-changes')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -181,9 +184,10 @@ export const useUserRole = () => {
       .subscribe();
 
     return () => {
+      console.log('Nettoyage de la souscription realtime');
       supabase.removeChannel(subscription);
     };
-  }, [user]);
+  }, [user?.id]); // Dépendance sur user.id plutôt que user entier
 
   return {
     userRole,
