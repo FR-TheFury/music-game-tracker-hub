@@ -28,6 +28,8 @@ interface Artist {
     followers?: number;
     popularity?: number;
   }>;
+  totalPlays?: number;
+  lifetimePlays?: number;
 }
 
 interface ArtistCardProps {
@@ -98,17 +100,15 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
     return numCount.toString();
   };
 
-  const formatViewCount = (count?: string) => {
-    if (!count) return null;
+  const formatPlaysCount = (count?: number) => {
+    if (!count || count === 0) return null;
     
-    const numCount = parseInt(count.replace(/[^0-9]/g, ''));
-    
-    if (numCount >= 1000000) {
-      return `${(numCount / 1000000).toFixed(1)}M`;
-    } else if (numCount >= 1000) {
-      return `${Math.floor(numCount / 1000)}k`;
+    if (count >= 1000000) {
+      return `${(count / 1000000).toFixed(1)}M`;
+    } else if (count >= 1000) {
+      return `${Math.floor(count / 1000)}k`;
     }
-    return numCount.toString();
+    return count.toString();
   };
 
   const getAllPlatforms = () => {
@@ -134,7 +134,6 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
 
   const getDisplayFollowers = (): number => {
     if (artist.totalFollowers && artist.totalFollowers > 0) {
-      console.log(`Affichage followers cumulés pour ${artist.name}:`, artist.totalFollowers);
       return artist.totalFollowers;
     }
     
@@ -146,9 +145,7 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
       return numericCount;
     }
     
-    const mainFollowers = artist.followersCount || 0;
-    console.log(`Affichage followers principaux pour ${artist.name}:`, mainFollowers);
-    return mainFollowers;
+    return artist.followersCount || 0;
   };
 
   const getDisplayPopularity = () => {
@@ -159,20 +156,24 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
     return artist.popularity || 0;
   };
 
-  // Nouvelle fonction pour récupérer le nombre d'écoutes/vues
-  const getDisplayViews = (): number => {
+  // Fonction pour récupérer le nombre total d'écoutes/vues
+  const getDisplayPlays = (): number => {
+    // Priorité au totalPlays stocké en base
+    if (artist.totalPlays && artist.totalPlays > 0) {
+      return artist.totalPlays;
+    }
+    
+    // Pour YouTube, utiliser viewCount des stats YouTube
     if (isYouTubePlatform && youtubeStats?.viewCount) {
       const numericViews = typeof youtubeStats.viewCount === 'string' 
         ? parseInt(youtubeStats.viewCount.replace(/[^0-9]/g, '')) || 0
         : youtubeStats.viewCount;
       return numericViews;
     }
-    return 0;
+    
+    // Fallback sur lifetimePlays
+    return artist.lifetimePlays || 0;
   };
-
-  const displayFollowers = getDisplayFollowers();
-  const displayPopularity = getDisplayPopularity();
-  const displayViews = getDisplayViews();
 
   const handleCardClick = () => {
     navigate(`/artist/${artist.id}`);
@@ -247,7 +248,7 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
           </Button>
         </div>
 
-        {/* Statistiques avec écoutes/vues */}
+        {/* Statistiques avec écoutes/vues totales */}
         <div className="mb-4">
           <div className="flex gap-4 text-sm flex-wrap">
             {displayFollowers > 0 && (
@@ -262,14 +263,14 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
               </div>
             )}
             
-            {displayViews > 0 && (
+            {displayPlays > 0 && (
               <div className="flex items-center gap-1 text-gray-300">
                 <Play className="h-3 w-3 text-green-400" />
                 <span className="font-medium text-green-300">
-                  {formatViewCount(displayViews.toString())}
+                  {formatPlaysCount(displayPlays)}
                 </span>
                 <span className="text-xs text-gray-500">
-                  {isYouTubePlatform ? 'vues' : 'écoutes'}
+                  {isYouTubePlatform ? 'vues totales' : 'écoutes totales'}
                 </span>
               </div>
             )}

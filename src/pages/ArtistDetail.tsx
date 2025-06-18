@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, ExternalLink, Users, Star, Calendar, Music, Play } from 'lucide-react';
 import { useArtists } from '@/hooks/useArtists';
 import { useSpotify } from '@/hooks/useSpotify';
+import { useYouTubeStats } from '@/hooks/useYouTubeStats';
 import { ArtistNewReleases } from '@/components/ArtistNewReleases';
 
 const ArtistDetail: React.FC = () => {
@@ -18,6 +19,16 @@ const ArtistDetail: React.FC = () => {
   const [releases, setReleases] = useState<any[]>([]);
   const [spotifyReleases, setSpotifyReleases] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Extraire l'ID de chaîne YouTube depuis l'URL si c'est une plateforme YouTube
+  const getYouTubeChannelId = (url: string) => {
+    const match = url.match(/\/channel\/([a-zA-Z0-9_-]+)/);
+    return match ? match[1] : null;
+  };
+
+  const isYouTubePlatform = artist?.platform.toLowerCase().includes('youtube');
+  const youtubeChannelId = isYouTubePlatform ? getYouTubeChannelId(artist?.url) : null;
+  const { stats: youtubeStats } = useYouTubeStats(youtubeChannelId || undefined);
 
   useEffect(() => {
     const loadArtistData = async () => {
@@ -68,6 +79,40 @@ const ArtistDetail: React.FC = () => {
   const getMainImage = () => {
     return artist?.profileImageUrl || artist?.imageUrl || '/placeholder.svg';
   };
+
+  const formatPlaysCount = (count?: number) => {
+    if (!count || count === 0) return null;
+    
+    if (count >= 1000000) {
+      return `${(count / 1000000).toFixed(1)}M`;
+    } else if (count >= 1000) {
+      return `${Math.floor(count / 1000)}k`;
+    }
+    return count.toString();
+  };
+
+  // Fonction pour récupérer le nombre total d'écoutes/vues
+  const getDisplayPlays = (): number => {
+    if (!artist) return 0;
+    
+    // Priorité au totalPlays stocké en base
+    if (artist.totalPlays && artist.totalPlays > 0) {
+      return artist.totalPlays;
+    }
+    
+    // Pour YouTube, utiliser viewCount des stats YouTube
+    if (isYouTubePlatform && youtubeStats?.viewCount) {
+      const numericViews = typeof youtubeStats.viewCount === 'string' 
+        ? parseInt(youtubeStats.viewCount.replace(/[^0-9]/g, '')) || 0
+        : youtubeStats.viewCount;
+      return numericViews;
+    }
+    
+    // Fallback sur lifetimePlays
+    return artist.lifetimePlays || 0;
+  };
+
+  const displayPlays = getDisplayPlays();
 
   if (loading) {
     return (
@@ -126,6 +171,13 @@ const ArtistDetail: React.FC = () => {
                   <div className="flex items-center gap-2 text-gray-300">
                     <Users className="h-4 w-4" />
                     <span>{artist.followersCount.toLocaleString()} followers</span>
+                  </div>
+                )}
+                
+                {displayPlays > 0 && (
+                  <div className="flex items-center gap-2 text-gray-300">
+                    <Play className="h-4 w-4 text-green-400" />
+                    <span>{formatPlaysCount(displayPlays)} {isYouTubePlatform ? 'vues totales' : 'écoutes totales'}</span>
                   </div>
                 )}
                 
