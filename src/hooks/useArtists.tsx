@@ -14,6 +14,7 @@ interface Artist {
   addedAt: string;
   // Nouvelles propriétés
   spotifyId?: string;
+  deezerId?: number;
   bio?: string;
   genres?: string[];
   popularity?: number;
@@ -76,6 +77,7 @@ export const useArtists = () => {
         lastRelease: artist.last_release,
         addedAt: artist.created_at,
         spotifyId: artist.spotify_id,
+        deezerId: artist.deezer_id,
         bio: artist.bio,
         genres: artist.genres,
         popularity: artist.popularity,
@@ -116,6 +118,7 @@ export const useArtists = () => {
             image_url: artistData.imageUrl,
             last_release: artistData.lastRelease,
             spotify_id: artistData.spotifyId,
+            deezer_id: artistData.deezerId,
             bio: artistData.bio,
             genres: artistData.genres,
             popularity: artistData.popularity,
@@ -138,6 +141,7 @@ export const useArtists = () => {
         lastRelease: data.last_release,
         addedAt: data.created_at,
         spotifyId: data.spotify_id,
+        deezerId: data.deezer_id,
         bio: data.bio,
         genres: data.genres,
         popularity: data.popularity,

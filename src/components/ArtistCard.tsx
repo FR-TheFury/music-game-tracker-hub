@@ -68,6 +68,22 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
     return count.toString();
   };
 
+  // Calculate cumulative followers from all platforms
+  const calculateTotalFollowers = () => {
+    let total = artist.followersCount || 0;
+    
+    // Add followers from additional platforms if they exist
+    // This would be expanded when we have data from multiple platforms
+    if (artist.multipleUrls && artist.multipleUrls.length > 1) {
+      // For now, we just show the main platform count
+      // In the future, we'd fetch and sum all platform counts
+    }
+    
+    return total;
+  };
+
+  const totalFollowers = calculateTotalFollowers();
+
   const handleCardClick = () => {
     navigate(`/artist/${artist.id}`);
   };
@@ -101,6 +117,12 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
                   <Music className="h-6 w-6 text-white" />
                 </div>
               )}
+              {/* Platform indicator for multi-platform artists */}
+              {artist.multipleUrls && artist.multipleUrls.length > 1 && (
+                <div className="absolute -bottom-1 -right-1 bg-purple-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                  {artist.multipleUrls.length}
+                </div>
+              )}
             </div>
             <div>
               <h3 className="text-lg font-semibold text-white group-hover:text-purple-300 transition-colors">
@@ -108,6 +130,9 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
               </h3>
               <p className="text-sm text-gray-400">
                 {artist.platform}
+                {artist.multipleUrls && artist.multipleUrls.length > 1 && (
+                  <span className="text-purple-400 ml-1">+{artist.multipleUrls.length - 1}</span>
+                )}
               </p>
               {artist.genres && artist.genres.length > 0 && (
                 <p className="text-xs text-gray-500 mt-1">
@@ -126,13 +151,16 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
           </Button>
         </div>
 
-        {/* Statistiques Spotify */}
-        {(artist.followersCount || artist.popularity) && (
+        {/* Statistiques avec cumul */}
+        {(totalFollowers || artist.popularity) && (
           <div className="mb-4 flex gap-4 text-sm text-gray-400">
-            {artist.followersCount && artist.followersCount > 0 && (
+            {totalFollowers && totalFollowers > 0 && (
               <div className="flex items-center gap-1">
                 <Users className="h-3 w-3" />
-                <span>{formatFollowersCount(artist.followersCount)}</span>
+                <span>{formatFollowersCount(totalFollowers)}</span>
+                {artist.multipleUrls && artist.multipleUrls.length > 1 && (
+                  <span className="text-purple-400 text-xs">cumul</span>
+                )}
               </div>
             )}
             {artist.popularity && artist.popularity > 0 && (

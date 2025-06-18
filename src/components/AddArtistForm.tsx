@@ -6,8 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Music, X, Plus, Search, Loader2, Trash2 } from 'lucide-react';
 import { useSpotify } from '@/hooks/useSpotify';
+import { useDeezer } from '@/hooks/useDeezer';
 
 interface Artist {
   name: string;
@@ -16,6 +18,7 @@ interface Artist {
   imageUrl?: string;
   lastRelease?: string;
   spotifyId?: string;
+  deezerId?: number;
   bio?: string;
   genres?: string[];
   popularity?: number;
@@ -37,6 +40,7 @@ export const AddArtistForm: React.FC<AddArtistFormProps> = ({ onSubmit, onCancel
     imageUrl: '',
     lastRelease: '',
     spotifyId: '',
+    deezerId: undefined,
     bio: '',
     genres: [],
     popularity: 0,
@@ -46,9 +50,13 @@ export const AddArtistForm: React.FC<AddArtistFormProps> = ({ onSubmit, onCancel
   });
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [showSearchResults, setShowSearchResults] = useState(false);
-  const { searchArtists, loading: spotifyLoading } = useSpotify();
+  const [spotifyResults, setSpotifyResults] = useState<any[]>([]);
+  const [deezerResults, setDeezerResults] = useState<any[]>([]);
+  const [showResults, setShowResults] = useState(false);
+  const [activeTab, setActiveTab] = useState('spotify');
+  
+  const { searchArtists: searchSpotifyArtists, loading: spotifyLoading } = useSpotify();
+  const { searchArtists: searchDeezerArtists, loading: deezerLoading } = useDeezer();
 
   const platforms = [
     'Spotify',
@@ -73,6 +81,7 @@ export const AddArtistForm: React.FC<AddArtistFormProps> = ({ onSubmit, onCancel
         imageUrl: '', 
         lastRelease: '', 
         spotifyId: '',
+        deezerId: undefined,
         bio: '',
         genres: [],
         popularity: 0,
@@ -103,12 +112,17 @@ export const AddArtistForm: React.FC<AddArtistFormProps> = ({ onSubmit, onCancel
     }));
   };
 
-  const searchSpotifyArtists = async () => {
+  const searchArtists = async () => {
     if (!searchQuery.trim()) return;
     
-    const results = await searchArtists(searchQuery);
-    setSearchResults(results);
-    setShowSearchResults(true);
+    const [spotifyRes, deezerRes] = await Promise.all([
+      searchSpotifyArtists(searchQuery),
+      searchDeezerArtists(searchQuery)
+    ]);
+    
+    setSpotifyResults(spotifyRes);
+    setDeezerResults(deezerRes);
+    setShowResults(true);
   };
 
   const selectSpotifyArtist = (artist: any) => {
@@ -129,7 +143,27 @@ export const AddArtistForm: React.FC<AddArtistFormProps> = ({ onSubmit, onCancel
       profileImageUrl: imageUrl,
       multipleUrls,
     }));
-    setShowSearchResults(false);
+    setShowResults(false);
+    setSearchQuery(artist.name);
+  };
+
+  const selectDeezerArtist = (artist: any) => {
+    const imageUrl = artist.picture_xl || artist.picture_big || artist.picture_medium || '';
+    const multipleUrls = [
+      { platform: 'Deezer', url: artist.link || '' }
+    ];
+
+    setFormData(prev => ({
+      ...prev,
+      name: artist.name,
+      platform: 'Deezer',
+      url: artist.link || '',
+      deezerId: artist.id,
+      followersCount: artist.nb_fan || 0,
+      profileImageUrl: imageUrl,
+      multipleUrls,
+    }));
+    setShowResults(false);
     setSearchQuery(artist.name);
   };
 
@@ -159,7 +193,7 @@ export const AddArtistForm: React.FC<AddArtistFormProps> = ({ onSubmit, onCancel
   useEffect(() => {
     const delayedSearch = setTimeout(() => {
       if (searchQuery && searchQuery !== formData.name) {
-        searchSpotifyArtists();
+        searchArtists();
       }
     }, 500);
 
@@ -176,9 +210,9 @@ export const AddArtistForm: React.FC<AddArtistFormProps> = ({ onSubmit, onCancel
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Recherche Spotify */}
+          {/* Recherche multi-plateformes */}
           <div className="space-y-2">
-            <Label className="text-gray-300">Rechercher sur Spotify</Label>
+            <Label className="text-gray-300">Rechercher un artiste</Label>
             <div className="relative">
               <Input
                 value={searchQuery}
@@ -187,7 +221,7 @@ export const AddArtistForm: React.FC<AddArtistFormProps> = ({ onSubmit, onCancel
                 className="bg-slate-700/50 border-slate-600 text-white placeholder:text-gray-400 pr-10"
               />
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                {spotifyLoading ? (
+                {(spotifyLoading || deezerLoading) ? (
                   <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
                 ) : (
                   <Search className="h-4 w-4 text-gray-400" />
@@ -195,31 +229,70 @@ export const AddArtistForm: React.FC<AddArtistFormProps> = ({ onSubmit, onCancel
               </div>
             </div>
             
-            {/* Résultats de recherche */}
-            {showSearchResults && searchResults.length > 0 && (
-              <div className="bg-slate-700 border border-slate-600 rounded-md max-h-48 overflow-y-auto">
-                {searchResults.map((artist) => (
-                  <div
-                    key={artist.id}
-                    onClick={() => selectSpotifyArtist(artist)}
-                    className="p-3 hover:bg-slate-600 cursor-pointer flex items-center gap-3"
-                  >
-                    {artist.images?.[0] && (
-                      <img 
-                        src={artist.images[0].url} 
-                        alt={artist.name}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                    )}
-                    <div>
-                      <div className="text-white font-medium">{artist.name}</div>
-                      <div className="text-gray-400 text-sm">
-                        {artist.genres?.slice(0, 2).join(', ')}
+            {/* Résultats de recherche avec onglets */}
+            {showResults && (spotifyResults.length > 0 || deezerResults.length > 0) && (
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 bg-slate-700">
+                  <TabsTrigger value="spotify" className="text-white data-[state=active]:bg-green-600">
+                    Spotify ({spotifyResults.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="deezer" className="text-white data-[state=active]:bg-orange-600">
+                    Deezer ({deezerResults.length})
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="spotify" className="mt-2">
+                  <div className="bg-slate-700 border border-slate-600 rounded-md max-h-48 overflow-y-auto">
+                    {spotifyResults.map((artist) => (
+                      <div
+                        key={artist.id}
+                        onClick={() => selectSpotifyArtist(artist)}
+                        className="p-3 hover:bg-slate-600 cursor-pointer flex items-center gap-3"
+                      >
+                        {artist.images?.[0] && (
+                          <img 
+                            src={artist.images[0].url} 
+                            alt={artist.name}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        )}
+                        <div>
+                          <div className="text-white font-medium">{artist.name}</div>
+                          <div className="text-gray-400 text-sm">
+                            {artist.followers?.total ? `${Math.floor(artist.followers.total / 1000)}k followers` : ''}
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </TabsContent>
+                
+                <TabsContent value="deezer" className="mt-2">
+                  <div className="bg-slate-700 border border-slate-600 rounded-md max-h-48 overflow-y-auto">
+                    {deezerResults.map((artist) => (
+                      <div
+                        key={artist.id}
+                        onClick={() => selectDeezerArtist(artist)}
+                        className="p-3 hover:bg-slate-600 cursor-pointer flex items-center gap-3"
+                      >
+                        {artist.picture_medium && (
+                          <img 
+                            src={artist.picture_medium} 
+                            alt={artist.name}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        )}
+                        <div>
+                          <div className="text-white font-medium">{artist.name}</div>
+                          <div className="text-gray-400 text-sm">
+                            {artist.nb_fan ? `${Math.floor(artist.nb_fan / 1000)}k fans` : ''}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
+              </Tabs>
             )}
           </div>
 
