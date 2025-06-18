@@ -57,17 +57,28 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
     return artist.profileImageUrl || artist.imageUrl || '/placeholder.svg';
   };
 
+  const formatFollowersCount = (count?: number) => {
+    if (!count || count === 0) return null;
+    
+    if (count >= 1000000) {
+      return `${(count / 1000000).toFixed(1)}M`;
+    } else if (count >= 1000) {
+      return `${Math.floor(count / 1000)}k`;
+    }
+    return count.toString();
+  };
+
   const handleCardClick = () => {
     navigate(`/artist/${artist.id}`);
   };
 
   const handleRemoveClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Empêche la navigation quand on clique sur supprimer
+    e.stopPropagation();
     onRemove(artist.id);
   };
 
   const handleLinkClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Empêche la navigation quand on clique sur le lien
+    e.stopPropagation();
   };
 
   return (
@@ -118,13 +129,13 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
         {/* Statistiques Spotify */}
         {(artist.followersCount || artist.popularity) && (
           <div className="mb-4 flex gap-4 text-sm text-gray-400">
-            {artist.followersCount && (
+            {artist.followersCount && artist.followersCount > 0 && (
               <div className="flex items-center gap-1">
                 <Users className="h-3 w-3" />
-                <span>{(artist.followersCount / 1000).toFixed(0)}k</span>
+                <span>{formatFollowersCount(artist.followersCount)}</span>
               </div>
             )}
-            {artist.popularity && (
+            {artist.popularity && artist.popularity > 0 && (
               <div className="flex items-center gap-1">
                 <Star className="h-3 w-3" />
                 <span>{artist.popularity}%</span>
