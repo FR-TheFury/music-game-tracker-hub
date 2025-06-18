@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNewReleases } from './useNewReleases';
 
@@ -66,4 +65,14 @@ export const useArtistReleases = (artistId: string) => {
     loading,
     filterByPlatforms,
   };
+};
+
+// Keep the original export for backward compatibility
+export const useArtistReleasesData = () => {
+  const getArtistReleases = async (artistId: string) => {
+    // Implementation moved to useArtists hook
+    return [];
+  };
+
+  return { getArtistReleases };
 };
