@@ -6,10 +6,8 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  // Configuration pour GitHub Pages
-  base: mode === 'production' 
-    ? `/${process.env.VITE_BASE_URL || 'music-game-tracker-hub'}/`
-    : '/',
+  // Configuration pour domaine personnalisé
+  base: '/',
   server: {
     host: "::",
     port: 8080,
@@ -25,7 +23,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
-    // Optimisations pour GitHub Pages
+    // Optimisations pour le déploiement
     sourcemap: false,
     rollupOptions: {
       output: {

@@ -38,9 +38,6 @@ jobs:
 
       - name: Build application
         run: npm run build
-        env:
-          # GitHub Pages déploie dans un sous-dossier, on configure la base URL
-          VITE_BASE_URL: ${{ github.event.repository.name }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,21 +10,12 @@ import ArtistDetail from "./pages/ArtistDetail";
 
 const queryClient = new QueryClient();
 
-// Determine the basename for routing based on environment
-const getBasename = () => {
-  if (import.meta.env.PROD) {
-    // In production (GitHub Pages), use the repository name as basename
-    return '/music-game-tracker-hub';
-  }
-  return '/'; // Development
-};
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter basename={getBasename()}>
+      <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/artist/:id" element={<ArtistDetail />} />

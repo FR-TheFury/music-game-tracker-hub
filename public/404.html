@@ -6,20 +6,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Music Game Tracker Hub - Page Not Found</title>
     <script>
-      // Redirect to index.html for SPA routing on GitHub Pages
+      // Redirect to index.html for SPA routing on custom domain
       (function() {
         const path = window.location.pathname;
-        const repoName = 'music-game-tracker-hub';
-        const base = '/' + repoName;
         
-        // If we're not already at the base path, redirect to index with hash routing
-        if (path !== base + '/' && path !== base) {
-          const redirect = base + '/#' + path.slice(base.length);
+        // If we're not at the root, redirect to index with hash routing
+        if (path !== '/') {
+          const redirect = '/#' + path;
           console.log('Redirecting from', path, 'to', redirect);
           window.location.replace(redirect);
         } else {
-          // If we're at the base path, just redirect to the main app
-          window.location.replace(base + '/');
+          // If we're at the root, just redirect to the main app
+          window.location.replace('/');
         }
       })();
     </script>
