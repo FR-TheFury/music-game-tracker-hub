@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, ExternalLink, Users, Star, Calendar, Music, Play } from 'lucide-react';
 import { useArtists } from '@/hooks/useArtists';
 import { useSpotify } from '@/hooks/useSpotify';
+import { ArtistNewReleases } from '@/components/ArtistNewReleases';
 
 const ArtistDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -36,7 +36,17 @@ const ArtistDetail: React.FC = () => {
         if (foundArtist.spotifyId) {
           const spotifyData = await getArtistDetails(foundArtist.spotifyId);
           if (spotifyData) {
-            setSpotifyReleases(spotifyData.releases);
+            // Filtrer les sorties Spotify pour ne garder que celles de moins d'un mois
+            const oneMonthAgo = new Date();
+            oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+            
+            const recentSpotifyReleases = spotifyData.releases.filter((release: any) => {
+              if (!release.release_date) return false;
+              const releaseDate = new Date(release.release_date);
+              return releaseDate > oneMonthAgo;
+            });
+            
+            setSpotifyReleases(recentSpotifyReleases);
           }
         }
       }
@@ -167,18 +177,24 @@ const ArtistDetail: React.FC = () => {
           </div>
         </div>
 
-        {/* Sorties récentes */}
-        {(spotifyReleases.length > 0 || releases.length > 0) && (
-          <Card className="bg-slate-800/70 border-slate-700 backdrop-blur-sm">
+        {/* Nouvelles sorties détectées automatiquement */}
+        <ArtistNewReleases 
+          artistId={id!} 
+          artistPlatforms={artist.multipleUrls || []} 
+        />
+
+        {/* Sorties Spotify récentes (moins d'un mois) */}
+        {spotifyReleases.length > 0 && (
+          <Card className="bg-slate-800/70 border-slate-700 backdrop-blur-sm mb-8">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-white">
-                <Music className="h-5 w-5 text-purple-400" />
-                Sorties récentes
+                <Music className="h-5 w-5 text-green-400" />
+                Sorties Spotify récentes
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {spotifyReleases.slice(0, 12).map((release: any) => (
+                {spotifyReleases.map((release: any) => (
                   <div key={release.id} className="bg-slate-700/50 rounded-lg p-4 border border-slate-600">
                     <div className="flex items-start gap-3">
                       {release.images?.[0] && (
