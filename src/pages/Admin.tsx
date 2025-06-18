@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -38,39 +37,65 @@ const Admin = () => {
     try {
       console.log('Récupération de tous les utilisateurs...');
 
-      const { data: userData, error: userError } = await supabase
+      // Étape 1: Récupérer tous les rôles utilisateur
+      const { data: userRoles, error: rolesError } = await supabase
         .from('user_roles')
-        .select(`
-          user_id,
-          role,
-          created_at,
-          approved_at,
-          approved_by,
-          profiles:user_id (
-            username
-          )
-        `)
+        .select('user_id, role, created_at, approved_at, approved_by')
         .order('created_at', { ascending: false });
 
-      if (userError) {
-        console.error('Erreur lors de la récupération des utilisateurs:', userError);
-        throw userError;
+      if (rolesError) {
+        console.error('Erreur lors de la récupération des rôles:', rolesError);
+        throw rolesError;
       }
 
-      console.log('Données utilisateurs récupérées:', userData);
+      console.log('Rôles utilisateurs récupérés:', userRoles);
 
-      const combinedUsers: User[] = (userData || []).map((item: any) => {
-        const username = item.profiles?.username || 'Utilisateur';
-        const email = `user-${item.user_id.slice(0, 8)}@domain.local`;
+      // Étape 2: Récupérer tous les profils
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username');
+
+      if (profilesError) {
+        console.error('Erreur lors de la récupération des profils:', profilesError);
+        throw profilesError;
+      }
+
+      console.log('Profils récupérés:', profiles);
+
+      // Étape 3: Récupérer les métadonnées des utilisateurs depuis auth
+      const { data: { users: authUsers }, error: authError } = await supabase.auth.admin.listUsers();
+
+      if (authError) {
+        console.error('Erreur lors de la récupération des utilisateurs auth:', authError);
+        // Continue sans les données auth si erreur (pas d'accès admin)
+      }
+
+      console.log('Utilisateurs auth récupérés:', authUsers);
+
+      // Étape 4: Combiner toutes les données
+      const combinedUsers: User[] = (userRoles || []).map((roleItem) => {
+        // Trouver le profil correspondant
+        const profile = profiles?.find(p => p.id === roleItem.user_id);
         
+        // Trouver les données auth correspondantes
+        const authUser = authUsers?.find(u => u.id === roleItem.user_id);
+        
+        // Utiliser l'email depuis auth.users, sinon générer un fallback
+        const email = authUser?.email || `user-${roleItem.user_id.slice(0, 8)}@domain.local`;
+        
+        // Utiliser le username depuis profiles, sinon depuis auth metadata, sinon 'Utilisateur'
+        const username = profile?.username || 
+                        authUser?.user_metadata?.username || 
+                        'Utilisateur';
+
         return {
-          id: item.user_id,
+          id: roleItem.user_id,
           email: email,
           username: username,
-          role: item.role as UserRole,
-          created_at: item.created_at || '',
-          approved_at: item.approved_at || undefined,
-          approved_by: item.approved_by || undefined,
+          role: roleItem.role as UserRole,
+          created_at: roleItem.created_at || '',
+          approved_at: roleItem.approved_at || undefined,
+          approved_by: roleItem.approved_by || undefined,
         };
       });
 
