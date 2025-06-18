@@ -6,6 +6,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const YOUTUBE_API_KEY = 'AIzaSyDd5qyVmJ-WE4T7J1LUQNtL8E3PNocCXFI';
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -13,20 +15,16 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const { artistName, channelId, type } = await req.json();
-    const youtubeApiKey = Deno.env.get('YOUTUBE_API_KEY');
-
-    if (!youtubeApiKey) {
-      throw new Error('YouTube API key not configured');
-    }
 
     if (type === 'search' && artistName) {
       // Recherche de chaînes YouTube
-      const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(artistName)}&maxResults=10&key=${youtubeApiKey}`;
+      const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(artistName)}&maxResults=10&key=${YOUTUBE_API_KEY}`;
       
       const response = await fetch(searchUrl);
       const data = await response.json();
 
       if (!response.ok) {
+        console.error('YouTube API error:', data);
         throw new Error(data.error?.message || 'YouTube API error');
       }
 
@@ -50,12 +48,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (type === 'artist' && channelId) {
       // Détails d'une chaîne spécifique
-      const channelUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${channelId}&key=${youtubeApiKey}`;
+      const channelUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${channelId}&key=${YOUTUBE_API_KEY}`;
       
       const response = await fetch(channelUrl);
       const data = await response.json();
 
       if (!response.ok) {
+        console.error('YouTube API error:', data);
         throw new Error(data.error?.message || 'YouTube API error');
       }
 
@@ -82,6 +81,32 @@ const handler = async (req: Request): Promise<Response> => {
           status: 200,
         }
       );
+    }
+
+    // Nouvelle fonctionnalité : recherche par nom d'artiste pour génération d'URL
+    if (type === 'generateUrl' && artistName) {
+      const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(artistName + ' music')}&maxResults=3&key=${YOUTUBE_API_KEY}`;
+      
+      const response = await fetch(searchUrl);
+      const data = await response.json();
+
+      if (!response.ok) {
+        return new Response(JSON.stringify({ url: null }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        });
+      }
+
+      const bestMatch = data.items?.[0];
+      if (bestMatch) {
+        return new Response(JSON.stringify({
+          url: `https://www.youtube.com/channel/${bestMatch.id.channelId}`,
+          verified: true
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        });
+      }
     }
 
     return new Response(

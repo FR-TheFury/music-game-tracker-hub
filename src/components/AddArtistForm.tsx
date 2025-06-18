@@ -1,17 +1,13 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Music, X, Plus, Search, Loader2, Trash2 } from 'lucide-react';
-import { useSpotify } from '@/hooks/useSpotify';
-import { useDeezer } from '@/hooks/useDeezer';
-import { useYouTube } from '@/hooks/useYouTube';
-import { useYouTubeMusic } from '@/hooks/useYouTubeMusic';
-import { useAmazonMusic } from '@/hooks/useAmazonMusic';
+import { Music, X, Plus, Trash2 } from 'lucide-react';
+import { SmartArtistSearch } from './SmartArtistSearch';
 
 interface Artist {
   name: string;
@@ -52,19 +48,6 @@ export const AddArtistForm: React.FC<AddArtistFormProps> = ({ onSubmit, onCancel
   });
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [spotifyResults, setSpotifyResults] = useState<any[]>([]);
-  const [deezerResults, setDeezerResults] = useState<any[]>([]);
-  const [youtubeResults, setYoutubeResults] = useState<any[]>([]);
-  const [youtubeMusicResults, setYoutubeMusicResults] = useState<any[]>([]);
-  const [amazonMusicResults, setAmazonMusicResults] = useState<any[]>([]);
-  const [showResults, setShowResults] = useState(false);
-  const [activeTab, setActiveTab] = useState('spotify');
-  
-  const { searchArtists: searchSpotifyArtists, loading: spotifyLoading } = useSpotify();
-  const { searchArtists: searchDeezerArtists, loading: deezerLoading } = useDeezer();
-  const { searchArtists: searchYouTubeArtists, loading: youtubeLoading } = useYouTube();
-  const { searchArtists: searchYouTubeMusicArtists, loading: youtubeMusicLoading } = useYouTubeMusic();
-  const { searchArtists: searchAmazonMusicArtists, loading: amazonMusicLoading } = useAmazonMusic();
 
   const platforms = [
     'Spotify',
@@ -120,121 +103,11 @@ export const AddArtistForm: React.FC<AddArtistFormProps> = ({ onSubmit, onCancel
     }));
   };
 
-  const searchArtists = async () => {
-    if (!searchQuery.trim()) return;
-    
-    const [spotifyRes, deezerRes, youtubeRes, youtubeMusicRes, amazonMusicRes] = await Promise.all([
-      searchSpotifyArtists(searchQuery),
-      searchDeezerArtists(searchQuery),
-      searchYouTubeArtists(searchQuery),
-      searchYouTubeMusicArtists(searchQuery),
-      searchAmazonMusicArtists(searchQuery)
-    ]);
-    
-    setSpotifyResults(spotifyRes);
-    setDeezerResults(deezerRes);
-    setYoutubeResults(youtubeRes);
-    setYoutubeMusicResults(youtubeMusicRes);
-    setAmazonMusicResults(amazonMusicRes);
-    setShowResults(true);
-  };
-
-  const selectSpotifyArtist = (artist: any) => {
-    const imageUrl = artist.images?.[0]?.url || '';
-    const multipleUrls = [
-      { platform: 'Spotify', url: artist.external_urls?.spotify || '' }
-    ];
-
+  const handleSmartSelection = (artistData: any) => {
     setFormData(prev => ({
       ...prev,
-      name: artist.name,
-      platform: 'Spotify',
-      url: artist.external_urls?.spotify || '',
-      spotifyId: artist.id,
-      genres: artist.genres || [],
-      popularity: artist.popularity || 0,
-      followersCount: artist.followers?.total || 0,
-      profileImageUrl: imageUrl,
-      multipleUrls,
+      ...artistData,
     }));
-    setShowResults(false);
-    setSearchQuery(artist.name);
-  };
-
-  const selectDeezerArtist = (artist: any) => {
-    const imageUrl = artist.picture_xl || artist.picture_big || artist.picture_medium || '';
-    const multipleUrls = [
-      { platform: 'Deezer', url: artist.link || '' }
-    ];
-
-    setFormData(prev => ({
-      ...prev,
-      name: artist.name,
-      platform: 'Deezer',
-      url: artist.link || '',
-      deezerId: artist.id,
-      followersCount: artist.nb_fan || 0,
-      profileImageUrl: imageUrl,
-      multipleUrls,
-    }));
-    setShowResults(false);
-    setSearchQuery(artist.name);
-  };
-
-  const selectYouTubeArtist = (artist: any) => {
-    const imageUrl = artist.thumbnails?.[0]?.url || '';
-    const multipleUrls = [
-      { platform: 'YouTube', url: artist.channelUrl || '' }
-    ];
-
-    setFormData(prev => ({
-      ...prev,
-      name: artist.name,
-      platform: 'YouTube',
-      url: artist.channelUrl || '',
-      followersCount: parseInt(artist.subscriberCount) || 0,
-      profileImageUrl: imageUrl,
-      multipleUrls,
-    }));
-    setShowResults(false);
-    setSearchQuery(artist.name);
-  };
-
-  const selectYouTubeMusicArtist = (artist: any) => {
-    const imageUrl = artist.thumbnails?.[0]?.url || '';
-    const multipleUrls = [
-      { platform: 'YouTube Music', url: artist.channelUrl || '' }
-    ];
-
-    setFormData(prev => ({
-      ...prev,
-      name: artist.name,
-      platform: 'YouTube Music',
-      url: artist.channelUrl || '',
-      profileImageUrl: imageUrl,
-      multipleUrls,
-    }));
-    setShowResults(false);
-    setSearchQuery(artist.name);
-  };
-
-  const selectAmazonMusicArtist = (artist: any) => {
-    const imageUrl = artist.imageUrl || '';
-    const multipleUrls = [
-      { platform: 'Amazon Music', url: artist.artistUrl || '' }
-    ];
-
-    setFormData(prev => ({
-      ...prev,
-      name: artist.name,
-      platform: 'Amazon Music',
-      url: artist.artistUrl || '',
-      followersCount: artist.followers || 0,
-      profileImageUrl: imageUrl,
-      multipleUrls,
-    }));
-    setShowResults(false);
-    setSearchQuery(artist.name);
   };
 
   const addUrlLink = () => {
@@ -260,16 +133,6 @@ export const AddArtistForm: React.FC<AddArtistFormProps> = ({ onSubmit, onCancel
     }));
   };
 
-  useEffect(() => {
-    const delayedSearch = setTimeout(() => {
-      if (searchQuery && searchQuery !== formData.name) {
-        searchArtists();
-      }
-    }, 500);
-
-    return () => clearTimeout(delayedSearch);
-  }, [searchQuery]);
-
   return (
     <Card className="bg-slate-800/70 border-purple-500/30 backdrop-blur-sm">
       <CardHeader>
@@ -280,178 +143,12 @@ export const AddArtistForm: React.FC<AddArtistFormProps> = ({ onSubmit, onCancel
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Recherche multi-plateformes */}
-          <div className="space-y-2">
-            <Label className="text-gray-300">Rechercher un artiste</Label>
-            <div className="relative">
-              <Input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tapez le nom d'un artiste..."
-                className="bg-slate-700/50 border-slate-600 text-white placeholder:text-gray-400 pr-10"
-              />
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                {(spotifyLoading || deezerLoading || youtubeLoading || youtubeMusicLoading || amazonMusicLoading) ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                ) : (
-                  <Search className="h-4 w-4 text-gray-400" />
-                )}
-              </div>
-            </div>
-            
-            {/* Résultats de recherche avec onglets étendus */}
-            {showResults && (spotifyResults.length > 0 || deezerResults.length > 0 || youtubeResults.length > 0 || youtubeMusicResults.length > 0 || amazonMusicResults.length > 0) && (
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-5 bg-slate-700">
-                  <TabsTrigger value="spotify" className="text-white data-[state=active]:bg-green-600">
-                    Spotify ({spotifyResults.length})
-                  </TabsTrigger>
-                  <TabsTrigger value="deezer" className="text-white data-[state=active]:bg-orange-600">
-                    Deezer ({deezerResults.length})
-                  </TabsTrigger>
-                  <TabsTrigger value="youtube" className="text-white data-[state=active]:bg-red-600">
-                    YouTube ({youtubeResults.length})
-                  </TabsTrigger>
-                  <TabsTrigger value="youtube-music" className="text-white data-[state=active]:bg-red-700">
-                    YT Music ({youtubeMusicResults.length})
-                  </TabsTrigger>
-                  <TabsTrigger value="amazon" className="text-white data-[state=active]:bg-blue-600">
-                    Amazon ({amazonMusicResults.length})
-                  </TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="spotify" className="mt-2">
-                  <div className="bg-slate-700 border border-slate-600 rounded-md max-h-48 overflow-y-auto">
-                    {spotifyResults.map((artist) => (
-                      <div
-                        key={artist.id}
-                        onClick={() => selectSpotifyArtist(artist)}
-                        className="p-3 hover:bg-slate-600 cursor-pointer flex items-center gap-3"
-                      >
-                        {artist.images?.[0] && (
-                          <img 
-                            src={artist.images[0].url} 
-                            alt={artist.name}
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                        )}
-                        <div>
-                          <div className="text-white font-medium">{artist.name}</div>
-                          <div className="text-gray-400 text-sm">
-                            {artist.followers?.total ? `${Math.floor(artist.followers.total / 1000)}k followers` : ''}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="deezer" className="mt-2">
-                  <div className="bg-slate-700 border border-slate-600 rounded-md max-h-48 overflow-y-auto">
-                    {deezerResults.map((artist) => (
-                      <div
-                        key={artist.id}
-                        onClick={() => selectDeezerArtist(artist)}
-                        className="p-3 hover:bg-slate-600 cursor-pointer flex items-center gap-3"
-                      >
-                        {artist.picture_medium && (
-                          <img 
-                            src={artist.picture_medium} 
-                            alt={artist.name}
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                        )}
-                        <div>
-                          <div className="text-white font-medium">{artist.name}</div>
-                          <div className="text-gray-400 text-sm">
-                            {artist.nb_fan ? `${Math.floor(artist.nb_fan / 1000)}k fans` : ''}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="youtube" className="mt-2">
-                  <div className="bg-slate-700 border border-slate-600 rounded-md max-h-48 overflow-y-auto">
-                    {youtubeResults.map((artist) => (
-                      <div
-                        key={artist.id}
-                        onClick={() => selectYouTubeArtist(artist)}
-                        className="p-3 hover:bg-slate-600 cursor-pointer flex items-center gap-3"
-                      >
-                        {artist.thumbnails?.[0] && (
-                          <img 
-                            src={artist.thumbnails[0].url} 
-                            alt={artist.name}
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                        )}
-                        <div>
-                          <div className="text-white font-medium">{artist.name}</div>
-                          <div className="text-gray-400 text-sm">
-                            {artist.subscriberCount ? `${artist.subscriberCount} abonnés` : ''}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="youtube-music" className="mt-2">
-                  <div className="bg-slate-700 border border-slate-600 rounded-md max-h-48 overflow-y-auto">
-                    {youtubeMusicResults.map((artist) => (
-                      <div
-                        key={artist.id}
-                        onClick={() => selectYouTubeMusicArtist(artist)}
-                        className="p-3 hover:bg-slate-600 cursor-pointer flex items-center gap-3"
-                      >
-                        {artist.thumbnails?.[0] && (
-                          <img 
-                            src={artist.thumbnails[0].url} 
-                            alt={artist.name}
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                        )}
-                        <div>
-                          <div className="text-white font-medium">{artist.name}</div>
-                          <div className="text-gray-400 text-sm">
-                            {artist.subscribers || 'YouTube Music'}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="amazon" className="mt-2">
-                  <div className="bg-slate-700 border border-slate-600 rounded-md max-h-48 overflow-y-auto">
-                    {amazonMusicResults.map((artist) => (
-                      <div
-                        key={artist.id}
-                        onClick={() => selectAmazonMusicArtist(artist)}
-                        className="p-3 hover:bg-slate-600 cursor-pointer flex items-center gap-3"
-                      >
-                        {artist.imageUrl && (
-                          <img 
-                            src={artist.imageUrl} 
-                            alt={artist.name}
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                        )}
-                        <div>
-                          <div className="text-white font-medium">{artist.name}</div>
-                          <div className="text-gray-400 text-sm">
-                            {artist.followers ? `${Math.floor(artist.followers / 1000)}k followers` : 'Amazon Music'}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </TabsContent>
-              </Tabs>
-            )}
-          </div>
+          {/* Recherche intelligente */}
+          <SmartArtistSearch
+            onArtistSelect={handleSmartSelection}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+          />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
