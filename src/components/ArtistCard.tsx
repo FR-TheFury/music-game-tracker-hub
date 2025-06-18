@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -134,11 +133,12 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
   const totalPlatformCount = allPlatforms.length;
 
   const getDisplayFollowers = (): number => {
+    // Priorité au totalFollowers si disponible
     if (artist.totalFollowers && artist.totalFollowers > 0) {
       return artist.totalFollowers;
     }
     
-    // Pour YouTube, utiliser les stats récupérées et les convertir en nombre
+    // Pour YouTube, utiliser les stats récupérées
     if (isYouTubePlatform && youtubeStats?.subscriberCount) {
       const numericCount = typeof youtubeStats.subscriberCount === 'string' 
         ? parseInt(youtubeStats.subscriberCount.replace(/[^0-9]/g, '')) || 0
@@ -157,11 +157,22 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
     return artist.popularity || 0;
   };
 
-  // Fonction pour récupérer le nombre total d'écoutes/vues
+  // Fonction corrigée pour récupérer le nombre total d'écoutes/vues
   const getDisplayPlays = (): number => {
-    // Priorité au totalPlays stocké en base
+    console.log('Artist totalPlays:', artist.totalPlays);
+    console.log('Artist lifetimePlays:', artist.lifetimePlays);
+    console.log('YouTube stats:', youtubeStats);
+    
+    // Priorité absolue au totalPlays de la base de données
     if (artist.totalPlays && artist.totalPlays > 0) {
+      console.log('Using totalPlays from database:', artist.totalPlays);
       return artist.totalPlays;
+    }
+    
+    // Ensuite, utiliser lifetimePlays si disponible
+    if (artist.lifetimePlays && artist.lifetimePlays > 0) {
+      console.log('Using lifetimePlays from database:', artist.lifetimePlays);
+      return artist.lifetimePlays;
     }
     
     // Pour YouTube, utiliser viewCount des stats YouTube
@@ -169,11 +180,12 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
       const numericViews = typeof youtubeStats.viewCount === 'string' 
         ? parseInt(youtubeStats.viewCount.replace(/[^0-9]/g, '')) || 0
         : youtubeStats.viewCount;
+      console.log('Using YouTube viewCount:', numericViews);
       return numericViews;
     }
     
-    // Fallback sur lifetimePlays
-    return artist.lifetimePlays || 0;
+    console.log('No plays data found, returning 0');
+    return 0;
   };
 
   const handleCardClick = () => {
@@ -275,7 +287,7 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
                   {formatPlaysCount(displayPlays)}
                 </span>
                 <span className="text-xs text-gray-500">
-                  {isYouTubePlatform ? 'vues totales' : 'écoutes totales'}
+                  {isYouTubePlatform ? 'vues' : 'écoutes'}
                 </span>
               </div>
             )}
