@@ -10,11 +10,13 @@ export const NotificationSettingsWrapper: React.FC = () => {
     <Dialog>
       <DialogTrigger asChild>
         <Button 
-          variant="primary-3d" 
+          variant="secondary-3d" 
           size="sm"
           className="rose-glow"
         >
-          <Bell className="h-4 w-4 mr-2" />
+          <div className="p-1 rounded-full bg-gradient-to-r from-[#FF6B9D] to-[#FFB3CD] mr-2">
+            <Bell className="h-3 w-3 text-white" />
+          </div>
           Notifications
         </Button>
       </DialogTrigger>

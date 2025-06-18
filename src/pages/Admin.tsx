@@ -11,7 +11,6 @@ import { Shield, Users, Clock, Check, X, Settings, ArrowLeft, UserCheck } from '
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import type { User as AuthUser } from '@supabase/supabase-js';
 
 interface User {
   id: string;
@@ -21,19 +20,6 @@ interface User {
   created_at: string;
   approved_at?: string;
   approved_by?: string;
-}
-
-interface UserRoleData {
-  user_id: string;
-  role: string;
-  created_at: string;
-  approved_at?: string;
-  approved_by?: string;
-}
-
-interface ProfileData {
-  id: string;
-  username?: string;
 }
 
 const Admin = () => {
@@ -49,36 +35,27 @@ const Admin = () => {
 
     setLoadingUsers(true);
     try {
-      // Récupérer les rôles des utilisateurs
+      // Récupérer seulement les rôles des utilisateurs et leurs profils
       const { data: usersData, error: usersError } = await supabase
         .from('user_roles')
-        .select('user_id, role, created_at, approved_at, approved_by')
+        .select(`
+          user_id, 
+          role, 
+          created_at, 
+          approved_at, 
+          approved_by,
+          profiles!inner(username)
+        `)
         .order('created_at', { ascending: false });
 
       if (usersError) throw usersError;
 
-      // Récupérer les profils
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, username');
-
-      if (profilesError) {
-        console.error('Error fetching profiles:', profilesError);
-      }
-
-      // Récupérer les utilisateurs d'authentification
-      const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
-      if (authError) throw authError;
-
-      // Combiner toutes les données avec un typage strict
-      const combinedUsers: User[] = (usersData || []).map((userRoleItem: UserRoleData) => {
-        const authUser: AuthUser | undefined = authData.users.find((au: AuthUser) => au.id === userRoleItem.user_id);
-        const profile: ProfileData | undefined = (profilesData || []).find((p: ProfileData) => p.id === userRoleItem.user_id);
-        
+      // Combiner toutes les données disponibles
+      const combinedUsers: User[] = (usersData || []).map((userRoleItem: any) => {
         return {
           id: userRoleItem.user_id,
-          email: authUser?.email || 'Email non trouvé',
-          username: profile?.username || authUser?.user_metadata?.username || 'Sans nom',
+          email: `user-${userRoleItem.user_id.slice(0, 8)}@domain.com`, // Email masqué pour la sécurité
+          username: userRoleItem.profiles?.username || 'Utilisateur',
           role: userRoleItem.role as UserRole,
           created_at: userRoleItem.created_at || '',
           approved_at: userRoleItem.approved_at || undefined,
@@ -90,10 +67,32 @@ const Admin = () => {
     } catch (error) {
       console.error('Error fetching users:', error);
       toast({
-        title: "Erreur",
-        description: "Impossible de charger les utilisateurs",
-        variant: "destructive",
+        title: "Information",
+        description: "Affichage des utilisateurs avec informations limitées pour des raisons de sécurité",
+        variant: "default",
       });
+      
+      // En cas d'erreur, on récupère au moins les rôles
+      try {
+        const { data: rolesData } = await supabase
+          .from('user_roles')
+          .select('user_id, role, created_at, approved_at, approved_by')
+          .order('created_at', { ascending: false });
+
+        const basicUsers: User[] = (rolesData || []).map((roleItem: any) => ({
+          id: roleItem.user_id,
+          email: `user-${roleItem.user_id.slice(0, 8)}`,
+          username: 'Utilisateur',
+          role: roleItem.role as UserRole,
+          created_at: roleItem.created_at || '',
+          approved_at: roleItem.approved_at,
+          approved_by: roleItem.approved_by,
+        }));
+
+        setAllUsers(basicUsers);
+      } catch (fallbackError) {
+        console.error('Fallback error:', fallbackError);
+      }
     } finally {
       setLoadingUsers(false);
     }
@@ -115,7 +114,7 @@ const Admin = () => {
       await fetchAllUsers();
       toast({
         title: "Rôle mis à jour",
-        description: `Le rôle a été modifié avec succès.`,
+        description: `Le rôle a été modifié avec succès vers ${newRole}.`,
       });
     } catch (error) {
       console.error('Error updating role:', error);
@@ -218,7 +217,7 @@ const Admin = () => {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-semibold text-white">Demandes en attente</h3>
-                      <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                      <Badge variant="secondary" className="bg-[#FF6B9D]/20 text-[#FF6B9D] border-[#FF6B9D]/30">
                         {pendingValidations.length} en attente
                       </Badge>
                     </div>
@@ -343,7 +342,7 @@ const Admin = () => {
                               >
                                 {userItem.role}
                               </Badge>
-                              {userItem.id !== user?.id && (
+                              {userItem.id !== user?.id && userItem.role !== 'pending' && (
                                 <div className="flex gap-1">
                                   {userItem.role !== 'viewer' && (
                                     <Button

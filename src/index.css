@@ -101,7 +101,13 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-slate-900 text-foreground;
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 25%, rgba(255, 7, 81, 0.05) 50%, #1a1a1a 75%, #0f0f0f 100%);
+    min-height: 100vh;
+  }
+
+  html {
+    background: #0a0a0a;
   }
 }
 
@@ -274,7 +280,7 @@
     background: rgba(255, 7, 81, 0.05);
   }
 
-  /* 3D Card Styles */
+  /* 3D Card Styles - DÉSACTIVER TRANSFORMATIONS POUR USERPROFILE */
   .card-3d {
     @apply relative;
     background: linear-gradient(145deg, rgba(30, 30, 30, 0.9), rgba(15, 15, 15, 0.95));
@@ -297,6 +303,28 @@
     transform: translateY(-4px) scale(1.02);
   }
 
+  /* Version sans transformation pour UserProfile */
+  .card-3d-no-transform {
+    @apply relative;
+    background: linear-gradient(145deg, rgba(30, 30, 30, 0.9), rgba(15, 15, 15, 0.95));
+    box-shadow: 
+      0 8px 24px rgba(0, 0, 0, 0.4),
+      0 4px 12px rgba(255, 7, 81, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 7, 81, 0.2);
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+  }
+
+  .card-3d-no-transform:hover {
+    box-shadow: 
+      0 12px 32px rgba(0, 0, 0, 0.5),
+      0 6px 16px rgba(255, 7, 81, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+    border-color: rgba(255, 7, 81, 0.4);
+  }
+
   /* 3D Header Gradient */
   .header-3d {
     background: linear-gradient(135deg, 
@@ -311,7 +339,7 @@
     border-bottom: 1px solid rgba(255, 7, 81, 0.3);
   }
 
-  /* Enhanced 3D Background with Rose Red Effects */
+  /* Enhanced 3D Background with Rose Red Effects - FOND SOMBRE COMPLET */
   .bg-3d-main {
     background: 
       radial-gradient(circle at 20% 80%, rgba(255, 7, 81, 0.15) 0%, transparent 50%),
@@ -324,6 +352,7 @@
         #1a1a1a 75%, 
         #0f0f0f 100%);
     position: relative;
+    min-height: 100vh;
   }
 
   .bg-3d-main::before {

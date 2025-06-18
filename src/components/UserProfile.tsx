@@ -54,10 +54,12 @@ export const UserProfile: React.FC = () => {
   };
 
   return (
-    <Card className="card-3d transform-none transition-none hover:transform-none hover:shadow-none">
+    <Card className="card-3d-no-transform">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-white">
-          <User className="h-5 w-5" />
+          <div className="p-2 rounded-full bg-gradient-to-r from-[#FF0751] to-[#FF3971] rose-glow">
+            <User className="h-4 w-4 text-white" />
+          </div>
           Mon Profil
         </CardTitle>
       </CardHeader>
@@ -71,7 +73,7 @@ export const UserProfile: React.FC = () => {
               </p>
               <div className="flex items-center gap-2">
                 <span className="text-gray-400">Rôle:</span>
-                <Badge variant="outline" className="border-[#FF0751] text-[#FF0751]">
+                <Badge variant="outline" className="border-[#FF0751] text-[#FF0751] bg-[#FF0751]/10">
                   {userRole}
                 </Badge>
                 <Button
@@ -79,6 +81,7 @@ export const UserProfile: React.FC = () => {
                   disabled={refreshing}
                   variant="ghost-3d"
                   size="sm"
+                  className="ml-2"
                 >
                   <RefreshCw className={`h-3 w-3 ${refreshing ? 'animate-spin' : ''}`} />
                 </Button>
@@ -92,7 +95,7 @@ export const UserProfile: React.FC = () => {
               onClick={handlePasswordReset}
               disabled={resetPasswordLoading}
               variant="primary-3d"
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 rose-glow"
             >
               <Key className="h-4 w-4" />
               {resetPasswordLoading ? 'Envoi en cours...' : 'Réinitialiser le mot de passe'}
