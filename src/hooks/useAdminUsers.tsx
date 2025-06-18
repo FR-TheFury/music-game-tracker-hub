@@ -22,7 +22,7 @@ export const useAdminUsers = (userRole: UserRole | null) => {
   const [loadingUsers, setLoadingUsers] = useState(false);
 
   const fetchAllUsers = async () => {
-    if (!user || userRole !== 'admin') return;
+    if (!user || !userRole || userRole === 'pending') return;
 
     setLoadingUsers(true);
     try {
@@ -53,26 +53,31 @@ export const useAdminUsers = (userRole: UserRole | null) => {
 
       console.log('Profils récupérés:', profiles);
 
-      // Étape 3: Récupérer les métadonnées des utilisateurs depuis auth
-      const { data: authResponse, error: authError } = await supabase.auth.admin.listUsers();
-
-      if (authError) {
-        console.error('Erreur lors de la récupération des utilisateurs auth:', authError);
-        // Continue sans les données auth si erreur (pas d'accès admin)
+      // Étape 3: Pour les admins seulement, essayer de récupérer les métadonnées auth
+      let authUsers: any[] = [];
+      if (userRole === 'admin') {
+        try {
+          const { data: authResponse, error: authError } = await supabase.auth.admin.listUsers();
+          if (authError) {
+            console.warn('Impossible de récupérer les utilisateurs auth (permissions insuffisantes):', authError);
+          } else {
+            authUsers = authResponse?.users || [];
+            console.log('Utilisateurs auth récupérés:', authUsers);
+          }
+        } catch (error) {
+          console.warn('Erreur lors de la récupération des utilisateurs auth:', error);
+        }
       }
-
-      const authUsers = authResponse?.users || [];
-      console.log('Utilisateurs auth récupérés:', authUsers);
 
       // Étape 4: Combiner toutes les données
       const combinedUsers: User[] = (userRoles || []).map((roleItem) => {
         // Trouver le profil correspondant
         const profile = profiles?.find(p => p.id === roleItem.user_id);
         
-        // Trouver les données auth correspondantes
+        // Trouver les données auth correspondantes (si disponibles)
         const authUser = authUsers?.find(u => u.id === roleItem.user_id);
         
-        // Utiliser l'email depuis auth.users, sinon générer un fallback
+        // Utiliser l'email depuis auth.users si disponible, sinon générer un fallback
         const email = authUser?.email || `user-${roleItem.user_id.slice(0, 8)}@domain.local`;
         
         // Utiliser le username depuis profiles, sinon depuis auth metadata, sinon 'Utilisateur'
@@ -106,12 +111,21 @@ export const useAdminUsers = (userRole: UserRole | null) => {
   };
 
   const updateUserRole = async (userId: string, newRole: UserRole) => {
+    if (!user || userRole !== 'admin') {
+      toast({
+        title: "Accès refusé",
+        description: "Seuls les administrateurs peuvent modifier les rôles",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('user_roles')
         .update({ 
           role: newRole, 
-          approved_by: user?.id,
+          approved_by: user.id,
           approved_at: new Date().toISOString()
         })
         .eq('user_id', userId);
@@ -134,7 +148,7 @@ export const useAdminUsers = (userRole: UserRole | null) => {
   };
 
   useEffect(() => {
-    if (userRole === 'admin') {
+    if (userRole && userRole !== 'pending') {
       fetchAllUsers();
     }
   }, [userRole]);

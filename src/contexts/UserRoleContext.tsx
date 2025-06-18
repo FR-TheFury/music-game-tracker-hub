@@ -153,6 +153,33 @@ export const UserRoleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     await fetchUserRole();
   };
 
+  // Écouter les changements de rôle en temps réel pour l'utilisateur connecté
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('user-role-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'user_roles',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('Changement de rôle détecté:', payload);
+          // Rafraîchir le rôle utilisateur quand il y a un changement
+          fetchUserRole();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   useEffect(() => {
     fetchUserRole();
   }, [user]);
