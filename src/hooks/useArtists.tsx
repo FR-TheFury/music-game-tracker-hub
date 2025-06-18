@@ -35,6 +35,20 @@ interface ArtistRelease {
   createdAt: string;
 }
 
+// Helper function to safely parse multipleUrls from Json type
+const parseMultipleUrls = (urls: any): Array<{ platform: string; url: string }> => {
+  if (!urls) return [];
+  if (Array.isArray(urls)) {
+    return urls.filter(url => 
+      url && 
+      typeof url === 'object' && 
+      typeof url.platform === 'string' && 
+      typeof url.url === 'string'
+    );
+  }
+  return [];
+};
+
 export const useArtists = () => {
   const [artists, setArtists] = useState<Artist[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,7 +80,7 @@ export const useArtists = () => {
         genres: artist.genres,
         popularity: artist.popularity,
         followersCount: artist.followers_count,
-        multipleUrls: Array.isArray(artist.multiple_urls) ? artist.multiple_urls : [],
+        multipleUrls: parseMultipleUrls(artist.multiple_urls),
         profileImageUrl: artist.profile_image_url,
       }));
 
@@ -128,7 +142,7 @@ export const useArtists = () => {
         genres: data.genres,
         popularity: data.popularity,
         followersCount: data.followers_count,
-        multipleUrls: Array.isArray(data.multiple_urls) ? data.multiple_urls : [],
+        multipleUrls: parseMultipleUrls(data.multiple_urls),
         profileImageUrl: data.profile_image_url,
       };
 
