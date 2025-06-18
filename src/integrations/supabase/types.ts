@@ -87,6 +87,78 @@ export type Database = {
         }
         Relationships: []
       }
+      new_releases: {
+        Row: {
+          description: string | null
+          detected_at: string
+          expires_at: string
+          id: string
+          image_url: string | null
+          platform_url: string | null
+          source_item_id: string
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Insert: {
+          description?: string | null
+          detected_at?: string
+          expires_at?: string
+          id?: string
+          image_url?: string | null
+          platform_url?: string | null
+          source_item_id: string
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Update: {
+          description?: string | null
+          detected_at?: string
+          expires_at?: string
+          id?: string
+          image_url?: string | null
+          platform_url?: string | null
+          source_item_id?: string
+          title?: string
+          type?: Database["public"]["Enums"]["notification_type"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notification_settings: {
+        Row: {
+          artist_notifications_enabled: boolean
+          created_at: string
+          email_notifications_enabled: boolean
+          game_notifications_enabled: boolean
+          id: string
+          notification_frequency: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          artist_notifications_enabled?: boolean
+          created_at?: string
+          email_notifications_enabled?: boolean
+          game_notifications_enabled?: boolean
+          id?: string
+          notification_frequency?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          artist_notifications_enabled?: boolean
+          created_at?: string
+          email_notifications_enabled?: boolean
+          game_notifications_enabled?: boolean
+          id?: string
+          notification_frequency?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pending_validations: {
         Row: {
           created_at: string | null
@@ -176,6 +248,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_releases: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
@@ -193,6 +269,7 @@ export type Database = {
       }
     }
     Enums: {
+      notification_type: "artist" | "game"
       user_role: "admin" | "editor" | "viewer" | "pending"
     }
     CompositeTypes: {
@@ -309,6 +386,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      notification_type: ["artist", "game"],
       user_role: ["admin", "editor", "viewer", "pending"],
     },
   },

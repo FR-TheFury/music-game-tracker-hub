@@ -1,4 +1,3 @@
-
 import { useAuth } from "@/hooks/useAuth";
 import { AuthPage } from "@/components/AuthPage";
 import { RoleGuard } from "@/components/RoleGuard";
@@ -10,6 +9,8 @@ import { AddArtistFormWrapper } from "@/components/AddArtistFormWrapper";
 import { AddGameFormWrapper } from "@/components/AddGameFormWrapper";
 import { ArtistsGrid } from "@/components/ArtistsGrid";
 import { GamesGrid } from "@/components/GamesGrid";
+import { NewReleasesSection } from "@/components/NewReleasesSection";
+import { NotificationSettingsWrapper } from "@/components/NotificationSettingsWrapper";
 
 const Index = () => {
   const { user, loading, signOut } = useAuth();
@@ -42,6 +43,7 @@ const Index = () => {
               
               <div className="flex items-center gap-4">
                 <UserStatus />
+                <NotificationSettingsWrapper />
                 <span className="text-gray-300 text-sm">
                   {user.email}
                 </span>
@@ -61,6 +63,11 @@ const Index = () => {
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <AdminPanel />
+          
+          {/* Section Nouvelles Sorties */}
+          <RoleGuard allowedRoles={['admin', 'editor', 'viewer']}>
+            <NewReleasesSection />
+          </RoleGuard>
           
           {/* Section Artistes */}
           <RoleGuard allowedRoles={['admin', 'editor', 'viewer']}>
