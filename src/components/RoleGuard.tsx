@@ -16,24 +16,24 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
   fallback 
 }) => {
   const { userRole, loading } = useUserRole();
-  const [showAccessDenied, setShowAccessDenied] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   console.log('RoleGuard - Rôle utilisateur:', userRole, 'Chargement:', loading, 'Rôles autorisés:', allowedRoles);
 
-  // Délai avant d'afficher "Accès refusé" pour éviter l'effet de clignotement
+  // Gérer la phase d'initialisation
   useEffect(() => {
-    if (!loading && userRole && !allowedRoles.includes(userRole) && userRole !== 'pending') {
+    if (!loading && userRole !== null) {
+      // Attendre un petit délai pour s'assurer que tout est chargé proprement
       const timer = setTimeout(() => {
-        setShowAccessDenied(true);
-      }, 300); // Délai de 300ms
+        setIsInitialLoad(false);
+      }, 100);
 
       return () => clearTimeout(timer);
-    } else {
-      setShowAccessDenied(false);
     }
-  }, [loading, userRole, allowedRoles]);
+  }, [loading, userRole]);
 
-  if (loading) {
+  // Pendant le chargement initial ou si le rôle n'est pas encore déterminé
+  if (loading || isInitialLoad) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-3d-main">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#FF0751] rose-glow"></div>
@@ -41,6 +41,7 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
     );
   }
 
+  // Utilisateur en attente de validation
   if (!userRole || userRole === 'pending') {
     console.log('RoleGuard - Utilisateur en attente ou sans rôle');
     return (
@@ -67,7 +68,8 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
     );
   }
 
-  if (!allowedRoles.includes(userRole) && showAccessDenied) {
+  // Accès refusé
+  if (!allowedRoles.includes(userRole)) {
     console.log('RoleGuard - Accès refusé pour le rôle:', userRole);
     return fallback || (
       <div className="min-h-screen bg-3d-main flex items-center justify-center px-4">
@@ -93,6 +95,7 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
     );
   }
 
+  // Accès autorisé
   console.log('RoleGuard - Accès autorisé pour le rôle:', userRole);
   return <>{children}</>;
 };

@@ -36,39 +36,31 @@ const Admin = () => {
     try {
       console.log('Récupération de tous les utilisateurs...');
 
-      // Récupérer d'abord les rôles utilisateur
-      const { data: userRolesData, error: rolesError } = await supabase
+      // Récupérer les données depuis user_roles avec jointure sur profiles
+      const { data: userData, error: userError } = await supabase
         .from('user_roles')
-        .select('user_id, role, created_at, approved_at, approved_by')
+        .select(`
+          user_id,
+          role,
+          created_at,
+          approved_at,
+          approved_by,
+          profiles:user_id (
+            username
+          )
+        `)
         .order('created_at', { ascending: false });
 
-      if (rolesError) {
-        console.error('Erreur lors de la récupération des rôles:', rolesError);
-        throw rolesError;
+      if (userError) {
+        console.error('Erreur lors de la récupération des utilisateurs:', userError);
+        throw userError;
       }
 
-      console.log('Rôles utilisateurs récupérés:', userRolesData);
+      console.log('Données utilisateurs récupérées:', userData);
 
-      // Récupérer les profils pour obtenir les usernames
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, username');
-
-      if (profilesError) {
-        console.error('Erreur lors de la récupération des profils:', profilesError);
-      }
-
-      console.log('Profils récupérés:', profilesData);
-
-      // Créer un map des profils pour un accès rapide
-      const profilesMap = new Map(
-        (profilesData || []).map(profile => [profile.id, profile.username])
-      );
-
-      // Pour récupérer les emails, essayer d'utiliser l'API admin si possible
+      // Récupérer les emails depuis l'API auth si possible
       let authUsersData = null;
       try {
-        // Cette requête peut échouer selon les permissions
         const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
         if (!authError) {
           authUsersData = authData.users;
@@ -87,20 +79,20 @@ const Admin = () => {
       }
 
       // Combiner toutes les données
-      const combinedUsers: User[] = (userRolesData || []).map((roleItem: any) => {
-        const username = profilesMap.get(roleItem.user_id) || 'Utilisateur inconnu';
-        const email = emailsMap.get(roleItem.user_id) || `user-${roleItem.user_id.slice(0, 8)}@domain.com`;
+      const combinedUsers: User[] = (userData || []).map((item: any) => {
+        const username = item.profiles?.username || 'Utilisateur sans nom';
+        const email = emailsMap.get(item.user_id) || `user-${item.user_id.slice(0, 8)}@domain.com`;
         
-        console.log(`Utilisateur ${roleItem.user_id}: username = ${username}, email = ${email}`);
+        console.log(`Utilisateur ${item.user_id}: username = ${username}, email = ${email}`);
         
         return {
-          id: roleItem.user_id,
+          id: item.user_id,
           email: email,
           username: username,
-          role: roleItem.role as UserRole,
-          created_at: roleItem.created_at || '',
-          approved_at: roleItem.approved_at || undefined,
-          approved_by: roleItem.approved_by || undefined,
+          role: item.role as UserRole,
+          created_at: item.created_at || '',
+          approved_at: item.approved_at || undefined,
+          approved_by: item.approved_by || undefined,
         };
       });
 
