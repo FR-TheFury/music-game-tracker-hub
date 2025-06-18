@@ -50,6 +50,10 @@ export const formatArtistFromDatabase = (artist: any): Artist => ({
   platformStats: parsePlatformStats(artist.platform_stats),
   totalPlays: artist.total_plays || 0,
   lifetimePlays: artist.lifetime_plays || 0,
+  // Nouvelles propriétés
+  totalStreams: artist.total_streams || 0,
+  monthlyListeners: artist.monthly_listeners || 0,
+  lastUpdated: artist.last_updated,
 });
 
 // Helper function to format artist data for database insertion
@@ -73,4 +77,8 @@ export const formatArtistForDatabase = (artistData: Omit<Artist, 'id' | 'addedAt
   platform_stats: artistData.platformStats || [],
   total_plays: artistData.totalPlays || 0,
   lifetime_plays: artistData.lifetimePlays || 0,
+  // Nouvelles propriétés
+  total_streams: artistData.totalStreams || 0,
+  monthly_listeners: artistData.monthlyListeners || 0,
+  last_updated: artistData.lastUpdated,
 });

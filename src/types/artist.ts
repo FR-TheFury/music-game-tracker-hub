@@ -1,3 +1,4 @@
+
 export interface Artist {
   id: string;
   name: string;
@@ -15,7 +16,7 @@ export interface Artist {
   followersCount?: number;
   multipleUrls?: Array<{ platform: string; url: string }>;
   profileImageUrl?: string;
-  // Nouvelles propriétés pour les statistiques cumulées
+  // Statistiques cumulées et nouvelles propriétés
   totalFollowers?: number;
   averagePopularity?: number;
   platformStats?: Array<{
@@ -25,6 +26,10 @@ export interface Artist {
   }>;
   totalPlays?: number;
   lifetimePlays?: number;
+  // Nouvelles propriétés ajoutées
+  totalStreams?: number;
+  monthlyListeners?: number;
+  lastUpdated?: string;
 }
 
 export interface ArtistRelease {

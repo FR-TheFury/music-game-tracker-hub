@@ -73,7 +73,9 @@ export type Database = {
           id: string
           image_url: string | null
           last_release: string | null
+          last_updated: string | null
           lifetime_plays: number | null
+          monthly_listeners: number | null
           multiple_urls: Json | null
           name: string
           platform: string
@@ -83,6 +85,7 @@ export type Database = {
           spotify_id: string | null
           total_followers: number | null
           total_plays: number | null
+          total_streams: number | null
           updated_at: string | null
           url: string
           user_id: string
@@ -97,7 +100,9 @@ export type Database = {
           id?: string
           image_url?: string | null
           last_release?: string | null
+          last_updated?: string | null
           lifetime_plays?: number | null
+          monthly_listeners?: number | null
           multiple_urls?: Json | null
           name: string
           platform: string
@@ -107,6 +112,7 @@ export type Database = {
           spotify_id?: string | null
           total_followers?: number | null
           total_plays?: number | null
+          total_streams?: number | null
           updated_at?: string | null
           url: string
           user_id: string
@@ -121,7 +127,9 @@ export type Database = {
           id?: string
           image_url?: string | null
           last_release?: string | null
+          last_updated?: string | null
           lifetime_plays?: number | null
+          monthly_listeners?: number | null
           multiple_urls?: Json | null
           name?: string
           platform?: string
@@ -131,6 +139,7 @@ export type Database = {
           spotify_id?: string | null
           total_followers?: number | null
           total_plays?: number | null
+          total_streams?: number | null
           updated_at?: string | null
           url?: string
           user_id?: string
@@ -340,6 +349,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_artist_aggregated_stats: {
+        Args: { artist_id: string }
+        Returns: undefined
+      }
+      cleanup_artist_data: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       cleanup_expired_releases: {
         Args: Record<PropertyKey, never>
         Returns: undefined

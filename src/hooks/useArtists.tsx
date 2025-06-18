@@ -12,7 +12,7 @@ export const useArtists = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { getYouTubeStats } = useYouTubeData();
-  const { getArtistReleases } = useArtistReleasesData();
+  const { getArtistReleases } = useArtistReleas`eData();
 
   const { data: artists = [], isLoading: loading } = useQuery({
     queryKey: ['artists', user?.id],
@@ -32,18 +32,20 @@ export const useArtists = () => {
 
       const formattedArtists = data.map(formatArtistFromDatabase);
 
-      // Enrichir avec les statistiques YouTube pour les artistes YouTube
+      // Enrichir avec les statistiques YouTube pour les artistes YouTube uniquement si nécessaire
       const enrichedArtists = await Promise.all(
         formattedArtists.map(async (artist) => {
           const isYouTube = artist.platform.toLowerCase().includes('youtube');
-          if (isYouTube) {
+          
+          // Ne récupérer les stats YouTube que si les données ne sont pas déjà présentes ou sont obsolètes
+          if (isYouTube && (!artist.totalStreams || !artist.lastUpdated)) {
             try {
               const youtubeStats = await getYouTubeStats(artist.url);
               if (youtubeStats) {
                 return {
                   ...artist,
                   followersCount: youtubeStats.subscriberCount || artist.followersCount,
-                  totalPlays: youtubeStats.viewCount || artist.totalPlays,
+                  totalStreams: youtubeStats.viewCount || artist.totalStreams || artist.totalPlays,
                 };
               }
             } catch (error) {
