@@ -79,18 +79,18 @@ const ArtistDetail: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400"></div>
+      <div className="min-h-screen bg-3d-main flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary rose-glow"></div>
       </div>
     );
   }
 
   if (!artist) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-3d-main flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-white mb-4">Artiste non trouvé</h1>
-          <Button onClick={() => navigate('/')}>
+          <Button onClick={() => navigate('/')} variant="primary-3d">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Retour au dashboard
           </Button>
@@ -100,79 +100,83 @@ const ArtistDetail: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen bg-3d-main">
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="mb-8">
           <Button 
             onClick={() => navigate('/')}
-            variant="outline"
-            className="mb-6 border-slate-600 text-gray-300 hover:bg-slate-700"
+            variant="outline-3d"
+            className="mb-6"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Retour au dashboard
           </Button>
 
-          <div className="flex flex-col md:flex-row gap-8 items-start">
-            <div className="flex-shrink-0">
-              <img
-                src={getMainImage()}
-                alt={artist.name}
-                className="w-48 h-48 rounded-full object-cover border-4 border-purple-500/30"
-              />
-            </div>
-
-            <div className="flex-1">
-              <div className="flex items-baseline gap-4 mb-4">
-                <h1 className="text-4xl font-bold text-white">{artist.name}</h1>
-                {artist.followersCount && (
-                  <div className="flex items-center gap-2 text-blue-400">
-                    <Users className="h-5 w-5" />
-                    <span className="text-lg font-medium">{formatFollowers(artist.followersCount)}</span>
-                  </div>
-                )}
-              </div>
-              
-              {artist.bio && (
-                <p className="text-gray-300 text-lg mb-4 leading-relaxed">{artist.bio}</p>
-              )}
-
-              {artist.genres && artist.genres.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-white mb-2">Genres</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {artist.genres.map((genre: string) => (
-                      <Badge key={genre} variant="outline" className="border-purple-500/50 text-purple-300">
-                        {genre}
-                      </Badge>
-                    ))}
-                  </div>
+          <Card className="card-3d mb-8">
+            <CardContent className="p-8">
+              <div className="flex flex-col md:flex-row gap-8 items-start">
+                <div className="flex-shrink-0">
+                  <img
+                    src={getMainImage()}
+                    alt={artist.name}
+                    className="w-48 h-48 rounded-full object-cover border-4 border-primary/30 rose-glow"
+                  />
                 </div>
-              )}
 
-              <div className="space-y-3">
-                <h3 className="text-lg font-semibold text-white">Plateformes</h3>
-                <div className="flex flex-wrap gap-3">
-                  {artist.url && (
-                    <Button variant="outline" size="sm" asChild className="border-purple-500/30 text-purple-300 hover:bg-purple-500/10">
-                      <a href={artist.url} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        {artist.platform}
-                      </a>
-                    </Button>
-                  )}
+                <div className="flex-1">
+                  <div className="flex items-baseline gap-4 mb-4">
+                    <h1 className="text-4xl font-bold text-white">{artist.name}</h1>
+                    {artist.followersCount && (
+                      <div className="flex items-center gap-2 text-primary">
+                        <Users className="h-5 w-5" />
+                        <span className="text-lg font-medium">{formatFollowers(artist.followersCount)}</span>
+                      </div>
+                    )}
+                  </div>
                   
-                  {artist.multipleUrls?.map((link: any, index: number) => (
-                    <Button key={index} variant="outline" size="sm" asChild className="border-purple-500/30 text-purple-300 hover:bg-purple-500/10">
-                      <a href={link.url} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        {link.platform}
-                      </a>
-                    </Button>
-                  ))}
+                  {artist.bio && (
+                    <p className="text-gray-300 text-lg mb-4 leading-relaxed">{artist.bio}</p>
+                  )}
+
+                  {artist.genres && artist.genres.length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="text-lg font-semibold text-white mb-2">Genres</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {artist.genres.map((genre: string) => (
+                          <Badge key={genre} variant="outline" className="border-primary/50 text-primary bg-primary/10">
+                            {genre}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-semibold text-white">Plateformes</h3>
+                    <div className="flex flex-wrap gap-3">
+                      {artist.url && (
+                        <Button variant="secondary-3d" size="sm" asChild>
+                          <a href={artist.url} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            {artist.platform}
+                          </a>
+                        </Button>
+                      )}
+                      
+                      {artist.multipleUrls?.map((link: any, index: number) => (
+                        <Button key={index} variant="secondary-3d" size="sm" asChild>
+                          <a href={link.url} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            {link.platform}
+                          </a>
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
 
         <ArtistNewReleases 
@@ -181,23 +185,23 @@ const ArtistDetail: React.FC = () => {
         />
 
         {spotifyReleases.length > 0 && (
-          <Card className="bg-slate-800/70 border-slate-700 backdrop-blur-sm mb-8">
-            <CardHeader>
+          <Card className="card-3d mb-8">
+            <CardHeader className="header-3d">
               <CardTitle className="flex items-center gap-2 text-white">
                 <Music className="h-5 w-5 text-green-400" />
                 Sorties Spotify récentes
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {spotifyReleases.map((release: any) => (
-                  <div key={release.id} className="bg-slate-700/50 rounded-lg p-4 border border-slate-600">
+                  <div key={release.id} className="bg-slate-700/50 rounded-lg p-4 border border-slate-600 hover:border-primary/50 transition-all duration-300">
                     <div className="flex items-start gap-3 mb-3">
                       {release.images?.[0] && (
                         <img
                           src={release.images[0].url}
                           alt={release.name}
-                          className="w-16 h-16 rounded object-cover flex-shrink-0"
+                          className="w-16 h-16 rounded object-cover flex-shrink-0 border border-primary/20"
                         />
                       )}
                       <div className="flex-1 min-w-0">
@@ -214,10 +218,10 @@ const ArtistDetail: React.FC = () => {
                     
                     {release.external_urls?.spotify && (
                       <Button
-                        variant="outline"
+                        variant="success-3d"
                         size="sm"
                         asChild
-                        className="w-full border-green-500/30 text-green-300 hover:bg-green-500/10 hover:border-green-400"
+                        className="w-full"
                       >
                         <a href={release.external_urls.spotify} target="_blank" rel="noopener noreferrer">
                           <ExternalLink className="h-4 w-4 mr-2" />
