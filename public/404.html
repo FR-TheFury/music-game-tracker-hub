@@ -6,23 +6,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Music Game Tracker Hub - Page Not Found</title>
     <script>
-      // Redirect to index.html for SPA routing
-      const path = window.location.pathname;
-      const base = '/' + (window.location.pathname.split('/')[1] || '');
-      
-      if (path !== base + '/') {
-        window.location.replace(base + '/#' + path.slice(base.length));
-      }
+      // Redirect to index.html for SPA routing on GitHub Pages
+      (function() {
+        const path = window.location.pathname;
+        const repoName = 'music-game-tracker-hub';
+        const base = '/' + repoName;
+        
+        // If we're not already at the base path, redirect to index with hash routing
+        if (path !== base + '/' && path !== base) {
+          const redirect = base + '/#' + path.slice(base.length);
+          console.log('Redirecting from', path, 'to', redirect);
+          window.location.replace(redirect);
+        } else {
+          // If we're at the base path, just redirect to the main app
+          window.location.replace(base + '/');
+        }
+      })();
     </script>
   </head>
   <body>
     <div id="root">
       <div style="display: flex; justify-content: center; align-items: center; height: 100vh; font-family: Arial, sans-serif;">
         <div style="text-align: center;">
-          <h1>404 - Page Not Found</h1>
-          <p>Redirecting to home page...</p>
+          <h1>Music Game Tracker Hub</h1>
+          <p>Redirecting to application...</p>
+          <div style="margin-top: 20px;">
+            <div style="border: 2px solid #3b82f6; border-top: 2px solid transparent; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+          </div>
         </div>
       </div>
     </div>
+    <style>
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
   </body>
 </html>
