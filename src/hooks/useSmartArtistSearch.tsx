@@ -100,42 +100,44 @@ export const useSmartArtistSearch = () => {
     popularity?: number;
     verified: boolean;
   }>) => {
-    // Calculer le total des followers (en évitant les doublons potentiels)
+    console.log('Calcul des statistiques cumulées pour:', platformStats);
+    
+    // Calculer le total des followers (somme directe des plateformes vérifiées)
     let totalFollowers = 0;
     let popularitySum = 0;
     let popularityCount = 0;
 
     platformStats.forEach(stat => {
-      if (stat.followers && stat.verified) {
-        // Pour éviter les doublons, on prend un pourcentage selon la plateforme
-        let followerWeight = 1;
-        switch (stat.platform.toLowerCase()) {
-          case 'spotify':
-            followerWeight = 1; // Poids complet pour Spotify
-            break;
-          case 'youtube':
-            followerWeight = 0.8; // 80% pour YouTube (possibles abonnés non-musicaux)
-            break;
-          case 'deezer':
-            followerWeight = 0.9; // 90% pour Deezer
-            break;
-          default:
-            followerWeight = 0.7; // 70% pour les autres
-        }
-        totalFollowers += Math.round(stat.followers * followerWeight);
+      console.log(`Plateforme ${stat.platform}:`, {
+        followers: stat.followers,
+        popularity: stat.popularity,
+        verified: stat.verified
+      });
+
+      // Additionner tous les followers des plateformes vérifiées
+      if (stat.followers && stat.verified && stat.followers > 0) {
+        totalFollowers += stat.followers;
+        console.log(`Ajout de ${stat.followers} followers de ${stat.platform}`);
       }
 
+      // Calculer la moyenne des popularités
       if (stat.popularity && stat.popularity > 0) {
         popularitySum += stat.popularity;
         popularityCount++;
       }
     });
 
-    const averagePopularity = popularityCount > 0 ? popularitySum / popularityCount : 0;
+    const averagePopularity = popularityCount > 0 ? Math.round(popularitySum / popularityCount) : 0;
+
+    console.log('Résultat final:', {
+      totalFollowers,
+      averagePopularity,
+      platformCount: platformStats.length
+    });
 
     return {
       totalFollowers,
-      averagePopularity: Math.round(averagePopularity)
+      averagePopularity
     };
   };
 
@@ -144,8 +146,11 @@ export const useSmartArtistSearch = () => {
     
     setLoading(true);
     try {
+      console.log('Recherche intelligente pour:', query);
+      
       // 1. Recherche principale sur Spotify
       const spotifyResults = await searchSpotify(query);
+      console.log('Résultats Spotify:', spotifyResults.length);
       
       // 2. Recherche complémentaire sur Deezer et YouTube
       const [deezerResults, youtubeResults] = await Promise.all([
@@ -153,9 +158,14 @@ export const useSmartArtistSearch = () => {
         searchYouTube(query)
       ]);
       
+      console.log('Résultats Deezer:', deezerResults.length);
+      console.log('Résultats YouTube:', youtubeResults.length);
+      
       // 3. Pour chaque résultat Spotify, enrichir avec les autres plateformes
       const enrichedResults = await Promise.all(
         spotifyResults.map(async (spotifyArtist) => {
+          console.log('Enrichissement pour:', spotifyArtist.name);
+          
           // Générer les URLs de base
           const generatedUrls = generatePlatformUrls(spotifyArtist.name);
           
@@ -182,11 +192,11 @@ export const useSmartArtistSearch = () => {
             }
           ];
 
-          if (deezerMatch) {
+          if (deezerMatch && deezerMatch.nb_fan) {
             platformStats.push({
               platform: 'Deezer',
-              followers: deezerMatch.nb_fan || 0,
-              popularity: undefined, // Deezer n'a pas de score de popularité direct
+              followers: deezerMatch.nb_fan,
+              popularity: undefined,
               verified: true
             });
           }
@@ -225,6 +235,12 @@ export const useSmartArtistSearch = () => {
             totalFollowers,
             averagePopularity
           };
+          
+          console.log('Résultat enrichi pour', spotifyArtist.name, ':', {
+            platformsCount: platformStats.length,
+            totalFollowers,
+            averagePopularity
+          });
           
           return result;
         })

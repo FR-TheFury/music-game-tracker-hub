@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -109,14 +108,32 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
   const allPlatforms = getAllPlatforms();
   const totalPlatformCount = allPlatforms.length;
 
-  // Calculer les statistiques cumulées
-  const getTotalFollowers = () => {
-    return artist.totalFollowers || artist.followersCount || 0;
+  // Utiliser prioritairement les statistiques cumulées si disponibles
+  const getDisplayFollowers = () => {
+    // Si on a des statistiques cumulées et qu'elles sont supérieures à 0
+    if (artist.totalFollowers && artist.totalFollowers > 0) {
+      console.log(`Affichage followers cumulés pour ${artist.name}:`, artist.totalFollowers);
+      return artist.totalFollowers;
+    }
+    
+    // Sinon utiliser les followers de la plateforme principale
+    const mainFollowers = artist.followersCount || 0;
+    console.log(`Affichage followers principaux pour ${artist.name}:`, mainFollowers);
+    return mainFollowers;
   };
 
-  const getAveragePopularity = () => {
-    return artist.averagePopularity || artist.popularity || 0;
+  const getDisplayPopularity = () => {
+    // Si on a une popularité moyenne calculée
+    if (artist.averagePopularity && artist.averagePopularity > 0) {
+      return artist.averagePopularity;
+    }
+    
+    // Sinon utiliser la popularité de la plateforme principale
+    return artist.popularity || 0;
   };
+
+  const displayFollowers = getDisplayFollowers();
+  const displayPopularity = getDisplayPopularity();
 
   const handleCardClick = () => {
     navigate(`/artist/${artist.id}`);
@@ -192,31 +209,36 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
           </Button>
         </div>
 
-        {/* Statistiques cumulées */}
+        {/* Statistiques avec indicateur de cumul */}
         <div className="mb-4">
           <div className="flex gap-4 text-sm">
-            {getTotalFollowers() > 0 && (
+            {displayFollowers > 0 && (
               <div className="flex items-center gap-1 text-gray-300">
                 <Users className="h-3 w-3 text-purple-400" />
                 <span className="font-medium text-purple-300">
-                  {formatFollowersCount(getTotalFollowers())}
+                  {formatFollowersCount(displayFollowers)}
                 </span>
-                <span className="text-xs text-gray-500">followers total</span>
+                <span className="text-xs text-gray-500">
+                  {artist.totalFollowers && artist.totalFollowers > 0 ? 'followers total' : 'followers'}
+                </span>
               </div>
             )}
             
-            {getAveragePopularity() > 0 && (
+            {displayPopularity > 0 && (
               <div className="flex items-center gap-1 text-gray-300">
                 <Star className="h-3 w-3 text-yellow-400" />
                 <span className="font-medium text-yellow-300">
-                  {Math.round(getAveragePopularity())}%
+                  {Math.round(displayPopularity)}%
                 </span>
-                <span className="text-xs text-gray-500">popularité</span>
+                <span className="text-xs text-gray-500">
+                  {artist.averagePopularity && artist.averagePopularity > 0 ? 'popularité moy.' : 'popularité'}
+                </span>
               </div>
             )}
           </div>
           
-          {totalPlatformCount > 1 && (
+          {/* Indicateur de source des statistiques */}
+          {totalPlatformCount > 1 && (artist.totalFollowers || artist.averagePopularity) && (
             <div className="text-xs text-purple-400 mt-1">
               Statistiques combinées de {totalPlatformCount} plateformes
             </div>
