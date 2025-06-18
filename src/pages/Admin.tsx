@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -35,7 +34,7 @@ const Admin = () => {
 
     setLoadingUsers(true);
     try {
-      // Récupérer seulement les rôles des utilisateurs et leurs profils
+      // Récupérer les rôles avec les profils en utilisant une jointure
       const { data: usersData, error: usersError } = await supabase
         .from('user_roles')
         .select(`
@@ -44,18 +43,26 @@ const Admin = () => {
           created_at, 
           approved_at, 
           approved_by,
-          profiles!inner(username)
+          profiles(username)
         `)
         .order('created_at', { ascending: false });
 
-      if (usersError) throw usersError;
+      if (usersError) {
+        console.error('Error fetching users with profiles:', usersError);
+        throw usersError;
+      }
+
+      console.log('Données utilisateurs récupérées:', usersData);
 
       // Combiner toutes les données disponibles
       const combinedUsers: User[] = (usersData || []).map((userRoleItem: any) => {
+        const username = userRoleItem.profiles?.username || 'Utilisateur sans nom';
+        console.log(`Utilisateur ${userRoleItem.user_id}: username = ${username}`);
+        
         return {
           id: userRoleItem.user_id,
-          email: `user-${userRoleItem.user_id.slice(0, 8)}@domain.com`, // Email masqué pour la sécurité
-          username: userRoleItem.profiles?.username || 'Utilisateur',
+          email: `user-${userRoleItem.user_id.slice(0, 8)}@domain.com`,
+          username: username,
           role: userRoleItem.role as UserRole,
           created_at: userRoleItem.created_at || '',
           approved_at: userRoleItem.approved_at || undefined,
@@ -63,16 +70,17 @@ const Admin = () => {
         };
       });
 
+      console.log('Utilisateurs combinés:', combinedUsers);
       setAllUsers(combinedUsers);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast({
-        title: "Information",
-        description: "Affichage des utilisateurs avec informations limitées pour des raisons de sécurité",
-        variant: "default",
+        title: "Erreur",
+        description: "Impossible de charger les utilisateurs",
+        variant: "destructive",
       });
       
-      // En cas d'erreur, on récupère au moins les rôles
+      // En cas d'erreur, essayer de récupérer au moins les rôles
       try {
         const { data: rolesData } = await supabase
           .from('user_roles')
@@ -82,7 +90,7 @@ const Admin = () => {
         const basicUsers: User[] = (rolesData || []).map((roleItem: any) => ({
           id: roleItem.user_id,
           email: `user-${roleItem.user_id.slice(0, 8)}`,
-          username: 'Utilisateur',
+          username: 'Nom indisponible',
           role: roleItem.role as UserRole,
           created_at: roleItem.created_at || '',
           approved_at: roleItem.approved_at,

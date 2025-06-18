@@ -12,7 +12,7 @@ export const NotificationSettingsWrapper: React.FC = () => {
         <Button 
           variant="secondary-3d" 
           size="sm"
-          className="rose-glow"
+          className="rose-glow transform-none hover:transform-none"
         >
           <div className="p-1 rounded-full bg-gradient-to-r from-[#FF6B9D] to-[#FFB3CD] mr-2">
             <Bell className="h-3 w-3 text-white" />
