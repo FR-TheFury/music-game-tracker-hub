@@ -54,13 +54,14 @@ export const useAdminUsers = (userRole: UserRole | null) => {
       console.log('Profils récupérés:', profiles);
 
       // Étape 3: Récupérer les métadonnées des utilisateurs depuis auth
-      const { data: { users: authUsers }, error: authError } = await supabase.auth.admin.listUsers();
+      const { data: authResponse, error: authError } = await supabase.auth.admin.listUsers();
 
       if (authError) {
         console.error('Erreur lors de la récupération des utilisateurs auth:', authError);
         // Continue sans les données auth si erreur (pas d'accès admin)
       }
 
+      const authUsers = authResponse?.users || [];
       console.log('Utilisateurs auth récupérés:', authUsers);
 
       // Étape 4: Combiner toutes les données
