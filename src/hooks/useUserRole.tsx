@@ -157,37 +157,59 @@ export const useUserRole = () => {
     }
   }, [userRole]);
 
-  // Écouter les changements de rôles en temps réel
+  // Écouter les changements de rôles en temps réel avec une gestion plus robuste
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
 
-    // Créer un canal avec un nom unique incluant l'ID utilisateur
-    const channelName = `user-role-changes-${user.id}`;
-    
-    const subscription = supabase
-      .channel(channelName)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'user_roles',
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          console.log('Changement de rôle détecté:', payload);
-          if (payload.new && payload.new.role) {
-            setUserRole(payload.new.role as UserRole);
-          }
-        }
-      )
-      .subscribe();
+    let channel: any = null;
+
+    const setupRealTimeSubscription = async () => {
+      try {
+        // Créer un canal avec un nom unique et un timestamp pour éviter les collisions
+        const channelName = `user-role-changes-${user.id}-${Date.now()}`;
+        
+        console.log('Configuration de la souscription realtime pour:', channelName);
+        
+        channel = supabase
+          .channel(channelName)
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'user_roles',
+              filter: `user_id=eq.${user.id}`,
+            },
+            (payload) => {
+              console.log('Changement de rôle détecté:', payload);
+              if (payload.new && payload.new.role) {
+                setUserRole(payload.new.role as UserRole);
+              }
+            }
+          );
+
+        // S'abonner au canal
+        const subscriptionResult = await channel.subscribe();
+        console.log('Résultat de la souscription:', subscriptionResult);
+        
+      } catch (error) {
+        console.error('Erreur lors de la configuration de la souscription realtime:', error);
+      }
+    };
+
+    setupRealTimeSubscription();
 
     return () => {
-      console.log('Nettoyage de la souscription realtime');
-      supabase.removeChannel(subscription);
+      if (channel) {
+        console.log('Nettoyage de la souscription realtime');
+        try {
+          supabase.removeChannel(channel);
+        } catch (error) {
+          console.error('Erreur lors du nettoyage du canal:', error);
+        }
+      }
     };
-  }, [user?.id]); // Dépendance sur user.id plutôt que user entier
+  }, [user?.id]); // Dépendance uniquement sur user.id
 
   return {
     userRole,
