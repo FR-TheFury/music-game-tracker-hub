@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -187,6 +188,10 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
   const handleLinkClick = (e: React.MouseEvent) => {
     e.stopPropagation();
   };
+
+  const displayFollowers = getDisplayFollowers();
+  const displayPlays = getDisplayPlays();
+  const displayPopularity = getDisplayPopularity();
 
   return (
     <Card 
