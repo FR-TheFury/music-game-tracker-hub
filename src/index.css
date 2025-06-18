@@ -16,7 +16,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 342 100% 51%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -25,26 +25,35 @@
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 342 100% 51%;
+    --accent-foreground: 210 40% 98%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --ring: 342 100% 51%;
 
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary: 342 100% 51%;
     --sidebar-primary-foreground: 0 0% 98%;
     --sidebar-accent: 240 4.8% 95.9%;
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 342 100% 51%;
+
+    /* Custom Rose Red Variables */
+    --rose-primary: #FF0751;
+    --rose-primary-light: #FF3971;
+    --rose-primary-dark: #E6053D;
+    --rose-secondary: #FF6B9D;
+    --rose-accent: #FFB3CD;
+    --rose-gradient-start: #FF0751;
+    --rose-gradient-end: #E6053D;
   }
 
   .dark {
@@ -57,8 +66,8 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 342 100% 51%;
+    --primary-foreground: 210 40% 98%;
 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
@@ -66,7 +75,7 @@
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 342 100% 51%;
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 62.8% 30.6%;
@@ -74,15 +83,15 @@
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --ring: 342 100% 51%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary: 342 100% 51%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 240 3.7% 15.9%;
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 342 100% 51%;
   }
 }
 
@@ -96,159 +105,245 @@
   }
 }
 
-/* Enhanced 3D Button Styles */
+/* Enhanced 3D Button Styles with Rose Red Theme */
 @layer components {
   .btn-3d-primary {
     @apply relative overflow-hidden;
-    background: linear-gradient(135deg, #9333ea 0%, #7c3aed 50%, #6d28d9 100%);
+    background: linear-gradient(135deg, #FF0751 0%, #E6053D 50%, #CC0439 100%);
     box-shadow: 
-      0 4px 8px rgba(147, 51, 234, 0.3),
-      0 2px 4px rgba(0, 0, 0, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.2);
-    border: 1px solid rgba(147, 51, 234, 0.4);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      0 6px 16px rgba(255, 7, 81, 0.4),
+      0 3px 8px rgba(0, 0, 0, 0.3),
+      inset 0 2px 0 rgba(255, 255, 255, 0.3),
+      inset 0 -2px 0 rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 7, 81, 0.6);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateY(0px);
   }
 
   .btn-3d-primary:hover {
-    background: linear-gradient(135deg, #a855f7 0%, #8b5cf6 50%, #7c3aed 100%);
+    background: linear-gradient(135deg, #FF3971 0%, #FF0751 50%, #E6053D 100%);
     box-shadow: 
-      0 6px 12px rgba(147, 51, 234, 0.4),
-      0 3px 6px rgba(0, 0, 0, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.3);
-    transform: translateY(-1px);
+      0 8px 20px rgba(255, 7, 81, 0.5),
+      0 4px 12px rgba(0, 0, 0, 0.4),
+      inset 0 2px 0 rgba(255, 255, 255, 0.4),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
   }
 
   .btn-3d-primary:active {
-    transform: translateY(0px) scale(0.98);
+    transform: translateY(1px) scale(0.98);
     box-shadow: 
-      0 2px 4px rgba(147, 51, 234, 0.3),
-      0 1px 2px rgba(0, 0, 0, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      0 2px 8px rgba(255, 7, 81, 0.4),
+      0 1px 4px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.2);
   }
 
   .btn-3d-secondary {
     @apply relative overflow-hidden;
-    background: linear-gradient(135deg, #475569 0%, #334155 50%, #1e293b 100%);
+    background: linear-gradient(135deg, #FF6B9D 0%, #FF3971 50%, #FF0751 100%);
     box-shadow: 
-      0 4px 8px rgba(71, 85, 105, 0.3),
-      0 2px 4px rgba(0, 0, 0, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(71, 85, 105, 0.4);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      0 5px 12px rgba(255, 107, 157, 0.3),
+      0 2px 6px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 107, 157, 0.5);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .btn-3d-secondary:hover {
-    background: linear-gradient(135deg, #64748b 0%, #475569 50%, #334155 100%);
+    background: linear-gradient(135deg, #FFB3CD 0%, #FF6B9D 50%, #FF3971 100%);
     box-shadow: 
-      0 6px 12px rgba(71, 85, 105, 0.4),
-      0 3px 6px rgba(0, 0, 0, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      0 7px 16px rgba(255, 107, 157, 0.4),
+      0 3px 8px rgba(0, 0, 0, 0.3),
+      inset 0 2px 0 rgba(255, 255, 255, 0.3),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.1);
     transform: translateY(-1px);
   }
 
   .btn-3d-secondary:active {
-    transform: translateY(0px) scale(0.98);
+    transform: translateY(1px) scale(0.98);
     box-shadow: 
-      0 2px 4px rgba(71, 85, 105, 0.3),
-      0 1px 2px rgba(0, 0, 0, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      0 2px 6px rgba(255, 107, 157, 0.3),
+      0 1px 3px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.15);
   }
 
   .btn-3d-success {
     @apply relative overflow-hidden;
     background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
     box-shadow: 
-      0 4px 8px rgba(16, 185, 129, 0.3),
-      0 2px 4px rgba(0, 0, 0, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.2);
-    border: 1px solid rgba(16, 185, 129, 0.4);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      0 5px 12px rgba(16, 185, 129, 0.3),
+      0 2px 6px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.5);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .btn-3d-success:hover {
     background: linear-gradient(135deg, #34d399 0%, #10b981 50%, #059669 100%);
     box-shadow: 
-      0 6px 12px rgba(16, 185, 129, 0.4),
-      0 3px 6px rgba(0, 0, 0, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+      0 7px 16px rgba(16, 185, 129, 0.4),
+      0 3px 8px rgba(0, 0, 0, 0.3),
+      inset 0 2px 0 rgba(255, 255, 255, 0.3),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.1);
     transform: translateY(-1px);
   }
 
   .btn-3d-success:active {
-    transform: translateY(0px) scale(0.98);
+    transform: translateY(1px) scale(0.98);
     box-shadow: 
-      0 2px 4px rgba(16, 185, 129, 0.3),
-      0 1px 2px rgba(0, 0, 0, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      0 2px 6px rgba(16, 185, 129, 0.3),
+      0 1px 3px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.15);
   }
 
   .btn-3d-danger {
     @apply relative overflow-hidden;
     background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%);
     box-shadow: 
-      0 4px 8px rgba(239, 68, 68, 0.3),
-      0 2px 4px rgba(0, 0, 0, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.2);
-    border: 1px solid rgba(239, 68, 68, 0.4);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      0 5px 12px rgba(239, 68, 68, 0.3),
+      0 2px 6px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.5);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .btn-3d-danger:hover {
     background: linear-gradient(135deg, #f87171 0%, #ef4444 50%, #dc2626 100%);
     box-shadow: 
-      0 6px 12px rgba(239, 68, 68, 0.4),
-      0 3px 6px rgba(0, 0, 0, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+      0 7px 16px rgba(239, 68, 68, 0.4),
+      0 3px 8px rgba(0, 0, 0, 0.3),
+      inset 0 2px 0 rgba(255, 255, 255, 0.3),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.1);
     transform: translateY(-1px);
   }
 
   .btn-3d-danger:active {
-    transform: translateY(0px) scale(0.98);
+    transform: translateY(1px) scale(0.98);
     box-shadow: 
-      0 2px 4px rgba(239, 68, 68, 0.3),
-      0 1px 2px rgba(0, 0, 0, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      0 2px 6px rgba(239, 68, 68, 0.3),
+      0 1px 3px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.15);
   }
 
   .btn-3d-outline {
     @apply relative overflow-hidden bg-transparent;
-    border: 2px solid rgba(147, 51, 234, 0.6);
+    border: 2px solid rgba(255, 7, 81, 0.7);
     box-shadow: 
-      0 2px 4px rgba(147, 51, 234, 0.2),
+      0 3px 8px rgba(255, 7, 81, 0.2),
       inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .btn-3d-outline:hover {
-    background: linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(124, 58, 237, 0.15) 100%);
-    border-color: rgba(147, 51, 234, 0.8);
+    background: linear-gradient(135deg, rgba(255, 7, 81, 0.1) 0%, rgba(255, 57, 113, 0.15) 100%);
+    border-color: rgba(255, 7, 81, 0.9);
     box-shadow: 
-      0 4px 8px rgba(147, 51, 234, 0.3),
-      0 2px 4px rgba(0, 0, 0, 0.1),
+      0 5px 12px rgba(255, 7, 81, 0.3),
+      0 2px 6px rgba(0, 0, 0, 0.1),
       inset 0 1px 0 rgba(255, 255, 255, 0.2);
     transform: translateY(-1px);
   }
 
   .btn-3d-outline:active {
-    transform: translateY(0px) scale(0.98);
-    background: rgba(147, 51, 234, 0.05);
+    transform: translateY(1px) scale(0.98);
+    background: rgba(255, 7, 81, 0.05);
   }
 
   .btn-3d-ghost {
     @apply relative overflow-hidden bg-transparent;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .btn-3d-ghost:hover {
-    background: linear-gradient(135deg, rgba(71, 85, 105, 0.1) 0%, rgba(51, 65, 85, 0.15) 100%);
+    background: linear-gradient(135deg, rgba(255, 7, 81, 0.1) 0%, rgba(255, 57, 113, 0.15) 100%);
     box-shadow: 
-      0 2px 4px rgba(0, 0, 0, 0.1),
+      0 3px 8px rgba(255, 7, 81, 0.2),
       inset 0 1px 0 rgba(255, 255, 255, 0.1);
     transform: translateY(-1px);
   }
 
   .btn-3d-ghost:active {
-    transform: translateY(0px) scale(0.98);
-    background: rgba(71, 85, 105, 0.05);
+    transform: translateY(1px) scale(0.98);
+    background: rgba(255, 7, 81, 0.05);
+  }
+
+  /* 3D Card Styles */
+  .card-3d {
+    @apply relative;
+    background: linear-gradient(145deg, rgba(30, 30, 30, 0.9), rgba(15, 15, 15, 0.95));
+    box-shadow: 
+      0 8px 24px rgba(0, 0, 0, 0.4),
+      0 4px 12px rgba(255, 7, 81, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 7, 81, 0.2);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .card-3d:hover {
+    box-shadow: 
+      0 12px 32px rgba(0, 0, 0, 0.5),
+      0 6px 16px rgba(255, 7, 81, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+    border-color: rgba(255, 7, 81, 0.4);
+    transform: translateY(-4px) scale(1.02);
+  }
+
+  /* 3D Header Gradient */
+  .header-3d {
+    background: linear-gradient(135deg, 
+      rgba(15, 15, 15, 0.95) 0%, 
+      rgba(30, 30, 30, 0.9) 50%, 
+      rgba(255, 7, 81, 0.1) 100%);
+    backdrop-filter: blur(20px);
+    box-shadow: 
+      0 4px 16px rgba(0, 0, 0, 0.3),
+      0 2px 8px rgba(255, 7, 81, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 7, 81, 0.3);
+  }
+
+  /* 3D Background Gradient */
+  .bg-3d-main {
+    background: linear-gradient(135deg, 
+      #0f0f0f 0%, 
+      #1a1a1a 25%, 
+      rgba(255, 7, 81, 0.05) 50%, 
+      #1a1a1a 75%, 
+      #0f0f0f 100%);
+  }
+
+  /* Rose Glow Effects */
+  .rose-glow {
+    box-shadow: 0 0 20px rgba(255, 7, 81, 0.3);
+  }
+
+  .rose-glow-strong {
+    box-shadow: 0 0 30px rgba(255, 7, 81, 0.5);
+  }
+
+  /* 3D Input Styles */
+  .input-3d {
+    background: linear-gradient(145deg, rgba(30, 30, 30, 0.8), rgba(15, 15, 15, 0.9));
+    border: 1px solid rgba(255, 7, 81, 0.3);
+    box-shadow: 
+      inset 0 2px 4px rgba(0, 0, 0, 0.3),
+      0 1px 2px rgba(255, 7, 81, 0.1);
+    transition: all 0.3s ease;
+  }
+
+  .input-3d:focus {
+    border-color: rgba(255, 7, 81, 0.6);
+    box-shadow: 
+      inset 0 2px 4px rgba(0, 0, 0, 0.2),
+      0 0 12px rgba(255, 7, 81, 0.2);
   }
 }

@@ -1,3 +1,4 @@
+
 import { useAuth } from "@/hooks/useAuth";
 import { AuthPage } from "@/components/AuthPage";
 import { RoleGuard } from "@/components/RoleGuard";
@@ -22,8 +23,8 @@ const Index = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-600"></div>
+      <div className="flex items-center justify-center min-h-screen bg-3d-main">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#FF0751] rose-glow"></div>
       </div>
     );
   }
@@ -34,14 +35,18 @@ const Index = () => {
 
   return (
     <RoleGuard>
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        <header className="bg-slate-800/90 backdrop-blur-sm border-b border-slate-700">
+      <div className="min-h-screen bg-3d-main">
+        <header className="header-3d">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center gap-3">
-                <Music className="h-8 w-8 text-purple-400" />
-                <Gamepad2 className="h-8 w-8 text-blue-400" />
-                <h1 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+                <div className="p-2 rounded-full bg-gradient-to-r from-[#FF0751] to-[#FF3971] rose-glow">
+                  <Music className="h-6 w-6 text-white" />
+                </div>
+                <div className="p-2 rounded-full bg-gradient-to-r from-[#FF6B9D] to-[#FFB3CD]">
+                  <Gamepad2 className="h-6 w-6 text-white" />
+                </div>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF0751] to-[#FF6B9D] bg-clip-text text-transparent">
                   Mon Dashboard
                 </h1>
               </div>
@@ -56,6 +61,7 @@ const Index = () => {
                     onClick={() => navigate('/admin')}
                     variant="primary-3d"
                     size="sm"
+                    className="rose-glow"
                   >
                     <Shield className="h-4 w-4 mr-2" />
                     Administration
@@ -73,7 +79,7 @@ const Index = () => {
                       Mon Profil
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl bg-slate-800 border-slate-700">
+                  <DialogContent className="max-w-2xl card-3d">
                     <UserProfile />
                   </DialogContent>
                 </Dialog>
@@ -85,6 +91,7 @@ const Index = () => {
                   onClick={signOut}
                   variant="ghost-3d" 
                   size="sm"
+                  className="text-[#FF0751] hover:text-white"
                 >
                   <LogOut className="h-4 w-4 mr-2" />
                   Déconnexion
@@ -105,7 +112,9 @@ const Index = () => {
             <section className="mb-12">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                  <Music className="h-6 w-6 text-purple-400" />
+                  <div className="p-2 rounded-full bg-gradient-to-r from-[#FF0751] to-[#FFB3CD] rose-glow">
+                    <Music className="h-5 w-5 text-white" />
+                  </div>
                   Mes Artistes
                 </h2>
                 <RoleGuard allowedRoles={['admin', 'editor']}>
@@ -122,7 +131,9 @@ const Index = () => {
             <section>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                  <Gamepad2 className="h-6 w-6 text-blue-400" />
+                  <div className="p-2 rounded-full bg-gradient-to-r from-[#FF6B9D] to-[#FFB3CD]">
+                    <Gamepad2 className="h-5 w-5 text-white" />
+                  </div>
                   Ma Liste de Souhaits
                 </h2>
                 <RoleGuard allowedRoles={['admin', 'editor']}>
