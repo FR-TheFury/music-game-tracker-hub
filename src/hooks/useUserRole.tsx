@@ -23,19 +23,30 @@ export const useUserRole = () => {
   const { toast } = useToast();
 
   const fetchUserRole = async () => {
-    if (!user) return;
+    if (!user) {
+      setUserRole(null);
+      setLoading(false);
+      return;
+    }
 
     try {
+      console.log('Récupération du rôle pour l\'utilisateur:', user.id);
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erreur lors de la récupération du rôle:', error);
+        throw error;
+      }
+      
+      console.log('Rôle utilisateur récupéré:', data.role);
       setUserRole(data.role as UserRole);
     } catch (error) {
       console.error('Error fetching user role:', error);
+      setUserRole('pending'); // Fallback en cas d'erreur
     } finally {
       setLoading(false);
     }
@@ -62,6 +73,8 @@ export const useUserRole = () => {
     if (!user || userRole !== 'admin') return;
 
     try {
+      console.log('Approbation de l\'utilisateur:', userId, 'avec le rôle:', newRole);
+      
       // Update user role
       const { error: roleError } = await supabase
         .from('user_roles')
@@ -84,6 +97,12 @@ export const useUserRole = () => {
 
       // Refresh pending validations
       await fetchPendingValidations();
+
+      // Si c'est l'utilisateur actuel qui est approuvé, rafraîchir son rôle
+      if (userId === user.id) {
+        console.log('Rafraîchissement du rôle de l\'utilisateur actuel');
+        await fetchUserRole();
+      }
 
       toast({
         title: "Utilisateur approuvé",
@@ -138,6 +157,34 @@ export const useUserRole = () => {
     }
   }, [userRole]);
 
+  // Écouter les changements de rôles en temps réel
+  useEffect(() => {
+    if (!user) return;
+
+    const subscription = supabase
+      .channel('user-role-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'user_roles',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('Changement de rôle détecté:', payload);
+          if (payload.new && payload.new.role) {
+            setUserRole(payload.new.role as UserRole);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, [user]);
+
   return {
     userRole,
     loading,
@@ -145,5 +192,6 @@ export const useUserRole = () => {
     approveUser,
     rejectUser,
     refetchPendingValidations: fetchPendingValidations,
+    refetchUserRole: fetchUserRole,
   };
 };

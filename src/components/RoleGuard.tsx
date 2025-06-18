@@ -17,6 +17,8 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
 }) => {
   const { userRole, loading } = useUserRole();
 
+  console.log('RoleGuard - Rôle utilisateur:', userRole, 'Chargement:', loading, 'Rôles autorisés:', allowedRoles);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -26,6 +28,7 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
   }
 
   if (!userRole || userRole === 'pending') {
+    console.log('RoleGuard - Utilisateur en attente ou sans rôle');
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center px-4">
         <Card className="w-full max-w-md bg-slate-800/90 border-slate-700 backdrop-blur-sm">
@@ -51,6 +54,7 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
   }
 
   if (!allowedRoles.includes(userRole)) {
+    console.log('RoleGuard - Accès refusé pour le rôle:', userRole);
     return fallback || (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center px-4">
         <Card className="w-full max-w-md bg-slate-800/90 border-slate-700 backdrop-blur-sm">
@@ -66,11 +70,15 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
             <p className="text-gray-300">
               Vous n'avez pas les permissions nécessaires pour accéder à cette page.
             </p>
+            <p className="text-gray-400 text-sm mt-2">
+              Rôle actuel: {userRole}
+            </p>
           </CardContent>
         </Card>
       </div>
     );
   }
 
+  console.log('RoleGuard - Accès autorisé pour le rôle:', userRole);
   return <>{children}</>;
 };
