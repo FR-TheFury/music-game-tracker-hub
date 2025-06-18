@@ -1,8 +1,9 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, Trash2, Music, Calendar } from 'lucide-react';
+import { ExternalLink, Trash2, Music, Calendar, Users, Star } from 'lucide-react';
 
 interface Artist {
   id: string;
@@ -12,6 +13,13 @@ interface Artist {
   imageUrl?: string;
   lastRelease?: string;
   addedAt: string;
+  spotifyId?: string;
+  bio?: string;
+  genres?: string[];
+  popularity?: number;
+  followersCount?: number;
+  multipleUrls?: Array<{ platform: string; url: string }>;
+  profileImageUrl?: string;
 }
 
 interface ArtistCardProps {
@@ -20,6 +28,8 @@ interface ArtistCardProps {
 }
 
 export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
+  const navigate = useNavigate();
+
   const getPlatformColor = (platform: string) => {
     switch (platform.toLowerCase()) {
       case 'spotify':
@@ -43,13 +53,43 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
     });
   };
 
+  const getDisplayImage = () => {
+    return artist.profileImageUrl || artist.imageUrl || '/placeholder.svg';
+  };
+
+  const handleCardClick = () => {
+    navigate(`/artist/${artist.id}`);
+  };
+
+  const handleRemoveClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Empêche la navigation quand on clique sur supprimer
+    onRemove(artist.id);
+  };
+
+  const handleLinkClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Empêche la navigation quand on clique sur le lien
+  };
+
   return (
-    <Card className="bg-slate-800/70 border-slate-700 backdrop-blur-sm hover:bg-slate-800/90 transition-all duration-300 group hover:scale-105 hover:shadow-xl hover:shadow-purple-500/20">
+    <Card 
+      className="bg-slate-800/70 border-slate-700 backdrop-blur-sm hover:bg-slate-800/90 transition-all duration-300 group hover:scale-105 hover:shadow-xl hover:shadow-purple-500/20 cursor-pointer"
+      onClick={handleCardClick}
+    >
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-full bg-gradient-to-r ${getPlatformColor(artist.platform)} flex items-center justify-center`}>
-              <Music className="h-6 w-6 text-white" />
+            <div className="relative">
+              {artist.profileImageUrl ? (
+                <img
+                  src={getDisplayImage()}
+                  alt={artist.name}
+                  className="w-12 h-12 rounded-full object-cover"
+                />
+              ) : (
+                <div className={`w-12 h-12 rounded-full bg-gradient-to-r ${getPlatformColor(artist.platform)} flex items-center justify-center`}>
+                  <Music className="h-6 w-6 text-white" />
+                </div>
+              )}
             </div>
             <div>
               <h3 className="text-lg font-semibold text-white group-hover:text-purple-300 transition-colors">
@@ -58,17 +98,40 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
               <p className="text-sm text-gray-400">
                 {artist.platform}
               </p>
+              {artist.genres && artist.genres.length > 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  {artist.genres.slice(0, 2).join(', ')}
+                </p>
+              )}
             </div>
           </div>
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => onRemove(artist.id)}
+            onClick={handleRemoveClick}
             className="text-gray-400 hover:text-red-400 hover:bg-red-500/10"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
+
+        {/* Statistiques Spotify */}
+        {(artist.followersCount || artist.popularity) && (
+          <div className="mb-4 flex gap-4 text-sm text-gray-400">
+            {artist.followersCount && (
+              <div className="flex items-center gap-1">
+                <Users className="h-3 w-3" />
+                <span>{(artist.followersCount / 1000).toFixed(0)}k</span>
+              </div>
+            )}
+            {artist.popularity && (
+              <div className="flex items-center gap-1">
+                <Star className="h-3 w-3" />
+                <span>{artist.popularity}%</span>
+              </div>
+            )}
+          </div>
+        )}
 
         {artist.lastRelease && (
           <div className="mb-4 p-3 bg-slate-700/50 rounded-lg border border-slate-600">
@@ -80,6 +143,12 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
           </div>
         )}
 
+        {artist.bio && (
+          <div className="mb-4">
+            <p className="text-sm text-gray-400 line-clamp-2">{artist.bio}</p>
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
           <div className="text-xs text-gray-500">
             Ajouté le {formatDate(artist.addedAt)}
@@ -88,6 +157,7 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
             variant="outline"
             size="sm"
             asChild
+            onClick={handleLinkClick}
             className="border-purple-500/30 text-purple-300 hover:bg-purple-500/10 hover:border-purple-400"
           >
             <a href={artist.url} target="_blank" rel="noopener noreferrer">

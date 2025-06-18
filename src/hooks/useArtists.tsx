@@ -12,6 +12,27 @@ interface Artist {
   imageUrl?: string;
   lastRelease?: string;
   addedAt: string;
+  // Nouvelles propriétés
+  spotifyId?: string;
+  bio?: string;
+  genres?: string[];
+  popularity?: number;
+  followersCount?: number;
+  multipleUrls?: Array<{ platform: string; url: string }>;
+  profileImageUrl?: string;
+}
+
+interface ArtistRelease {
+  id: string;
+  spotifyId: string;
+  name: string;
+  releaseType: string;
+  releaseDate?: string;
+  imageUrl?: string;
+  externalUrls?: any;
+  totalTracks?: number;
+  popularity?: number;
+  createdAt: string;
 }
 
 export const useArtists = () => {
@@ -40,6 +61,13 @@ export const useArtists = () => {
         imageUrl: artist.image_url,
         lastRelease: artist.last_release,
         addedAt: artist.created_at,
+        spotifyId: artist.spotify_id,
+        bio: artist.bio,
+        genres: artist.genres,
+        popularity: artist.popularity,
+        followersCount: artist.followers_count,
+        multipleUrls: artist.multiple_urls,
+        profileImageUrl: artist.profile_image_url,
       }));
 
       setArtists(formattedArtists);
@@ -73,6 +101,13 @@ export const useArtists = () => {
             url: artistData.url,
             image_url: artistData.imageUrl,
             last_release: artistData.lastRelease,
+            spotify_id: artistData.spotifyId,
+            bio: artistData.bio,
+            genres: artistData.genres,
+            popularity: artistData.popularity,
+            followers_count: artistData.followersCount,
+            multiple_urls: artistData.multipleUrls,
+            profile_image_url: artistData.profileImageUrl,
           },
         ])
         .select()
@@ -88,6 +123,13 @@ export const useArtists = () => {
         imageUrl: data.image_url,
         lastRelease: data.last_release,
         addedAt: data.created_at,
+        spotifyId: data.spotify_id,
+        bio: data.bio,
+        genres: data.genres,
+        popularity: data.popularity,
+        followersCount: data.followers_count,
+        multipleUrls: data.multiple_urls,
+        profileImageUrl: data.profile_image_url,
       };
 
       setArtists(prev => [newArtist, ...prev]);
@@ -131,10 +173,39 @@ export const useArtists = () => {
     }
   };
 
+  const getArtistReleases = async (artistId: string): Promise<ArtistRelease[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('artist_releases')
+        .select('*')
+        .eq('artist_id', artistId)
+        .order('release_date', { ascending: false });
+
+      if (error) throw error;
+
+      return data.map(release => ({
+        id: release.id,
+        spotifyId: release.spotify_id,
+        name: release.name,
+        releaseType: release.release_type,
+        releaseDate: release.release_date,
+        imageUrl: release.image_url,
+        externalUrls: release.external_urls,
+        totalTracks: release.total_tracks,
+        popularity: release.popularity,
+        createdAt: release.created_at,
+      }));
+    } catch (error) {
+      console.error('Error fetching artist releases:', error);
+      return [];
+    }
+  };
+
   return {
     artists,
     loading,
     addArtist,
     removeArtist,
+    getArtistReleases,
   };
 };

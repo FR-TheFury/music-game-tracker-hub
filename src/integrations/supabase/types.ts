@@ -9,36 +9,110 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      artist_releases: {
+        Row: {
+          artist_id: string
+          created_at: string | null
+          external_urls: Json | null
+          id: string
+          image_url: string | null
+          name: string
+          popularity: number | null
+          release_date: string | null
+          release_type: string
+          spotify_id: string
+          total_tracks: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          artist_id: string
+          created_at?: string | null
+          external_urls?: Json | null
+          id?: string
+          image_url?: string | null
+          name: string
+          popularity?: number | null
+          release_date?: string | null
+          release_type: string
+          spotify_id: string
+          total_tracks?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          artist_id?: string
+          created_at?: string | null
+          external_urls?: Json | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          popularity?: number | null
+          release_date?: string | null
+          release_type?: string
+          spotify_id?: string
+          total_tracks?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artist_releases_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       artists: {
         Row: {
+          bio: string | null
           created_at: string | null
+          followers_count: number | null
+          genres: string[] | null
           id: string
           image_url: string | null
           last_release: string | null
+          multiple_urls: Json | null
           name: string
           platform: string
+          popularity: number | null
+          profile_image_url: string | null
+          spotify_id: string | null
           updated_at: string | null
           url: string
           user_id: string
         }
         Insert: {
+          bio?: string | null
           created_at?: string | null
+          followers_count?: number | null
+          genres?: string[] | null
           id?: string
           image_url?: string | null
           last_release?: string | null
+          multiple_urls?: Json | null
           name: string
           platform: string
+          popularity?: number | null
+          profile_image_url?: string | null
+          spotify_id?: string | null
           updated_at?: string | null
           url: string
           user_id: string
         }
         Update: {
+          bio?: string | null
           created_at?: string | null
+          followers_count?: number | null
+          genres?: string[] | null
           id?: string
           image_url?: string | null
           last_release?: string | null
+          multiple_urls?: Json | null
           name?: string
           platform?: string
+          popularity?: number | null
+          profile_image_url?: string | null
+          spotify_id?: string | null
           updated_at?: string | null
           url?: string
           user_id?: string
