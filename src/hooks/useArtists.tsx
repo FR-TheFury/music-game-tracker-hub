@@ -104,8 +104,8 @@ export const useArtists = () => {
         followersCount: artist.followers_count,
         multipleUrls: parseMultipleUrls(artist.multiple_urls),
         profileImageUrl: artist.profile_image_url,
-        totalFollowers: artist.total_followers,
-        averagePopularity: artist.average_popularity,
+        totalFollowers: artist.total_followers || 0,
+        averagePopularity: artist.average_popularity || 0,
         platformStats: parsePlatformStats(artist.platform_stats),
       }));
 
@@ -148,8 +148,8 @@ export const useArtists = () => {
             followers_count: artistData.followersCount,
             multiple_urls: artistData.multipleUrls || [],
             profile_image_url: artistData.profileImageUrl,
-            total_followers: artistData.totalFollowers,
-            average_popularity: artistData.averagePopularity,
+            total_followers: artistData.totalFollowers || 0,
+            average_popularity: artistData.averagePopularity || 0,
             platform_stats: artistData.platformStats || [],
           },
         ])
@@ -174,8 +174,8 @@ export const useArtists = () => {
         followersCount: data.followers_count,
         multipleUrls: parseMultipleUrls(data.multiple_urls),
         profileImageUrl: data.profile_image_url,
-        totalFollowers: data.total_followers,
-        averagePopularity: data.average_popularity,
+        totalFollowers: data.total_followers || 0,
+        averagePopularity: data.average_popularity || 0,
         platformStats: parsePlatformStats(data.platform_stats),
       };
 

@@ -64,6 +64,7 @@ export type Database = {
       }
       artists: {
         Row: {
+          average_popularity: number | null
           bio: string | null
           created_at: string | null
           deezer_id: number | null
@@ -75,14 +76,17 @@ export type Database = {
           multiple_urls: Json | null
           name: string
           platform: string
+          platform_stats: Json | null
           popularity: number | null
           profile_image_url: string | null
           spotify_id: string | null
+          total_followers: number | null
           updated_at: string | null
           url: string
           user_id: string
         }
         Insert: {
+          average_popularity?: number | null
           bio?: string | null
           created_at?: string | null
           deezer_id?: number | null
@@ -94,14 +98,17 @@ export type Database = {
           multiple_urls?: Json | null
           name: string
           platform: string
+          platform_stats?: Json | null
           popularity?: number | null
           profile_image_url?: string | null
           spotify_id?: string | null
+          total_followers?: number | null
           updated_at?: string | null
           url: string
           user_id: string
         }
         Update: {
+          average_popularity?: number | null
           bio?: string | null
           created_at?: string | null
           deezer_id?: number | null
@@ -113,9 +120,11 @@ export type Database = {
           multiple_urls?: Json | null
           name?: string
           platform?: string
+          platform_stats?: Json | null
           popularity?: number | null
           profile_image_url?: string | null
           spotify_id?: string | null
+          total_followers?: number | null
           updated_at?: string | null
           url?: string
           user_id?: string
