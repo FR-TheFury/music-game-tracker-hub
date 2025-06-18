@@ -1,12 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, ExternalLink, Users, Star, Calendar, Music, Play } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Calendar, Music } from 'lucide-react';
 import { useArtists } from '@/hooks/useArtists';
 import { useSpotify } from '@/hooks/useSpotify';
-import { useYouTubeStats } from '@/hooks/useYouTubeStats';
 import { ArtistNewReleases } from '@/components/ArtistNewReleases';
 
 const ArtistDetail: React.FC = () => {
@@ -20,34 +20,20 @@ const ArtistDetail: React.FC = () => {
   const [spotifyReleases, setSpotifyReleases] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Extraire l'ID de chaîne YouTube depuis l'URL si c'est une plateforme YouTube
-  const getYouTubeChannelId = (url: string) => {
-    const match = url.match(/\/channel\/([a-zA-Z0-9_-]+)/);
-    return match ? match[1] : null;
-  };
-
-  const isYouTubePlatform = artist?.platform.toLowerCase().includes('youtube');
-  const youtubeChannelId = isYouTubePlatform ? getYouTubeChannelId(artist?.url) : null;
-  const { stats: youtubeStats } = useYouTubeStats(youtubeChannelId || undefined);
-
   useEffect(() => {
     const loadArtistData = async () => {
       if (!id) return;
 
-      // Trouver l'artiste dans la liste
       const foundArtist = artists.find(a => a.id === id);
       setArtist(foundArtist);
 
       if (foundArtist) {
-        // Charger les sorties de la base de données
         const dbReleases = await getArtistReleases(id);
         setReleases(dbReleases);
 
-        // Si l'artiste a un Spotify ID, charger les détails depuis Spotify
         if (foundArtist.spotifyId) {
           const spotifyData = await getArtistDetails(foundArtist.spotifyId);
           if (spotifyData) {
-            // Filtrer les sorties Spotify pour ne garder que celles de moins d'un mois
             const oneMonthAgo = new Date();
             oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
             
@@ -80,40 +66,6 @@ const ArtistDetail: React.FC = () => {
     return artist?.profileImageUrl || artist?.imageUrl || '/placeholder.svg';
   };
 
-  const formatPlaysCount = (count?: number) => {
-    if (!count || count === 0) return null;
-    
-    if (count >= 1000000) {
-      return `${(count / 1000000).toFixed(1)}M`;
-    } else if (count >= 1000) {
-      return `${Math.floor(count / 1000)}k`;
-    }
-    return count.toString();
-  };
-
-  // Fonction pour récupérer le nombre total d'écoutes/vues
-  const getDisplayPlays = (): number => {
-    if (!artist) return 0;
-    
-    // Priorité au totalPlays stocké en base
-    if (artist.totalPlays && artist.totalPlays > 0) {
-      return artist.totalPlays;
-    }
-    
-    // Pour YouTube, utiliser viewCount des stats YouTube
-    if (isYouTubePlatform && youtubeStats?.viewCount) {
-      const numericViews = typeof youtubeStats.viewCount === 'string' 
-        ? parseInt(youtubeStats.viewCount.replace(/[^0-9]/g, '')) || 0
-        : youtubeStats.viewCount;
-      return numericViews;
-    }
-    
-    // Fallback sur lifetimePlays
-    return artist.lifetimePlays || 0;
-  };
-
-  const displayPlays = getDisplayPlays();
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
@@ -139,7 +91,6 @@ const ArtistDetail: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Header */}
         <div className="mb-8">
           <Button 
             onClick={() => navigate('/')}
@@ -166,29 +117,6 @@ const ArtistDetail: React.FC = () => {
                 <p className="text-gray-300 text-lg mb-4 leading-relaxed">{artist.bio}</p>
               )}
 
-              <div className="flex flex-wrap gap-4 mb-6">
-                {artist.followersCount && (
-                  <div className="flex items-center gap-2 text-gray-300">
-                    <Users className="h-4 w-4" />
-                    <span>{artist.followersCount.toLocaleString()} followers</span>
-                  </div>
-                )}
-                
-                {displayPlays > 0 && (
-                  <div className="flex items-center gap-2 text-gray-300">
-                    <Play className="h-4 w-4 text-green-400" />
-                    <span>{formatPlaysCount(displayPlays)} {isYouTubePlatform ? 'vues totales' : 'écoutes totales'}</span>
-                  </div>
-                )}
-                
-                {artist.popularity && (
-                  <div className="flex items-center gap-2 text-gray-300">
-                    <Star className="h-4 w-4" />
-                    <span>Popularité: {artist.popularity}/100</span>
-                  </div>
-                )}
-              </div>
-
               {artist.genres && artist.genres.length > 0 && (
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold text-white mb-2">Genres</h3>
@@ -202,7 +130,6 @@ const ArtistDetail: React.FC = () => {
                 </div>
               )}
 
-              {/* Liens vers les plateformes */}
               <div className="space-y-3">
                 <h3 className="text-lg font-semibold text-white">Plateformes</h3>
                 <div className="flex flex-wrap gap-3">
@@ -229,13 +156,11 @@ const ArtistDetail: React.FC = () => {
           </div>
         </div>
 
-        {/* Nouvelles sorties détectées automatiquement */}
         <ArtistNewReleases 
           artistId={id!} 
           artistPlatforms={artist.multipleUrls || []} 
         />
 
-        {/* Sorties Spotify récentes (moins d'un mois) */}
         {spotifyReleases.length > 0 && (
           <Card className="bg-slate-800/70 border-slate-700 backdrop-blur-sm mb-8">
             <CardHeader>
@@ -264,19 +189,6 @@ const ArtistDetail: React.FC = () => {
                             <Calendar className="h-3 w-3" />
                             {formatDate(release.release_date)}
                           </div>
-                        )}
-                        {release.external_urls?.spotify && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            asChild
-                            className="mt-2 p-0 h-auto text-green-400 hover:text-green-300"
-                          >
-                            <a href={release.external_urls.spotify} target="_blank" rel="noopener noreferrer">
-                              <Play className="h-3 w-3 mr-1" />
-                              Écouter
-                            </a>
-                          </Button>
                         )}
                       </div>
                     </div>

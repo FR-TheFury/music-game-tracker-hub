@@ -4,8 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ExternalLink, Trash2, Music, Calendar, Users, Star, Play } from 'lucide-react';
-import { useYouTubeStats } from '@/hooks/useYouTubeStats';
+import { ExternalLink, Trash2, Music, Calendar } from 'lucide-react';
 
 interface Artist {
   id: string;
@@ -15,24 +14,10 @@ interface Artist {
   imageUrl?: string;
   lastRelease?: string;
   addedAt: string;
-  spotifyId?: string;
   bio?: string;
   genres?: string[];
-  popularity?: number;
-  followersCount?: number;
   multipleUrls?: Array<{ platform: string; url: string }>;
   profileImageUrl?: string;
-  totalFollowers?: number;
-  averagePopularity?: number;
-  platformStats?: Array<{
-    platform: string;
-    followers?: number;
-    popularity?: number;
-  }>;
-  totalPlays?: number;
-  lifetimePlays?: number;
-  totalStreams?: number;
-  monthlyListeners?: number;
 }
 
 interface ArtistCardProps {
@@ -42,16 +27,6 @@ interface ArtistCardProps {
 
 export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
   const navigate = useNavigate();
-  
-  // Extraire l'ID de chaîne YouTube depuis l'URL si c'est une plateforme YouTube
-  const getYouTubeChannelId = (url: string) => {
-    const match = url.match(/\/channel\/([a-zA-Z0-9_-]+)/);
-    return match ? match[1] : null;
-  };
-
-  const isYouTubePlatform = artist.platform.toLowerCase().includes('youtube');
-  const youtubeChannelId = isYouTubePlatform ? getYouTubeChannelId(artist.url) : null;
-  const { stats: youtubeStats } = useYouTubeStats(youtubeChannelId || undefined);
 
   const getPlatformColor = (platform: string) => {
     switch (platform.toLowerCase()) {
@@ -90,19 +65,6 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
     return artist.profileImageUrl || artist.imageUrl || '/placeholder.svg';
   };
 
-  const formatCount = (count?: number) => {
-    if (!count || count === 0) return null;
-    
-    if (count >= 1000000000) {
-      return `${(count / 1000000000).toFixed(1)}B`;
-    } else if (count >= 1000000) {
-      return `${(count / 1000000).toFixed(1)}M`;
-    } else if (count >= 1000) {
-      return `${Math.floor(count / 1000)}k`;
-    }
-    return count.toString();
-  };
-
   const getAllPlatforms = () => {
     const platforms = [];
     platforms.push({ name: artist.platform, url: artist.url });
@@ -124,74 +86,6 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
   const allPlatforms = getAllPlatforms();
   const totalPlatformCount = allPlatforms.length;
 
-  // Logique corrigée pour l'affichage des followers
-  const getDisplayFollowers = (): number => {
-    // Priorité 1: totalFollowers (statistiques cumulées)
-    if (artist.totalFollowers && artist.totalFollowers > 0) {
-      return artist.totalFollowers;
-    }
-    
-    // Priorité 2: Pour YouTube, utiliser les stats récupérées
-    if (isYouTubePlatform && youtubeStats?.subscriberCount) {
-      const numericCount = typeof youtubeStats.subscriberCount === 'string' 
-        ? parseInt(youtubeStats.subscriberCount.replace(/[^0-9]/g, '')) || 0
-        : youtubeStats.subscriberCount;
-      return numericCount;
-    }
-    
-    // Priorité 3: followersCount individuel
-    return artist.followersCount || 0;
-  };
-
-  // Logique corrigée pour l'affichage des streams/écoutes
-  const getDisplayStreams = (): number => {
-    console.log('Calculating display streams for artist:', artist.name);
-    console.log('Available data:', {
-      totalStreams: artist.totalStreams,
-      totalPlays: artist.totalPlays,
-      lifetimePlays: artist.lifetimePlays,
-      youtubeViewCount: youtubeStats?.viewCount
-    });
-
-    // Priorité 1: totalStreams (nouvelle colonne prioritaire)
-    if (artist.totalStreams && artist.totalStreams > 0) {
-      console.log('Using totalStreams:', artist.totalStreams);
-      return artist.totalStreams;
-    }
-
-    // Priorité 2: totalPlays (données existantes)
-    if (artist.totalPlays && artist.totalPlays > 0) {
-      console.log('Using totalPlays:', artist.totalPlays);
-      return artist.totalPlays;
-    }
-
-    // Priorité 3: lifetimePlays (données existantes)
-    if (artist.lifetimePlays && artist.lifetimePlays > 0) {
-      console.log('Using lifetimePlays:', artist.lifetimePlays);
-      return artist.lifetimePlays;
-    }
-
-    // Priorité 4: Pour YouTube, utiliser viewCount des stats YouTube
-    if (isYouTubePlatform && youtubeStats?.viewCount) {
-      const numericViews = typeof youtubeStats.viewCount === 'string' 
-        ? parseInt(youtubeStats.viewCount.replace(/[^0-9]/g, '')) || 0
-        : youtubeStats.viewCount;
-      console.log('Using YouTube viewCount:', numericViews);
-      return numericViews;
-    }
-
-    console.log('No stream data found, returning 0');
-    return 0;
-  };
-
-  const getDisplayPopularity = () => {
-    if (artist.averagePopularity && artist.averagePopularity > 0) {
-      return artist.averagePopularity;
-    }
-    
-    return artist.popularity || 0;
-  };
-
   const handleCardClick = () => {
     navigate(`/artist/${artist.id}`);
   };
@@ -204,10 +98,6 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
   const handleLinkClick = (e: React.MouseEvent) => {
     e.stopPropagation();
   };
-
-  const displayFollowers = getDisplayFollowers();
-  const displayStreams = getDisplayStreams();
-  const displayPopularity = getDisplayPopularity();
 
   return (
     <Card 
@@ -269,63 +159,6 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
           </Button>
         </div>
 
-        {/* Statistiques avec logique corrigée */}
-        <div className="mb-4">
-          <div className="flex gap-4 text-sm flex-wrap">
-            {displayFollowers > 0 && (
-              <div className="flex items-center gap-1 text-gray-300">
-                <Users className="h-3 w-3 text-purple-400" />
-                <span className="font-medium text-purple-300">
-                  {formatCount(displayFollowers)}
-                </span>
-                <span className="text-xs text-gray-500">
-                  {artist.totalFollowers && artist.totalFollowers > 0 ? 'followers total' : 'followers'}
-                </span>
-              </div>
-            )}
-            
-            {displayStreams > 0 && (
-              <div className="flex items-center gap-1 text-gray-300">
-                <Play className="h-3 w-3 text-green-400" />
-                <span className="font-medium text-green-300">
-                  {formatCount(displayStreams)}
-                </span>
-                <span className="text-xs text-gray-500">
-                  {isYouTubePlatform ? 'vues' : 'streams'}
-                </span>
-              </div>
-            )}
-
-            {artist.monthlyListeners && artist.monthlyListeners > 0 && (
-              <div className="flex items-center gap-1 text-gray-300">
-                <Users className="h-3 w-3 text-blue-400" />
-                <span className="font-medium text-blue-300">
-                  {formatCount(artist.monthlyListeners)}
-                </span>
-                <span className="text-xs text-gray-500">auditeurs/mois</span>
-              </div>
-            )}
-            
-            {displayPopularity > 0 && (
-              <div className="flex items-center gap-1 text-gray-300">
-                <Star className="h-3 w-3 text-yellow-400" />
-                <span className="font-medium text-yellow-300">
-                  {Math.round(displayPopularity)}%
-                </span>
-                <span className="text-xs text-gray-500">
-                  {artist.averagePopularity && artist.averagePopularity > 0 ? 'popularité moy.' : 'popularité'}
-                </span>
-              </div>
-            )}
-          </div>
-          
-          {totalPlatformCount > 1 && (artist.totalFollowers || artist.averagePopularity) && (
-            <div className="text-xs text-purple-400 mt-1">
-              Statistiques combinées de {totalPlatformCount} plateformes
-            </div>
-          )}
-        </div>
-
         {artist.lastRelease && (
           <div className="mb-4 p-3 bg-slate-700/50 rounded-lg border border-slate-600">
             <div className="flex items-center gap-2 mb-1">
@@ -347,7 +180,6 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
             Ajouté le {formatDate(artist.addedAt)}
           </div>
           <div className="flex gap-2">
-            {/* Lien vers la plateforme principale */}
             <Button
               variant="outline"
               size="sm"
@@ -361,7 +193,6 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
               </a>
             </Button>
             
-            {/* Indicateur d'autres plateformes */}
             {totalPlatformCount > 1 && (
               <TooltipProvider>
                 <Tooltip>
