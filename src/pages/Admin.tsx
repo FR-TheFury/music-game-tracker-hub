@@ -4,10 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useUserRole } from '@/hooks/useUserRole';
+import { useUserRole, UserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
 import { RoleGuard } from '@/components/RoleGuard';
-import { Shield, Users, Clock, Check, X, Settings, ArrowLeft, UserCheck, UserX } from 'lucide-react';
+import { Shield, Users, Clock, Check, X, Settings, ArrowLeft, UserCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -16,7 +16,7 @@ interface User {
   id: string;
   email: string;
   username?: string;
-  role: string;
+  role: UserRole;
   created_at: string;
   approved_at?: string;
   approved_by?: string;
@@ -35,6 +35,7 @@ const Admin = () => {
 
     setLoadingUsers(true);
     try {
+      // Récupérer les rôles des utilisateurs avec leurs profils
       const { data: usersData, error: usersError } = await supabase
         .from('user_roles')
         .select(`
@@ -42,28 +43,38 @@ const Admin = () => {
           role,
           created_at,
           approved_at,
-          approved_by,
-          profiles (
-            username
-          )
+          approved_by
         `)
         .order('created_at', { ascending: false });
 
       if (usersError) throw usersError;
 
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+      // Récupérer les profils séparément
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username');
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+      }
+
+      // Récupérer les utilisateurs d'authentification
+      const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
       if (authError) throw authError;
 
-      const combinedUsers = usersData.map(userRole => {
-        const authUser = authUsers.users.find(au => au.id === userRole.user_id);
+      // Combiner toutes les données
+      const combinedUsers: User[] = usersData.map(userRole => {
+        const authUser = authData.users.find(au => au.id === userRole.user_id);
+        const profile = profilesData?.find(p => p.id === userRole.user_id);
+        
         return {
           id: userRole.user_id,
           email: authUser?.email || 'Email non trouvé',
-          username: userRole.profiles?.username || authUser?.user_metadata?.username,
-          role: userRole.role,
-          created_at: userRole.created_at,
-          approved_at: userRole.approved_at,
-          approved_by: userRole.approved_by,
+          username: profile?.username || authUser?.user_metadata?.username || 'Sans nom',
+          role: userRole.role as UserRole,
+          created_at: userRole.created_at || '',
+          approved_at: userRole.approved_at || undefined,
+          approved_by: userRole.approved_by || undefined,
         };
       });
 
@@ -80,7 +91,7 @@ const Admin = () => {
     }
   };
 
-  const updateUserRole = async (userId: string, newRole: string) => {
+  const updateUserRole = async (userId: string, newRole: UserRole) => {
     try {
       const { error } = await supabase
         .from('user_roles')
@@ -116,7 +127,7 @@ const Admin = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-3d-main">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#FF0751] rose-glow"></div>
       </div>
     );
@@ -132,20 +143,21 @@ const Admin = () => {
 
   return (
     <RoleGuard allowedRoles={['admin']}>
-      <div className="min-h-screen bg-3d-main">
-        <header className="header-3d">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+        <header className="bg-gradient-to-r from-slate-800/90 to-slate-700/90 backdrop-blur-sm border-b border-slate-600 shadow-lg">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center gap-3">
                 <Button
                   onClick={() => navigate('/')}
-                  variant="ghost-3d"
+                  variant="ghost"
                   size="sm"
+                  className="text-gray-300 hover:text-white hover:bg-slate-700/50"
                 >
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Retour
                 </Button>
-                <Shield className="h-8 w-8 text-[#FF0751]" />
+                <Shield className="h-8 w-8 text-[#FF0751] drop-shadow-lg" />
                 <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF0751] to-[#FF6B9D] bg-clip-text text-transparent">
                   Administration
                 </h1>
@@ -155,7 +167,7 @@ const Admin = () => {
                 <span className="text-gray-300 text-sm">
                   {user?.email}
                 </span>
-                <Badge variant="outline" className="border-[#FF0751] text-[#FF0751]">
+                <Badge variant="outline" className="border-[#FF0751] text-[#FF0751] bg-[#FF0751]/10">
                   Administrateur
                 </Badge>
               </div>
@@ -164,7 +176,7 @@ const Admin = () => {
         </header>
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <Card className="card-3d">
+          <Card className="bg-slate-800/90 border-slate-700 shadow-2xl backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-white">
                 <Settings className="h-5 w-5" />
@@ -173,12 +185,12 @@ const Admin = () => {
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="requests" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 bg-slate-700">
-                  <TabsTrigger value="requests" className="flex items-center gap-2 text-gray-300 data-[state=active]:text-white">
+                <TabsList className="grid w-full grid-cols-2 bg-slate-700/50 border border-slate-600">
+                  <TabsTrigger value="requests" className="flex items-center gap-2 text-gray-300 data-[state=active]:text-white data-[state=active]:bg-[#FF0751]/20">
                     <Clock className="h-4 w-4" />
                     Demandes d'accès
                   </TabsTrigger>
-                  <TabsTrigger value="users" className="flex items-center gap-2 text-gray-300 data-[state=active]:text-white">
+                  <TabsTrigger value="users" className="flex items-center gap-2 text-gray-300 data-[state=active]:text-white data-[state=active]:bg-[#FF0751]/20">
                     <Users className="h-4 w-4" />
                     Gestion des utilisateurs
                   </TabsTrigger>
@@ -200,7 +212,7 @@ const Admin = () => {
                         {pendingValidations.map((validation) => (
                           <div 
                             key={validation.id} 
-                            className="flex items-center justify-between p-4 bg-slate-700/50 border border-slate-600 rounded-lg"
+                            className="flex items-center justify-between p-4 bg-slate-700/50 border border-slate-600 rounded-lg hover:bg-slate-700/70 transition-colors"
                           >
                             <div className="flex items-center gap-3">
                               <Clock className="h-4 w-4 text-orange-400" />
@@ -215,25 +227,27 @@ const Admin = () => {
                             <div className="flex gap-2">
                               <Button
                                 size="sm"
-                                variant="outline-3d"
+                                variant="outline"
                                 onClick={() => handleApprove(validation.user_id, 'viewer')}
-                                className="text-blue-400 border-blue-400 hover:border-blue-300"
+                                className="text-blue-400 border-blue-400 hover:border-blue-300 hover:bg-blue-400/10"
                               >
                                 <Check className="h-4 w-4 mr-1" />
                                 Lecteur
                               </Button>
                               <Button
                                 size="sm"
-                                variant="success-3d"
+                                variant="outline"
                                 onClick={() => handleApprove(validation.user_id, 'editor')}
+                                className="text-green-400 border-green-400 hover:border-green-300 hover:bg-green-400/10"
                               >
                                 <Check className="h-4 w-4 mr-1" />
                                 Éditeur
                               </Button>
                               <Button
                                 size="sm"
-                                variant="danger-3d"
+                                variant="outline"
                                 onClick={() => handleReject(validation.user_id)}
+                                className="text-red-400 border-red-400 hover:border-red-300 hover:bg-red-400/10"
                               >
                                 <X className="h-4 w-4 mr-1" />
                                 Rejeter
@@ -253,8 +267,9 @@ const Admin = () => {
                       <Button
                         onClick={fetchAllUsers}
                         disabled={loadingUsers}
-                        variant="primary-3d"
+                        variant="outline"
                         size="sm"
+                        className="border-[#FF0751] text-[#FF0751] hover:bg-[#FF0751]/10"
                       >
                         {loadingUsers ? 'Chargement...' : 'Actualiser'}
                       </Button>
@@ -269,12 +284,12 @@ const Admin = () => {
                         {allUsers.map((userItem) => (
                           <div 
                             key={userItem.id} 
-                            className="flex items-center justify-between p-4 bg-slate-700/50 border border-slate-600 rounded-lg"
+                            className="flex items-center justify-between p-4 bg-slate-700/50 border border-slate-600 rounded-lg hover:bg-slate-700/70 transition-colors"
                           >
                             <div className="flex items-center gap-3">
                               <UserCheck className="h-4 w-4 text-green-400" />
                               <div>
-                                <p className="font-medium text-white">{userItem.username || 'Sans nom'}</p>
+                                <p className="font-medium text-white">{userItem.username}</p>
                                 <p className="text-sm text-gray-300">{userItem.email}</p>
                                 <p className="text-xs text-gray-400">
                                   Inscrit le {new Date(userItem.created_at).toLocaleDateString()}
@@ -285,10 +300,10 @@ const Admin = () => {
                               <Badge 
                                 variant="outline" 
                                 className={`${
-                                  userItem.role === 'admin' ? 'border-[#FF0751] text-[#FF0751]' :
-                                  userItem.role === 'editor' ? 'border-green-400 text-green-400' :
-                                  userItem.role === 'viewer' ? 'border-blue-400 text-blue-400' :
-                                  'border-orange-400 text-orange-400'
+                                  userItem.role === 'admin' ? 'border-[#FF0751] text-[#FF0751] bg-[#FF0751]/10' :
+                                  userItem.role === 'editor' ? 'border-green-400 text-green-400 bg-green-400/10' :
+                                  userItem.role === 'viewer' ? 'border-blue-400 text-blue-400 bg-blue-400/10' :
+                                  'border-orange-400 text-orange-400 bg-orange-400/10'
                                 }`}
                               >
                                 {userItem.role}
@@ -300,7 +315,7 @@ const Admin = () => {
                                       size="sm"
                                       variant="outline"
                                       onClick={() => updateUserRole(userItem.id, 'viewer')}
-                                      className="text-blue-400 border-blue-400 hover:border-blue-300"
+                                      className="text-blue-400 border-blue-400 hover:border-blue-300 hover:bg-blue-400/10"
                                     >
                                       Viewer
                                     </Button>
@@ -310,7 +325,7 @@ const Admin = () => {
                                       size="sm"
                                       variant="outline"
                                       onClick={() => updateUserRole(userItem.id, 'editor')}
-                                      className="text-green-400 border-green-400 hover:border-green-300"
+                                      className="text-green-400 border-green-400 hover:border-green-300 hover:bg-green-400/10"
                                     >
                                       Editor
                                     </Button>
@@ -320,7 +335,7 @@ const Admin = () => {
                                       size="sm"
                                       variant="outline"
                                       onClick={() => updateUserRole(userItem.id, 'admin')}
-                                      className="text-[#FF0751] border-[#FF0751] hover:border-[#FF3971]"
+                                      className="text-[#FF0751] border-[#FF0751] hover:border-[#FF3971] hover:bg-[#FF0751]/10"
                                     >
                                       Admin
                                     </Button>
