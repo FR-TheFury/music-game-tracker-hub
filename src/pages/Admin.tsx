@@ -330,13 +330,15 @@ const Admin = () => {
                             <div className="flex items-center gap-3">
                               <Badge 
                                 variant="outline" 
-                                className={`transition-all duration-300 ${
-                                  userItem.role === '
-' ? 'border-[#FF0751] text-[#FF0751] bg-[#FF0751]/10 hover:bg-[#FF0751]/20' :
-                                  userItem.role === 'editor' ? 'border-green-400 text-green-400 bg-green-400/10 hover:bg-green-400/20' :
-                                  userItem.role === 'viewer' ? 'border-blue-400 text-blue-400 bg-blue-400/10 hover:bg-blue-400/20' :
-                                  'border-orange-400 text-orange-400 bg-orange-400/10 hover:bg-orange-400/20'
-                                }`}
+                                className={
+                                  userItem.role === 'admin' 
+                                    ? 'border-[#FF0751] text-[#FF0751] bg-[#FF0751]/10 hover:bg-[#FF0751]/20' 
+                                    : userItem.role === 'editor' 
+                                    ? 'border-green-400 text-green-400 bg-green-400/10 hover:bg-green-400/20' 
+                                    : userItem.role === 'viewer' 
+                                    ? 'border-blue-400 text-blue-400 bg-blue-400/10 hover:bg-blue-400/20' 
+                                    : 'border-orange-400 text-orange-400 bg-orange-400/10 hover:bg-orange-400/20'
+                                }
                               >
                                 {userItem.role}
                               </Badge>
