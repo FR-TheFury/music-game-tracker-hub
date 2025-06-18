@@ -3,17 +3,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { AuthPage } from "@/components/AuthPage";
 import { RoleGuard } from "@/components/RoleGuard";
 import { UserStatus } from "@/components/UserStatus";
-import { UserProfile } from "@/components/UserProfile";
 import { useUserRole } from "@/hooks/useUserRole";
-import { Music, Gamepad2, LogOut, Settings, Shield } from 'lucide-react';
+import { Music, Gamepad2, LogOut, Settings, Shield, Bell, User } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { AddArtistFormWrapper } from "@/components/AddArtistFormWrapper";
 import { AddGameFormWrapper } from "@/components/AddGameFormWrapper";
 import { ArtistsGrid } from "@/components/ArtistsGrid";
 import { GamesGrid } from "@/components/GamesGrid";
 import { NewReleasesSection } from "@/components/NewReleasesSection";
-import { NotificationSettingsWrapper } from "@/components/NotificationSettingsWrapper";
 import { useNavigate } from "react-router-dom";
 
 const Index = () => {
@@ -53,8 +50,20 @@ const Index = () => {
               
               <div className="flex items-center gap-4">
                 <UserStatus />
-                <NotificationSettingsWrapper />
                 
+                {/* Navigation vers les paramètres de notification */}
+                <Button 
+                  onClick={() => navigate('/notifications')}
+                  variant="secondary-3d" 
+                  size="sm"
+                  className="rose-glow transform-none hover:transform-none"
+                >
+                  <div className="p-1 rounded-full bg-gradient-to-r from-[#FF6B9D] to-[#FFB3CD] mr-2">
+                    <Bell className="h-3 w-3 text-white" />
+                  </div>
+                  Notifications
+                </Button>
+
                 {/* Admin Panel Access */}
                 {userRole === 'admin' && (
                   <Button
@@ -68,21 +77,15 @@ const Index = () => {
                   </Button>
                 )}
 
-                {/* User Profile Dialog */}
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button 
-                      variant="secondary-3d" 
-                      size="sm"
-                    >
-                      <Settings className="h-4 w-4 mr-2" />
-                      Mon Profil
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-2xl card-3d">
-                    <UserProfile />
-                  </DialogContent>
-                </Dialog>
+                {/* Navigation vers le profil utilisateur */}
+                <Button 
+                  onClick={() => navigate('/profile')}
+                  variant="secondary-3d" 
+                  size="sm"
+                >
+                  <User className="h-4 w-4 mr-2" />
+                  Mon Profil
+                </Button>
 
                 <span className="text-gray-300 text-sm">
                   {user.email}

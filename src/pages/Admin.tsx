@@ -34,73 +34,85 @@ const Admin = () => {
 
     setLoadingUsers(true);
     try {
-      // Récupérer les rôles avec les profils en utilisant une jointure
-      const { data: usersData, error: usersError } = await supabase
+      console.log('Récupération de tous les utilisateurs...');
+
+      // Récupérer d'abord les rôles utilisateur
+      const { data: userRolesData, error: rolesError } = await supabase
         .from('user_roles')
-        .select(`
-          user_id, 
-          role, 
-          created_at, 
-          approved_at, 
-          approved_by,
-          profiles(username)
-        `)
+        .select('user_id, role, created_at, approved_at, approved_by')
         .order('created_at', { ascending: false });
 
-      if (usersError) {
-        console.error('Error fetching users with profiles:', usersError);
-        throw usersError;
+      if (rolesError) {
+        console.error('Erreur lors de la récupération des rôles:', rolesError);
+        throw rolesError;
       }
 
-      console.log('Données utilisateurs récupérées:', usersData);
+      console.log('Rôles utilisateurs récupérés:', userRolesData);
 
-      // Combiner toutes les données disponibles
-      const combinedUsers: User[] = (usersData || []).map((userRoleItem: any) => {
-        const username = userRoleItem.profiles?.username || 'Utilisateur sans nom';
-        console.log(`Utilisateur ${userRoleItem.user_id}: username = ${username}`);
+      // Récupérer les profils pour obtenir les usernames
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username');
+
+      if (profilesError) {
+        console.error('Erreur lors de la récupération des profils:', profilesError);
+      }
+
+      console.log('Profils récupérés:', profilesData);
+
+      // Créer un map des profils pour un accès rapide
+      const profilesMap = new Map(
+        (profilesData || []).map(profile => [profile.id, profile.username])
+      );
+
+      // Pour récupérer les emails, essayer d'utiliser l'API admin si possible
+      let authUsersData = null;
+      try {
+        // Cette requête peut échouer selon les permissions
+        const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
+        if (!authError) {
+          authUsersData = authData.users;
+          console.log('Données auth récupérées:', authUsersData?.length, 'utilisateurs');
+        }
+      } catch (authError) {
+        console.log('Impossible de récupérer les données auth, utilisation de fallback');
+      }
+
+      // Créer un map des emails
+      const emailsMap = new Map();
+      if (authUsersData) {
+        authUsersData.forEach(authUser => {
+          emailsMap.set(authUser.id, authUser.email);
+        });
+      }
+
+      // Combiner toutes les données
+      const combinedUsers: User[] = (userRolesData || []).map((roleItem: any) => {
+        const username = profilesMap.get(roleItem.user_id) || 'Utilisateur inconnu';
+        const email = emailsMap.get(roleItem.user_id) || `user-${roleItem.user_id.slice(0, 8)}@domain.com`;
+        
+        console.log(`Utilisateur ${roleItem.user_id}: username = ${username}, email = ${email}`);
         
         return {
-          id: userRoleItem.user_id,
-          email: `user-${userRoleItem.user_id.slice(0, 8)}@domain.com`,
+          id: roleItem.user_id,
+          email: email,
           username: username,
-          role: userRoleItem.role as UserRole,
-          created_at: userRoleItem.created_at || '',
-          approved_at: userRoleItem.approved_at || undefined,
-          approved_by: userRoleItem.approved_by || undefined,
+          role: roleItem.role as UserRole,
+          created_at: roleItem.created_at || '',
+          approved_at: roleItem.approved_at || undefined,
+          approved_by: roleItem.approved_by || undefined,
         };
       });
 
-      console.log('Utilisateurs combinés:', combinedUsers);
+      console.log('Utilisateurs combinés final:', combinedUsers);
       setAllUsers(combinedUsers);
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error('Erreur lors de la récupération des utilisateurs:', error);
       toast({
         title: "Erreur",
         description: "Impossible de charger les utilisateurs",
         variant: "destructive",
       });
-      
-      // En cas d'erreur, essayer de récupérer au moins les rôles
-      try {
-        const { data: rolesData } = await supabase
-          .from('user_roles')
-          .select('user_id, role, created_at, approved_at, approved_by')
-          .order('created_at', { ascending: false });
-
-        const basicUsers: User[] = (rolesData || []).map((roleItem: any) => ({
-          id: roleItem.user_id,
-          email: `user-${roleItem.user_id.slice(0, 8)}`,
-          username: 'Nom indisponible',
-          role: roleItem.role as UserRole,
-          created_at: roleItem.created_at || '',
-          approved_at: roleItem.approved_at,
-          approved_by: roleItem.approved_by,
-        }));
-
-        setAllUsers(basicUsers);
-      } catch (fallbackError) {
-        console.error('Fallback error:', fallbackError);
-      }
     } finally {
       setLoadingUsers(false);
     }
