@@ -192,7 +192,7 @@ const ArtistDetail: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {spotifyReleases.map((release: any) => (
                   <div key={release.id} className="bg-slate-700/50 rounded-lg p-4 border border-slate-600">
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-start gap-3 mb-3">
                       {release.images?.[0] && (
                         <img
                           src={release.images[0].url}
@@ -211,6 +211,20 @@ const ArtistDetail: React.FC = () => {
                         )}
                       </div>
                     </div>
+                    
+                    {release.external_urls?.spotify && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        asChild
+                        className="w-full border-green-500/30 text-green-300 hover:bg-green-500/10 hover:border-green-400"
+                      >
+                        <a href={release.external_urls.spotify} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          Écouter sur Spotify
+                        </a>
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>
