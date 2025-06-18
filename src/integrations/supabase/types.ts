@@ -66,6 +66,7 @@ export type Database = {
         Row: {
           bio: string | null
           created_at: string | null
+          deezer_id: number | null
           followers_count: number | null
           genres: string[] | null
           id: string
@@ -84,6 +85,7 @@ export type Database = {
         Insert: {
           bio?: string | null
           created_at?: string | null
+          deezer_id?: number | null
           followers_count?: number | null
           genres?: string[] | null
           id?: string
@@ -102,6 +104,7 @@ export type Database = {
         Update: {
           bio?: string | null
           created_at?: string | null
+          deezer_id?: number | null
           followers_count?: number | null
           genres?: string[] | null
           id?: string
