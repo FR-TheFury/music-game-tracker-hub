@@ -48,7 +48,11 @@ export const useSpotify = () => {
         body: { query, type: 'search' }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Spotify search error:', error);
+        throw error;
+      }
+      
       return data || [];
     } catch (error) {
       console.error('Error searching artists:', error);
@@ -66,11 +70,18 @@ export const useSpotify = () => {
   const getArtistDetails = async (spotifyId: string): Promise<{ artist: SpotifyArtist; releases: SpotifyRelease[] } | null> => {
     setLoading(true);
     try {
+      console.log('Getting artist details for Spotify ID:', spotifyId);
+      
       const { data, error } = await supabase.functions.invoke('get-spotify-artist-info', {
         body: { query: spotifyId, type: 'artist' }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Spotify artist details error:', error);
+        throw error;
+      }
+
+      console.log('Artist details received:', data);
       return data || null;
     } catch (error) {
       console.error('Error getting artist details:', error);
