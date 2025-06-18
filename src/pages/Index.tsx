@@ -1,116 +1,86 @@
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Music, Gamepad2, Plus, TrendingUp, Star, Calendar } from 'lucide-react';
+import { Music, Gamepad2, Plus, TrendingUp, LogOut, User } from 'lucide-react';
 import { ArtistCard } from '@/components/ArtistCard';
 import { GameCard } from '@/components/GameCard';
 import { AddArtistForm } from '@/components/AddArtistForm';
 import { AddGameForm } from '@/components/AddGameForm';
+import { AuthPage } from '@/components/AuthPage';
+import { useAuth } from '@/hooks/useAuth';
+import { useArtists } from '@/hooks/useArtists';
+import { useGames } from '@/hooks/useGames';
 import { useToast } from '@/hooks/use-toast';
 
-interface Artist {
-  id: string;
-  name: string;
-  platform: string;
-  url: string;
-  imageUrl?: string;
-  lastRelease?: string;
-  addedAt: string;
-}
-
-interface Game {
-  id: string;
-  name: string;
-  platform: string;
-  url: string;
-  imageUrl?: string;
-  price?: string;
-  discount?: string;
-  releaseDate?: string;
-  addedAt: string;
-}
-
 const Index = () => {
-  const [artists, setArtists] = useState<Artist[]>([]);
-  const [games, setGames] = useState<Game[]>([]);
   const [showAddArtist, setShowAddArtist] = useState(false);
   const [showAddGame, setShowAddGame] = useState(false);
+  const { user, loading: authLoading, signOut } = useAuth();
+  const { artists, loading: artistsLoading, addArtist, removeArtist } = useArtists();
+  const { games, loading: gamesLoading, addGame, removeGame } = useGames();
   const { toast } = useToast();
 
-  // Charger les données depuis localStorage
-  useEffect(() => {
-    const savedArtists = localStorage.getItem('dashboard-artists');
-    const savedGames = localStorage.getItem('dashboard-games');
-    
-    if (savedArtists) {
-      setArtists(JSON.parse(savedArtists));
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Déconnexion réussie",
+        description: "À bientôt !",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de se déconnecter",
+        variant: "destructive",
+      });
     }
-    
-    if (savedGames) {
-      setGames(JSON.parse(savedGames));
-    }
-  }, []);
+  };
 
-  // Sauvegarder les artistes
-  useEffect(() => {
-    localStorage.setItem('dashboard-artists', JSON.stringify(artists));
-  }, [artists]);
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-white text-xl">Chargement...</div>
+      </div>
+    );
+  }
 
-  // Sauvegarder les jeux
-  useEffect(() => {
-    localStorage.setItem('dashboard-games', JSON.stringify(games));
-  }, [games]);
+  if (!user) {
+    return <AuthPage onAuthSuccess={() => {}} />;
+  }
 
-  const addArtist = (artistData: Omit<Artist, 'id' | 'addedAt'>) => {
-    const newArtist: Artist = {
-      ...artistData,
-      id: Date.now().toString(),
-      addedAt: new Date().toISOString(),
-    };
-    setArtists(prev => [...prev, newArtist]);
+  const handleAddArtist = async (artistData: any) => {
+    await addArtist(artistData);
     setShowAddArtist(false);
-    toast({
-      title: "Artiste ajouté !",
-      description: `${artistData.name} a été ajouté à votre dashboard.`,
-    });
   };
 
-  const addGame = (gameData: Omit<Game, 'id' | 'addedAt'>) => {
-    const newGame: Game = {
-      ...gameData,
-      id: Date.now().toString(),
-      addedAt: new Date().toISOString(),
-    };
-    setGames(prev => [...prev, newGame]);
+  const handleAddGame = async (gameData: any) => {
+    await addGame(gameData);
     setShowAddGame(false);
-    toast({
-      title: "Jeu ajouté !",
-      description: `${gameData.name} a été ajouté à votre liste de souhaits.`,
-    });
-  };
-
-  const removeArtist = (id: string) => {
-    setArtists(prev => prev.filter(artist => artist.id !== id));
-    toast({
-      title: "Artiste supprimé",
-      description: "L'artiste a été retiré de votre dashboard.",
-    });
-  };
-
-  const removeGame = (id: string) => {
-    setGames(prev => prev.filter(game => game.id !== id));
-    toast({
-      title: "Jeu supprimé",
-      description: "Le jeu a été retiré de votre liste de souhaits.",
-    });
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <User className="h-8 w-8 text-purple-400" />
+              <span className="text-xl text-white">
+                Bonjour, {user.email}
+              </span>
+            </div>
+            <Button
+              onClick={handleSignOut}
+              variant="outline"
+              className="border-red-500/30 text-red-300 hover:bg-red-500/10 hover:border-red-400"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Se déconnecter
+            </Button>
+          </div>
+          
           <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 bg-clip-text text-transparent mb-4">
             Mon Dashboard Perso
           </h1>
@@ -178,13 +148,15 @@ const Index = () => {
           {showAddArtist && (
             <div className="mb-8">
               <AddArtistForm
-                onSubmit={addArtist}
+                onSubmit={handleAddArtist}
                 onCancel={() => setShowAddArtist(false)}
               />
             </div>
           )}
 
-          {artists.length === 0 ? (
+          {artistsLoading ? (
+            <div className="text-center text-gray-400">Chargement des artistes...</div>
+          ) : artists.length === 0 ? (
             <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
               <CardContent className="p-12 text-center">
                 <Music className="h-16 w-16 text-gray-400 mx-auto mb-4" />
@@ -235,13 +207,15 @@ const Index = () => {
           {showAddGame && (
             <div className="mb-8">
               <AddGameForm
-                onSubmit={addGame}
+                onSubmit={handleAddGame}
                 onCancel={() => setShowAddGame(false)}
               />
             </div>
           )}
 
-          {games.length === 0 ? (
+          {gamesLoading ? (
+            <div className="text-center text-gray-400">Chargement des jeux...</div>
+          ) : games.length === 0 ? (
             <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
               <CardContent className="p-12 text-center">
                 <Gamepad2 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
