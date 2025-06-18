@@ -2,19 +2,24 @@
 import { useAuth } from "@/hooks/useAuth";
 import { AuthPage } from "@/components/AuthPage";
 import { RoleGuard } from "@/components/RoleGuard";
-import { AdminTabs } from "@/components/AdminTabs";
 import { UserStatus } from "@/components/UserStatus";
-import { Music, Gamepad2, LogOut } from 'lucide-react';
+import { UserProfile } from "@/components/UserProfile";
+import { useUserRole } from "@/hooks/useUserRole";
+import { Music, Gamepad2, LogOut, Settings, Shield } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { AddArtistFormWrapper } from "@/components/AddArtistFormWrapper";
 import { AddGameFormWrapper } from "@/components/AddGameFormWrapper";
 import { ArtistsGrid } from "@/components/ArtistsGrid";
 import { GamesGrid } from "@/components/GamesGrid";
 import { NewReleasesSection } from "@/components/NewReleasesSection";
 import { NotificationSettingsWrapper } from "@/components/NotificationSettingsWrapper";
+import { useNavigate } from "react-router-dom";
 
 const Index = () => {
   const { user, loading, signOut } = useAuth();
+  const { userRole } = useUserRole();
+  const navigate = useNavigate();
 
   if (loading) {
     return (
@@ -45,6 +50,37 @@ const Index = () => {
               <div className="flex items-center gap-4">
                 <UserStatus />
                 <NotificationSettingsWrapper />
+                
+                {/* Admin Panel Access */}
+                {userRole === 'admin' && (
+                  <Button
+                    onClick={() => navigate('/admin')}
+                    variant="outline"
+                    size="sm"
+                    className="border-purple-400 text-purple-400 hover:bg-purple-400/10"
+                  >
+                    <Shield className="h-4 w-4 mr-2" />
+                    Administration
+                  </Button>
+                )}
+
+                {/* User Profile Dialog */}
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      Mon Profil
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl bg-slate-800 border-slate-700">
+                    <UserProfile />
+                  </DialogContent>
+                </Dialog>
+
                 <span className="text-gray-300 text-sm">
                   {user.email}
                 </span>
@@ -63,8 +99,6 @@ const Index = () => {
         </header>
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <AdminTabs />
-          
           {/* Section Nouvelles Sorties */}
           <RoleGuard allowedRoles={['admin', 'editor', 'viewer']}>
             <NewReleasesSection />

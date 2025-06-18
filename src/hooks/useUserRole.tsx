@@ -46,7 +46,7 @@ export const useUserRole = () => {
       setUserRole(data.role as UserRole);
     } catch (error) {
       console.error('Error fetching user role:', error);
-      setUserRole('pending'); // Fallback en cas d'erreur
+      setUserRole('pending');
     } finally {
       setLoading(false);
     }
@@ -75,7 +75,6 @@ export const useUserRole = () => {
     try {
       console.log('Approbation de l\'utilisateur:', userId, 'avec le rôle:', newRole);
       
-      // Update user role
       const { error: roleError } = await supabase
         .from('user_roles')
         .update({ 
@@ -87,7 +86,6 @@ export const useUserRole = () => {
 
       if (roleError) throw roleError;
 
-      // Update pending validation status
       const { error: validationError } = await supabase
         .from('pending_validations')
         .update({ status: 'approved' })
@@ -95,14 +93,7 @@ export const useUserRole = () => {
 
       if (validationError) throw validationError;
 
-      // Refresh pending validations
       await fetchPendingValidations();
-
-      // Si c'est l'utilisateur actuel qui est approuvé, rafraîchir son rôle
-      if (userId === user.id) {
-        console.log('Rafraîchissement du rôle de l\'utilisateur actuel');
-        await fetchUserRole();
-      }
 
       toast({
         title: "Utilisateur approuvé",
@@ -122,7 +113,6 @@ export const useUserRole = () => {
     if (!user || userRole !== 'admin') return;
 
     try {
-      // Update pending validation status
       const { error } = await supabase
         .from('pending_validations')
         .update({ status: 'rejected' })
@@ -130,7 +120,6 @@ export const useUserRole = () => {
 
       if (error) throw error;
 
-      // Refresh pending validations
       await fetchPendingValidations();
 
       toast({
@@ -147,6 +136,11 @@ export const useUserRole = () => {
     }
   };
 
+  const refreshUserRole = async () => {
+    setLoading(true);
+    await fetchUserRole();
+  };
+
   useEffect(() => {
     fetchUserRole();
   }, [user]);
@@ -157,60 +151,6 @@ export const useUserRole = () => {
     }
   }, [userRole]);
 
-  // Écouter les changements de rôles en temps réel avec une gestion plus robuste
-  useEffect(() => {
-    if (!user?.id) return;
-
-    let channel: any = null;
-
-    const setupRealTimeSubscription = async () => {
-      try {
-        // Créer un canal avec un nom unique et un timestamp pour éviter les collisions
-        const channelName = `user-role-changes-${user.id}-${Date.now()}`;
-        
-        console.log('Configuration de la souscription realtime pour:', channelName);
-        
-        channel = supabase
-          .channel(channelName)
-          .on(
-            'postgres_changes',
-            {
-              event: 'UPDATE',
-              schema: 'public',
-              table: 'user_roles',
-              filter: `user_id=eq.${user.id}`,
-            },
-            (payload) => {
-              console.log('Changement de rôle détecté:', payload);
-              if (payload.new && payload.new.role) {
-                setUserRole(payload.new.role as UserRole);
-              }
-            }
-          );
-
-        // S'abonner au canal
-        const subscriptionResult = await channel.subscribe();
-        console.log('Résultat de la souscription:', subscriptionResult);
-        
-      } catch (error) {
-        console.error('Erreur lors de la configuration de la souscription realtime:', error);
-      }
-    };
-
-    setupRealTimeSubscription();
-
-    return () => {
-      if (channel) {
-        console.log('Nettoyage de la souscription realtime');
-        try {
-          supabase.removeChannel(channel);
-        } catch (error) {
-          console.error('Erreur lors du nettoyage du canal:', error);
-        }
-      }
-    };
-  }, [user?.id]); // Dépendance uniquement sur user.id
-
   return {
     userRole,
     loading,
@@ -219,5 +159,6 @@ export const useUserRole = () => {
     rejectUser,
     refetchPendingValidations: fetchPendingValidations,
     refetchUserRole: fetchUserRole,
+    refreshUserRole,
   };
 };
