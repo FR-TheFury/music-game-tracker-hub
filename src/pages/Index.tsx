@@ -1,7 +1,8 @@
+
 import { useAuth } from "@/hooks/useAuth";
 import { AuthPage } from "@/components/AuthPage";
 import { RoleGuard } from "@/components/RoleGuard";
-import { AdminPanel } from "@/components/AdminPanel";
+import { AdminTabs } from "@/components/AdminTabs";
 import { UserStatus } from "@/components/UserStatus";
 import { Music, Gamepad2, LogOut } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -62,7 +63,7 @@ const Index = () => {
         </header>
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <AdminPanel />
+          <AdminTabs />
           
           {/* Section Nouvelles Sorties */}
           <RoleGuard allowedRoles={['admin', 'editor', 'viewer']}>
