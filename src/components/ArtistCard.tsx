@@ -149,9 +149,20 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
               <h3 className="text-lg font-semibold text-white group-hover:text-purple-300 transition-colors">
                 {artist.name}
               </h3>
-              <p className="text-sm text-gray-400">
-                {totalPlatformCount > 1 ? `${totalPlatformCount} plateformes` : artist.platform}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-gray-400">
+                  {totalPlatformCount > 1 ? `${totalPlatformCount} plateformes` : artist.platform}
+                </p>
+                {artist.followersCount && (
+                  <>
+                    <span className="text-gray-600">•</span>
+                    <div className="flex items-center gap-1 text-sm text-blue-400">
+                      <Users className="h-3 w-3" />
+                      <span>{formatFollowers(artist.followersCount)}</span>
+                    </div>
+                  </>
+                )}
+              </div>
               {artist.genres && artist.genres.length > 0 && (
                 <p className="text-xs text-gray-500 mt-1">
                   {artist.genres.slice(0, 2).join(', ')}
@@ -168,16 +179,6 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
-
-        {artist.followersCount && (
-          <div className="mb-4 p-3 bg-slate-700/50 rounded-lg border border-slate-600">
-            <div className="flex items-center gap-2 mb-1">
-              <Users className="h-4 w-4 text-blue-400" />
-              <span className="text-sm font-medium text-blue-400">Followers</span>
-            </div>
-            <p className="text-sm text-gray-300">{formatFollowers(artist.followersCount)}</p>
-          </div>
-        )}
 
         {artist.lastRelease && (
           <div className="mb-4 p-3 bg-slate-700/50 rounded-lg border border-slate-600">

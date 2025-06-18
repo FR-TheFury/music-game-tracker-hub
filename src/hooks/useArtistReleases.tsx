@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNewReleases } from './useNewReleases';
 
@@ -20,12 +21,21 @@ export const useArtistReleases = (artistId: string) => {
   const [artistReleases, setArtistReleases] = useState<ArtistRelease[]>([]);
 
   useEffect(() => {
-    if (!artistId || !allReleases) return;
+    console.log('useArtistReleases - artistId:', artistId);
+    console.log('useArtistReleases - allReleases:', allReleases);
+
+    if (!artistId || !allReleases) {
+      console.log('useArtistReleases - Missing data, artistId:', artistId, 'allReleases:', allReleases);
+      return;
+    }
 
     // Filtrer les sorties pour cet artiste spécifique
-    const filteredReleases = allReleases.filter(release => 
-      release.type === 'artist' && release.sourceItemId === artistId
-    );
+    const filteredReleases = allReleases.filter(release => {
+      console.log('Checking release:', release.sourceItemId, 'against artistId:', artistId);
+      return release.type === 'artist' && release.sourceItemId === artistId;
+    });
+
+    console.log('Filtered releases for artist:', filteredReleases);
 
     // Filtrer par date (moins d'un mois)
     const oneMonthAgo = new Date();
@@ -36,6 +46,7 @@ export const useArtistReleases = (artistId: string) => {
       return releaseDate > oneMonthAgo;
     });
 
+    console.log('Recent releases (last month):', recentReleases);
     setArtistReleases(recentReleases);
   }, [artistId, allReleases]);
 
@@ -70,6 +81,7 @@ export const useArtistReleases = (artistId: string) => {
 // Keep the original export for backward compatibility
 export const useArtistReleasesData = () => {
   const getArtistReleases = async (artistId: string) => {
+    console.log('getArtistReleases called with artistId:', artistId);
     // Implementation moved to useArtists hook
     return [];
   };

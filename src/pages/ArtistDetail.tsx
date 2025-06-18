@@ -24,7 +24,9 @@ const ArtistDetail: React.FC = () => {
     const loadArtistData = async () => {
       if (!id) return;
 
+      console.log('Loading artist data for ID:', id);
       const foundArtist = artists.find(a => a.id === id);
+      console.log('Found artist:', foundArtist);
       setArtist(foundArtist);
 
       if (foundArtist) {
@@ -120,16 +122,15 @@ const ArtistDetail: React.FC = () => {
             </div>
 
             <div className="flex-1">
-              <h1 className="text-4xl font-bold text-white mb-4">{artist.name}</h1>
-              
-              {artist.followersCount && (
-                <div className="mb-4 p-3 bg-slate-700/50 rounded-lg border border-slate-600">
-                  <div className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-blue-400" />
-                    <span className="text-lg font-medium text-blue-400">{formatFollowers(artist.followersCount)}</span>
+              <div className="flex items-baseline gap-4 mb-4">
+                <h1 className="text-4xl font-bold text-white">{artist.name}</h1>
+                {artist.followersCount && (
+                  <div className="flex items-center gap-2 text-blue-400">
+                    <Users className="h-5 w-5" />
+                    <span className="text-lg font-medium">{formatFollowers(artist.followersCount)}</span>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
               
               {artist.bio && (
                 <p className="text-gray-300 text-lg mb-4 leading-relaxed">{artist.bio}</p>
