@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useUserRole, UserRole } from '@/hooks/useUserRole';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { Clock, AlertCircle } from 'lucide-react';
 
 interface RoleGuardProps {
@@ -16,27 +17,14 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
   fallback 
 }) => {
   const { userRole, loading } = useUserRole();
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   console.log('RoleGuard - Rôle utilisateur:', userRole, 'Chargement:', loading, 'Rôles autorisés:', allowedRoles);
 
-  // Gérer la phase d'initialisation
-  useEffect(() => {
-    if (!loading && userRole !== null) {
-      // Attendre un petit délai pour s'assurer que tout est chargé proprement
-      const timer = setTimeout(() => {
-        setIsInitialLoad(false);
-      }, 100);
-
-      return () => clearTimeout(timer);
-    }
-  }, [loading, userRole]);
-
-  // Pendant le chargement initial ou si le rôle n'est pas encore déterminé
-  if (loading || isInitialLoad) {
+  // Pendant le chargement
+  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-3d-main">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#FF0751] rose-glow"></div>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-[#FF0751] to-slate-900">
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
@@ -45,8 +33,8 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
   if (!userRole || userRole === 'pending') {
     console.log('RoleGuard - Utilisateur en attente ou sans rôle');
     return (
-      <div className="min-h-screen bg-3d-main flex items-center justify-center px-4">
-        <Card className="w-full max-w-md card-3d">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-[#FF0751] to-slate-900 flex items-center justify-center px-4">
+        <Card className="w-full max-w-md bg-slate-800/90 border-[#FF0751]/30 shadow-2xl backdrop-blur-sm">
           <CardHeader className="text-center">
             <div className="flex items-center justify-center mb-4">
               <Clock className="h-12 w-12 text-orange-400" />
@@ -72,8 +60,8 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
   if (!allowedRoles.includes(userRole)) {
     console.log('RoleGuard - Accès refusé pour le rôle:', userRole);
     return fallback || (
-      <div className="min-h-screen bg-3d-main flex items-center justify-center px-4">
-        <Card className="w-full max-w-md card-3d">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-[#FF0751] to-slate-900 flex items-center justify-center px-4">
+        <Card className="w-full max-w-md bg-slate-800/90 border-[#FF0751]/30 shadow-2xl backdrop-blur-sm">
           <CardHeader className="text-center">
             <div className="flex items-center justify-center mb-4">
               <AlertCircle className="h-12 w-12 text-red-400" />

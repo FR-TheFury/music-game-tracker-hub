@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUserRole, UserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
 import { RoleGuard } from '@/components/RoleGuard';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { Shield, Users, Clock, Check, X, Settings, ArrowLeft, UserCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -58,30 +59,11 @@ const Admin = () => {
 
       console.log('Données utilisateurs récupérées:', userData);
 
-      // Récupérer les emails depuis l'API auth si possible
-      let authUsersData = null;
-      try {
-        const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
-        if (!authError) {
-          authUsersData = authData.users;
-          console.log('Données auth récupérées:', authUsersData?.length, 'utilisateurs');
-        }
-      } catch (authError) {
-        console.log('Impossible de récupérer les données auth, utilisation de fallback');
-      }
-
-      // Créer un map des emails
-      const emailsMap = new Map();
-      if (authUsersData) {
-        authUsersData.forEach(authUser => {
-          emailsMap.set(authUser.id, authUser.email);
-        });
-      }
-
-      // Combiner toutes les données
+      // Créer la liste des utilisateurs avec les données disponibles
       const combinedUsers: User[] = (userData || []).map((item: any) => {
-        const username = item.profiles?.username || 'Utilisateur sans nom';
-        const email = emailsMap.get(item.user_id) || `user-${item.user_id.slice(0, 8)}@domain.com`;
+        const username = item.profiles?.username || 'Utilisateur';
+        // Générer un email basé sur l'ID utilisateur
+        const email = `user-${item.user_id.slice(0, 8)}@domain.local`;
         
         console.log(`Utilisateur ${item.user_id}: username = ${username}, email = ${email}`);
         
@@ -147,7 +129,7 @@ const Admin = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-[#FF0751] to-slate-900">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#FF0751] rose-glow"></div>
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
@@ -307,13 +289,20 @@ const Admin = () => {
                         size="sm"
                         className="border-[#FF0751] text-[#FF0751] hover:bg-[#FF0751]/10 transition-all duration-300"
                       >
-                        {loadingUsers ? 'Chargement...' : 'Actualiser'}
+                        {loadingUsers ? (
+                          <div className="flex items-center gap-2">
+                            <LoadingSpinner size="sm" />
+                            Chargement...
+                          </div>
+                        ) : (
+                          'Actualiser'
+                        )}
                       </Button>
                     </div>
                     
                     {loadingUsers ? (
                       <div className="text-center py-12">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FF0751] mx-auto mb-4"></div>
+                        <LoadingSpinner size="md" className="mx-auto mb-4" />
                         <p className="text-gray-400">Chargement des utilisateurs...</p>
                       </div>
                     ) : allUsers.length === 0 ? (
