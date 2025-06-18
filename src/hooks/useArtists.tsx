@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -12,7 +11,7 @@ interface Artist {
   imageUrl?: string;
   lastRelease?: string;
   addedAt: string;
-  // Nouvelles propriétés
+  // Propriétés existantes
   spotifyId?: string;
   deezerId?: number;
   bio?: string;
@@ -21,6 +20,14 @@ interface Artist {
   followersCount?: number;
   multipleUrls?: Array<{ platform: string; url: string }>;
   profileImageUrl?: string;
+  // Nouvelles propriétés pour les statistiques cumulées
+  totalFollowers?: number;
+  averagePopularity?: number;
+  platformStats?: Array<{
+    platform: string;
+    followers?: number;
+    popularity?: number;
+  }>;
 }
 
 interface ArtistRelease {
@@ -45,6 +52,19 @@ const parseMultipleUrls = (urls: any): Array<{ platform: string; url: string }> 
       typeof url === 'object' && 
       typeof url.platform === 'string' && 
       typeof url.url === 'string'
+    );
+  }
+  return [];
+};
+
+// Helper function to safely parse platform stats
+const parsePlatformStats = (stats: any): Array<{ platform: string; followers?: number; popularity?: number }> => {
+  if (!stats) return [];
+  if (Array.isArray(stats)) {
+    return stats.filter(stat => 
+      stat && 
+      typeof stat === 'object' && 
+      typeof stat.platform === 'string'
     );
   }
   return [];
@@ -84,6 +104,9 @@ export const useArtists = () => {
         followersCount: artist.followers_count,
         multipleUrls: parseMultipleUrls(artist.multiple_urls),
         profileImageUrl: artist.profile_image_url,
+        totalFollowers: artist.total_followers,
+        averagePopularity: artist.average_popularity,
+        platformStats: parsePlatformStats(artist.platform_stats),
       }));
 
       setArtists(formattedArtists);
@@ -125,6 +148,9 @@ export const useArtists = () => {
             followers_count: artistData.followersCount,
             multiple_urls: artistData.multipleUrls || [],
             profile_image_url: artistData.profileImageUrl,
+            total_followers: artistData.totalFollowers,
+            average_popularity: artistData.averagePopularity,
+            platform_stats: artistData.platformStats || [],
           },
         ])
         .select()
@@ -148,6 +174,9 @@ export const useArtists = () => {
         followersCount: data.followers_count,
         multipleUrls: parseMultipleUrls(data.multiple_urls),
         profileImageUrl: data.profile_image_url,
+        totalFollowers: data.total_followers,
+        averagePopularity: data.average_popularity,
+        platformStats: parsePlatformStats(data.platform_stats),
       };
 
       setArtists(prev => [newArtist, ...prev]);
