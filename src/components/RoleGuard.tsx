@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUserRole, UserRole } from '@/hooks/useUserRole';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Clock, AlertCircle } from 'lucide-react';
@@ -16,8 +16,22 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
   fallback 
 }) => {
   const { userRole, loading } = useUserRole();
+  const [showAccessDenied, setShowAccessDenied] = useState(false);
 
   console.log('RoleGuard - Rôle utilisateur:', userRole, 'Chargement:', loading, 'Rôles autorisés:', allowedRoles);
+
+  // Délai avant d'afficher "Accès refusé" pour éviter l'effet de clignotement
+  useEffect(() => {
+    if (!loading && userRole && !allowedRoles.includes(userRole) && userRole !== 'pending') {
+      const timer = setTimeout(() => {
+        setShowAccessDenied(true);
+      }, 300); // Délai de 300ms
+
+      return () => clearTimeout(timer);
+    } else {
+      setShowAccessDenied(false);
+    }
+  }, [loading, userRole, allowedRoles]);
 
   if (loading) {
     return (
@@ -53,7 +67,7 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
     );
   }
 
-  if (!allowedRoles.includes(userRole)) {
+  if (!allowedRoles.includes(userRole) && showAccessDenied) {
     console.log('RoleGuard - Accès refusé pour le rôle:', userRole);
     return fallback || (
       <div className="min-h-screen bg-3d-main flex items-center justify-center px-4">
