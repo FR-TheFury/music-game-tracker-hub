@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ExternalLink, Trash2, Music, Calendar } from 'lucide-react';
+import { ExternalLink, Trash2, Music, Calendar, Users } from 'lucide-react';
 
 interface Artist {
   id: string;
@@ -18,6 +18,7 @@ interface Artist {
   genres?: string[];
   multipleUrls?: Array<{ platform: string; url: string }>;
   profileImageUrl?: string;
+  followersCount?: number;
 }
 
 interface ArtistCardProps {
@@ -59,6 +60,15 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
       month: '2-digit',
       year: 'numeric'
     });
+  };
+
+  const formatFollowers = (count: number) => {
+    if (count >= 1000000) {
+      return `${(count / 1000000).toFixed(1)}M`;
+    } else if (count >= 1000) {
+      return `${(count / 1000).toFixed(1)}K`;
+    }
+    return count.toString();
   };
 
   const getDisplayImage = () => {
@@ -158,6 +168,16 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
+
+        {artist.followersCount && (
+          <div className="mb-4 p-3 bg-slate-700/50 rounded-lg border border-slate-600">
+            <div className="flex items-center gap-2 mb-1">
+              <Users className="h-4 w-4 text-blue-400" />
+              <span className="text-sm font-medium text-blue-400">Followers</span>
+            </div>
+            <p className="text-sm text-gray-300">{formatFollowers(artist.followersCount)}</p>
+          </div>
+        )}
 
         {artist.lastRelease && (
           <div className="mb-4 p-3 bg-slate-700/50 rounded-lg border border-slate-600">

@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, ExternalLink, Calendar, Music } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Calendar, Music, Users } from 'lucide-react';
 import { useArtists } from '@/hooks/useArtists';
 import { useSpotify } from '@/hooks/useSpotify';
 import { ArtistNewReleases } from '@/components/ArtistNewReleases';
@@ -62,6 +62,15 @@ const ArtistDetail: React.FC = () => {
     });
   };
 
+  const formatFollowers = (count: number) => {
+    if (count >= 1000000) {
+      return `${(count / 1000000).toFixed(1)}M followers`;
+    } else if (count >= 1000) {
+      return `${(count / 1000).toFixed(1)}K followers`;
+    }
+    return `${count} followers`;
+  };
+
   const getMainImage = () => {
     return artist?.profileImageUrl || artist?.imageUrl || '/placeholder.svg';
   };
@@ -112,6 +121,15 @@ const ArtistDetail: React.FC = () => {
 
             <div className="flex-1">
               <h1 className="text-4xl font-bold text-white mb-4">{artist.name}</h1>
+              
+              {artist.followersCount && (
+                <div className="mb-4 p-3 bg-slate-700/50 rounded-lg border border-slate-600">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-5 w-5 text-blue-400" />
+                    <span className="text-lg font-medium text-blue-400">{formatFollowers(artist.followersCount)}</span>
+                  </div>
+                </div>
+              )}
               
               {artist.bio && (
                 <p className="text-gray-300 text-lg mb-4 leading-relaxed">{artist.bio}</p>
