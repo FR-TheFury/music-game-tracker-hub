@@ -132,15 +132,18 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
   const allPlatforms = getAllPlatforms();
   const totalPlatformCount = allPlatforms.length;
 
-  const getDisplayFollowers = () => {
+  const getDisplayFollowers = (): number => {
     if (artist.totalFollowers && artist.totalFollowers > 0) {
       console.log(`Affichage followers cumulés pour ${artist.name}:`, artist.totalFollowers);
       return artist.totalFollowers;
     }
     
-    // Pour YouTube, utiliser les stats récupérées
+    // Pour YouTube, utiliser les stats récupérées et les convertir en nombre
     if (isYouTubePlatform && youtubeStats?.subscriberCount) {
-      return youtubeStats.subscriberCount;
+      const numericCount = typeof youtubeStats.subscriberCount === 'string' 
+        ? parseInt(youtubeStats.subscriberCount.replace(/[^0-9]/g, '')) || 0
+        : youtubeStats.subscriberCount;
+      return numericCount;
     }
     
     const mainFollowers = artist.followersCount || 0;
@@ -157,11 +160,14 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
   };
 
   // Nouvelle fonction pour récupérer le nombre d'écoutes/vues
-  const getDisplayViews = () => {
+  const getDisplayViews = (): number => {
     if (isYouTubePlatform && youtubeStats?.viewCount) {
-      return youtubeStats.viewCount;
+      const numericViews = typeof youtubeStats.viewCount === 'string' 
+        ? parseInt(youtubeStats.viewCount.replace(/[^0-9]/g, '')) || 0
+        : youtubeStats.viewCount;
+      return numericViews;
     }
-    return null;
+    return 0;
   };
 
   const displayFollowers = getDisplayFollowers();
@@ -256,11 +262,11 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
               </div>
             )}
             
-            {displayViews && (
+            {displayViews > 0 && (
               <div className="flex items-center gap-1 text-gray-300">
                 <Play className="h-3 w-3 text-green-400" />
                 <span className="font-medium text-green-300">
-                  {formatViewCount(displayViews)}
+                  {formatViewCount(displayViews.toString())}
                 </span>
                 <span className="text-xs text-gray-500">
                   {isYouTubePlatform ? 'vues' : 'écoutes'}
