@@ -82,27 +82,38 @@ export const useNewReleases = () => {
 
   const removeRelease = async (id: string) => {
     try {
-      // Mettre à jour l'état local immédiatement pour un feedback instantané
-      setReleases(prev => prev.filter(release => release.id !== id));
+      console.log('Removing release with ID:', id);
       
+      // Mettre à jour l'état local IMMÉDIATEMENT pour un feedback instantané
+      const previousReleases = releases;
+      const updatedReleases = releases.filter(release => release.id !== id);
+      
+      console.log('Previous releases count:', previousReleases.length);
+      console.log('Updated releases count:', updatedReleases.length);
+      
+      setReleases(updatedReleases);
+      
+      // Ensuite faire l'appel à la base de données
       const { error } = await supabase
         .from('new_releases')
         .delete()
         .eq('id', id);
 
       if (error) {
-        // Si l'erreur survient, restaurer l'état précédent
-        console.error('Error removing release:', error);
-        await fetchReleases(); // Recharger les données pour restaurer l'état correct
+        console.error('Error removing release from database:', error);
+        // Si erreur, restaurer l'état précédent
+        setReleases(previousReleases);
         throw error;
       }
+      
+      console.log('Release successfully removed from database');
       
       toast({
         title: "Notification supprimée",
         description: "La notification a été retirée.",
       });
     } catch (error) {
-      console.error('Error removing release:', error);
+      console.error('Error in removeRelease:', error);
       toast({
         title: "Erreur",
         description: "Impossible de supprimer la notification",

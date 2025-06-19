@@ -26,6 +26,13 @@ interface NewReleaseCardProps {
 export const NewReleaseCard: React.FC<NewReleaseCardProps> = ({ release }) => {
   const { removeRelease } = useNewReleases();
 
+  const handleRemove = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Removing release:', release.id);
+    await removeRelease(release.id);
+  };
+
   const getTypeIcon = () => {
     return release.type === 'artist' ? (
       <Music className="h-6 w-6 text-white" />
@@ -89,8 +96,8 @@ export const NewReleaseCard: React.FC<NewReleaseCardProps> = ({ release }) => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => removeRelease(release.id)}
-            className="text-gray-400 hover:text-red-400 hover:bg-red-500/10"
+            onClick={handleRemove}
+            className="text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
