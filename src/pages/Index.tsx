@@ -17,8 +17,10 @@ import { RoleGuard } from '@/components/RoleGuard';
 import { useNavigate } from 'react-router-dom';
 
 export default function Index() {
-  const { artists, loading: artistsLoading, removeArtist } = useArtists();
-  const { games, loading: gamesLoading, removeGame } = useGames();
+  const { artists, loading: artistsLoading, addArtist, removeArtist } = useArtists();
+  const { games, loading: gamesLoading, addGame, removeGame } = useGames();
+  const [showAddArtistForm, setShowAddArtistForm] = useState(false);
+  const [showAddGameForm, setShowAddGameForm] = useState(false);
 
   const { userRole } = useUserRoleContext();
   const navigate = useNavigate();
@@ -36,6 +38,24 @@ export default function Index() {
       await removeGame(gameId);
     } catch (error) {
       console.error("Error deleting game:", error);
+    }
+  };
+
+  const handleAddArtist = async (artistData: any) => {
+    try {
+      await addArtist(artistData);
+      setShowAddArtistForm(false);
+    } catch (error) {
+      console.error("Error adding artist:", error);
+    }
+  };
+
+  const handleAddGame = async (gameData: any) => {
+    try {
+      await addGame(gameData);
+      setShowAddGameForm(false);
+    } catch (error) {
+      console.error("Error adding game:", error);
     }
   };
 
@@ -113,29 +133,55 @@ export default function Index() {
             {/* Formulaires d'ajout - cachés pour les viewers */}
             {userRole !== 'viewer' && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <Card className="bg-slate-800/90 border-[#FF0751]/30 shadow-2xl backdrop-blur-sm">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-white">
-                      <Music className="h-5 w-5" />
-                      Ajouter un Artiste
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <AddArtistForm />
-                  </CardContent>
-                </Card>
+                {!showAddArtistForm ? (
+                  <Card className="bg-slate-800/90 border-[#FF0751]/30 shadow-2xl backdrop-blur-sm">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-white">
+                        <Music className="h-5 w-5" />
+                        Ajouter un Artiste
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <Button
+                        onClick={() => setShowAddArtistForm(true)}
+                        className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                      >
+                        <Music className="h-4 w-4 mr-2" />
+                        Nouveau Artiste
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <AddArtistForm
+                    onSubmit={handleAddArtist}
+                    onCancel={() => setShowAddArtistForm(false)}
+                  />
+                )}
 
-                <Card className="bg-slate-800/90 border-[#FF0751]/30 shadow-2xl backdrop-blur-sm">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-white">
-                      <Gamepad2 className="h-5 w-5" />
-                      Ajouter un Jeu
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <AddGameForm />
-                  </CardContent>
-                </Card>
+                {!showAddGameForm ? (
+                  <Card className="bg-slate-800/90 border-[#FF0751]/30 shadow-2xl backdrop-blur-sm">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-white">
+                        <Gamepad2 className="h-5 w-5" />
+                        Ajouter un Jeu
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <Button
+                        onClick={() => setShowAddGameForm(true)}
+                        className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white"
+                      >
+                        <Gamepad2 className="h-4 w-4 mr-2" />
+                        Nouveau Jeu
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <AddGameForm
+                    onSubmit={handleAddGame}
+                    onCancel={() => setShowAddGameForm(false)}
+                  />
+                )}
               </div>
             )}
 
