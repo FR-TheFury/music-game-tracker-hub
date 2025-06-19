@@ -1,3 +1,4 @@
+
 import * as React from "react"
 import useEmblaCarousel, {
   type UseEmblaCarouselType,
@@ -85,6 +86,13 @@ const Carousel = React.forwardRef<
 
     const handleKeyDown = React.useCallback(
       (event: React.KeyboardEvent<HTMLDivElement>) => {
+        // Ne pas empêcher le comportement par défaut pour permettre le scroll de page
+        // Seulement gérer la navigation du carousel si l'élément est focusé
+        const target = event.target as HTMLElement;
+        const isCarouselFocused = target.closest('[data-carousel-container]');
+        
+        if (!isCarouselFocused) return;
+        
         if (event.key === "ArrowLeft") {
           event.preventDefault()
           scrollPrev()
@@ -138,6 +146,7 @@ const Carousel = React.forwardRef<
           className={cn("relative select-none", className)}
           role="region"
           aria-roledescription="carousel"
+          data-carousel-container
           style={{ userSelect: 'none', WebkitUserSelect: 'none', MozUserSelect: 'none' }}
           {...props}
         >
