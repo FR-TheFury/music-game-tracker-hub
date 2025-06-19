@@ -72,11 +72,11 @@ export const NewReleasesSection: React.FC = () => {
     <section className="mb-12">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <Bell className="h-6 w-6 text-yellow-400" />
+          <Bell className="h-6 w-6 text-[#FF0751]" />
           <h2 className="text-2xl font-bold text-white">Nouvelles Sorties</h2>
-          <div className="flex items-center gap-1 px-2 py-1 bg-yellow-500/10 rounded-full">
-            <Clock className="h-4 w-4 text-yellow-400" />
-            <span className="text-xs text-yellow-400 font-medium">Expire dans 7 jours</span>
+          <div className="flex items-center gap-1 px-2 py-1 bg-[#FF0751]/10 rounded-full border border-[#FF0751]/30">
+            <Clock className="h-4 w-4 text-[#FF0751]" />
+            <span className="text-xs text-[#FF0751] font-medium">Expire dans 7 jours</span>
           </div>
           
           {/* Bouton simplifié pour mobile */}
@@ -86,25 +86,25 @@ export const NewReleasesSection: React.FC = () => {
               disabled={checking}
               variant="ghost"
               size="sm"
-              className="ml-auto p-1 h-8 w-8"
+              className="ml-auto p-1 h-8 w-8 hover:bg-[#FF0751]/20"
             >
               {checking ? (
-                <Loader2 className="h-4 w-4 animate-spin text-yellow-400" />
+                <Loader2 className="h-4 w-4 animate-spin text-[#FF0751]" />
               ) : (
-                <RefreshCw className="h-4 w-4 text-yellow-400" />
+                <RefreshCw className="h-4 w-4 text-[#FF0751]" />
               )}
             </Button>
           )}
         </div>
         
-        {/* Bouton complet pour desktop avec couleurs améliorées */}
+        {/* Bouton complet pour desktop avec nouvelles couleurs */}
         {!isMobile && (
           <Button
             onClick={handleManualCheck}
             disabled={checking}
             variant="outline"
             size="sm"
-            className="border-yellow-400/50 bg-yellow-500/10 text-yellow-200 hover:bg-yellow-500/20 hover:border-yellow-400 transition-all duration-300"
+            className="border-[#FF0751]/50 bg-[#FF0751]/10 text-[#FF0751] hover:bg-[#FF0751]/20 hover:border-[#FF0751] hover:text-white transition-all duration-300"
           >
             {checking ? (
               <>
