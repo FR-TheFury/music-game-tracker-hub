@@ -143,7 +143,7 @@ export const NewReleaseCard: React.FC<NewReleaseCardProps> = ({ release }) => {
               variant="outline"
               size="sm"
               asChild
-              className="border-yellow-500/30 text-yellow-300 hover:bg-yellow-500/10 hover:border-yellow-400"
+              className="border-purple-500/30 text-purple-300 hover:bg-purple-500/10 hover:border-purple-400 bg-gradient-to-r from-purple-600/20 to-purple-700/20 shadow-lg hover:shadow-purple-500/20 transition-all duration-300"
             >
               <a href={release.platformUrl} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="h-4 w-4 mr-2" />
