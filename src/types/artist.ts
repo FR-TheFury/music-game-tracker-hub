@@ -30,6 +30,13 @@ export interface Artist {
   totalStreams?: number;
   monthlyListeners?: number;
   lastUpdated?: string;
+  // Statistiques SoundCloud
+  soundcloudStats?: {
+    totalPlays: number;
+    totalLikes: number;
+    trackCount: number;
+    lastUpdated: string;
+  };
 }
 
 export interface ArtistRelease {

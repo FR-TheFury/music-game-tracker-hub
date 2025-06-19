@@ -1,10 +1,10 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ExternalLink, Trash2, Music, Calendar, Users, Eye } from 'lucide-react';
+import { ExternalLink, Trash2, Music, Calendar, Users, Eye, Play } from 'lucide-react';
+import { useArtistSoundCloudStats } from '@/hooks/useArtistSoundCloudStats';
 
 interface Artist {
   id: string;
@@ -19,6 +19,12 @@ interface Artist {
   multipleUrls?: Array<{ platform: string; url: string }>;
   profileImageUrl?: string;
   followersCount?: number;
+  soundcloudStats?: {
+    totalPlays: number;
+    totalLikes: number;
+    trackCount: number;
+    lastUpdated: string;
+  };
 }
 
 interface ArtistCardProps {
@@ -28,6 +34,41 @@ interface ArtistCardProps {
 
 export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
   const navigate = useNavigate();
+  const [localArtist, setLocalArtist] = useState(artist);
+  const [loadingStats, setLoadingStats] = useState(false);
+  const { fetchArtistStats } = useArtistSoundCloudStats();
+
+  // Charger les stats SoundCloud si pas déjà présentes
+  useEffect(() => {
+    const loadSoundCloudStats = async () => {
+      if (localArtist.soundcloudStats) return; // Déjà chargées
+      
+      const hasSoundCloud = localArtist.multipleUrls?.some(url => 
+        url.platform?.toLowerCase().includes('soundcloud')
+      ) || localArtist.platform?.toLowerCase().includes('soundcloud');
+      
+      if (!hasSoundCloud) return; // Pas de SoundCloud configuré
+      
+      setLoadingStats(true);
+      try {
+        const stats = await fetchArtistStats(localArtist.name, localArtist);
+        if (stats) {
+          setLocalArtist(prev => ({
+            ...prev,
+            soundcloudStats: stats
+          }));
+        }
+      } catch (error) {
+        console.error('Erreur chargement stats SoundCloud:', error);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    // Délai pour éviter trop d'appels simultanés
+    const timer = setTimeout(loadSoundCloudStats, Math.random() * 2000);
+    return () => clearTimeout(timer);
+  }, [localArtist.name, localArtist.soundcloudStats, fetchArtistStats]);
 
   const getPlatformColor = (platform: string) => {
     switch (platform.toLowerCase()) {
@@ -72,16 +113,16 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
   };
 
   const getDisplayImage = () => {
-    return artist.profileImageUrl || artist.imageUrl || '/placeholder.svg';
+    return localArtist.profileImageUrl || localArtist.imageUrl || '/placeholder.svg';
   };
 
   const getAllPlatforms = () => {
     const platforms = [];
-    platforms.push({ name: artist.platform, url: artist.url });
+    platforms.push({ name: localArtist.platform, url: localArtist.url });
     
-    if (artist.multipleUrls) {
-      artist.multipleUrls.forEach(platformUrl => {
-        if (platformUrl.platform.toLowerCase() !== artist.platform.toLowerCase()) {
+    if (localArtist.multipleUrls) {
+      localArtist.multipleUrls.forEach(platformUrl => {
+        if (platformUrl.platform.toLowerCase() !== localArtist.platform.toLowerCase()) {
           platforms.push({
             name: platformUrl.platform,
             url: platformUrl.url
@@ -97,12 +138,12 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
   const totalPlatformCount = allPlatforms.length;
 
   const handleDetailsClick = () => {
-    navigate(`/artist/${artist.id}`);
+    navigate(`/artist/${localArtist.id}`);
   };
 
   const handleRemoveClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onRemove(artist.id);
+    onRemove(localArtist.id);
   };
 
   const handleLinkClick = (e: React.MouseEvent) => {
@@ -115,14 +156,14 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <div className="relative flex-shrink-0">
-              {artist.profileImageUrl ? (
+              {localArtist.profileImageUrl ? (
                 <img
                   src={getDisplayImage()}
-                  alt={artist.name}
+                  alt={localArtist.name}
                   className="w-12 h-12 rounded-full object-cover"
                 />
               ) : (
-                <div className={`w-12 h-12 rounded-full ${getPlatformColor(artist.platform)} flex items-center justify-center`}>
+                <div className={`w-12 h-12 rounded-full ${getPlatformColor(localArtist.platform)} flex items-center justify-center`}>
                   <Music className="h-6 w-6 text-white" />
                 </div>
               )}
@@ -144,25 +185,41 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
             </div>
             <div className="min-w-0 flex-1">
               <h3 className="text-lg font-semibold text-white group-hover:text-purple-300 transition-colors line-clamp-1">
-                {artist.name}
+                {localArtist.name}
               </h3>
               <div className="flex items-center gap-2">
                 <p className="text-sm text-gray-400 truncate">
-                  {totalPlatformCount > 1 ? `${totalPlatformCount} plateformes` : artist.platform}
+                  {totalPlatformCount > 1 ? `${totalPlatformCount} plateformes` : localArtist.platform}
                 </p>
-                {artist.followersCount && (
+                {localArtist.followersCount && (
                   <>
                     <span className="text-gray-600">•</span>
                     <div className="flex items-center gap-1 text-sm text-blue-400">
                       <Users className="h-3 w-3" />
-                      <span>{formatFollowers(artist.followersCount)}</span>
+                      <span>{formatFollowers(localArtist.followersCount)}</span>
                     </div>
                   </>
                 )}
               </div>
-              {artist.genres && artist.genres.length > 0 && (
+              
+              {/* Affichage des stats SoundCloud */}
+              {localArtist.soundcloudStats && (
+                <div className="flex items-center gap-1 text-sm text-orange-400 mt-1">
+                  <Play className="h-3 w-3" />
+                  <span>{formatFollowers(localArtist.soundcloudStats.totalPlays)} écoutes SC</span>
+                </div>
+              )}
+              
+              {loadingStats && (
+                <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
+                  <div className="animate-spin rounded-full h-3 w-3 border border-orange-400 border-t-transparent"></div>
+                  <span>Chargement stats...</span>
+                </div>
+              )}
+              
+              {localArtist.genres && localArtist.genres.length > 0 && (
                 <p className="text-xs text-gray-500 mt-1 truncate">
-                  {artist.genres.slice(0, 2).join(', ')}
+                  {localArtist.genres.slice(0, 2).join(', ')}
                 </p>
               )}
             </div>
@@ -179,19 +236,19 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
 
         <div className="flex-1 flex flex-col justify-between">
           <div className="space-y-3">
-            {artist.lastRelease && (
+            {localArtist.lastRelease && (
               <div className="p-3 bg-slate-700/50 rounded-lg border border-slate-600">
                 <div className="flex items-center gap-2 mb-1">
                   <Calendar className="h-4 w-4 text-green-400" />
                   <span className="text-sm font-medium text-green-400">Dernière sortie</span>
                 </div>
-                <p className="text-sm text-gray-300 line-clamp-2">{artist.lastRelease}</p>
+                <p className="text-sm text-gray-300 line-clamp-2">{localArtist.lastRelease}</p>
               </div>
             )}
 
-            {artist.bio && (
+            {localArtist.bio && (
               <div>
-                <p className="text-sm text-gray-400 line-clamp-2">{artist.bio}</p>
+                <p className="text-sm text-gray-400 line-clamp-2">{localArtist.bio}</p>
               </div>
             )}
           </div>
@@ -199,7 +256,7 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
           <div className="mt-auto pt-4">
             <div className="flex items-center justify-between mb-3">
               <div className="text-xs text-gray-500">
-                Ajouté le {formatDate(artist.addedAt)}
+                Ajouté le {formatDate(localArtist.addedAt)}
               </div>
             </div>
             

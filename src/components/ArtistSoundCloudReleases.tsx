@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,7 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
 }) => {
   const [releases, setReleases] = useState<SoundCloudRelease[]>([]);
   const [isServiceAvailable, setIsServiceAvailable] = useState(true);
+  const [hasSearched, setHasSearched] = useState(false);
   const { getArtistReleases, loading, error } = useSoundCloud();
 
   // Mémoriser la clé de cache pour éviter les appels répétés
@@ -37,39 +39,52 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
       if (!artistName) return;
 
       try {
-        console.log('Récupération des sorties SoundCloud pour:', artistName, soundcloudUrl);
+        setHasSearched(false);
+        console.log('🔍 Recherche sorties SoundCloud pour:', artistName, soundcloudUrl);
         
-        const soundcloudReleases = await getArtistReleases(artistName, soundcloudUrl, 10);
+        const soundcloudReleases = await getArtistReleases(artistName, soundcloudUrl, 20);
+        setHasSearched(true);
         
-        if (soundcloudReleases.length === 0) {
-          console.log('Aucune sortie SoundCloud trouvée pour', artistName);
+        console.log('📊 Résultats bruts SoundCloud:', soundcloudReleases);
+        
+        if (!soundcloudReleases || soundcloudReleases.length === 0) {
+          console.log('❌ Aucune sortie SoundCloud trouvée pour', artistName);
           setIsServiceAvailable(true);
           setReleases([]);
           return;
         }
         
-        // Filtrer les sorties du dernier mois
+        // Filtrer les sorties du dernier mois avec debug
         const oneMonthAgo = new Date();
         oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
         
+        console.log('📅 Filtrage à partir du:', oneMonthAgo.toISOString());
+        
         const recentReleases = soundcloudReleases.filter(release => {
           const releaseDate = new Date(release.created_at);
-          return releaseDate > oneMonthAgo;
+          const isRecent = releaseDate > oneMonthAgo;
+          
+          if (!isRecent) {
+            console.log(`⏰ Sortie trop ancienne: ${release.title} (${releaseDate.toISOString()})`);
+          }
+          
+          return isRecent;
         });
         
-        console.log(`Trouvé ${recentReleases.length} sorties SoundCloud récentes`);
+        console.log(`✅ ${recentReleases.length} sorties récentes trouvées sur ${soundcloudReleases.length} total`);
         setReleases(recentReleases);
         setIsServiceAvailable(true);
         
       } catch (fetchError) {
-        console.error('Erreur lors de la récupération des sorties SoundCloud:', fetchError);
+        console.error('❌ Erreur lors de la récupération des sorties SoundCloud:', fetchError);
         setIsServiceAvailable(false);
         setReleases([]);
+        setHasSearched(true);
       }
     };
 
     fetchReleases();
-  }, [cacheKey, getArtistReleases]); // Utiliser cacheKey au lieu de artistName et soundcloudUrl séparément
+  }, [cacheKey, getArtistReleases]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('fr-FR', {
@@ -99,7 +114,7 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
         <CardContent className="p-6">
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-400"></div>
-            <span className="ml-3 text-orange-400">Connexion à SoundCloud...</span>
+            <span className="ml-3 text-orange-400">Recherche sur SoundCloud...</span>
           </div>
         </CardContent>
       </Card>
@@ -128,8 +143,8 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
     );
   }
 
-  // Si pas de sorties récentes
-  if (releases.length === 0) {
+  // Si pas de sorties récentes mais recherche effectuée
+  if (hasSearched && releases.length === 0) {
     return (
       <Card className="card-3d mb-8 border-orange-400/20">
         <CardContent className="p-6">
@@ -139,6 +154,9 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
               <p className="font-medium">SoundCloud connecté</p>
               <p className="text-sm text-gray-400">
                 Aucune sortie récente du dernier mois trouvée pour {artistName}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                L'artiste pourrait avoir des sorties plus anciennes ou être présent sous un autre nom
               </p>
             </div>
           </div>
