@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Music, Gamepad2, Search, Shield } from 'lucide-react';
-import { AddArtistFormWrapper } from '@/components/AddArtistForm';
-import { AddGameFormWrapper } from '@/components/AddGameForm';
+import { AddArtistFormWrapper } from '@/components/AddArtistFormWrapper';
+import { AddGameFormWrapper } from '@/components/AddGameFormWrapper';
 import { ArtistsGrid } from '@/components/ArtistsGrid';
 import { GamesGrid } from '@/components/GamesGrid';
 import { NewReleasesSection } from '@/components/NewReleasesSection';
@@ -16,33 +17,15 @@ import { RoleGuard } from '@/components/RoleGuard';
 import { useNavigate } from 'react-router-dom';
 
 export default function Index() {
-  const { artists, fetchArtists, deleteArtist } = useArtists();
-  const { games, fetchGames, deleteGame } = useGames();
-  const [loading, setLoading] = useState(false);
+  const { artists, loading: artistsLoading, removeArtist } = useArtists();
+  const { games, loading: gamesLoading, removeGame } = useGames();
 
   const { userRole } = useUserRoleContext();
   const navigate = useNavigate();
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      await Promise.all([
-        fetchArtists(),
-        fetchGames()
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
   const handleDeleteArtist = async (artistId: string) => {
     try {
-      await deleteArtist(artistId);
-      await fetchArtists();
+      await removeArtist(artistId);
     } catch (error) {
       console.error("Error deleting artist:", error);
     }
@@ -50,8 +33,7 @@ export default function Index() {
 
   const handleDeleteGame = async (gameId: string) => {
     try {
-      await deleteGame(gameId);
-      await fetchGames();
+      await removeGame(gameId);
     } catch (error) {
       console.error("Error deleting game:", error);
     }
@@ -169,10 +151,14 @@ export default function Index() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ArtistsGrid 
-                    artists={artists} 
-                    onDeleteArtist={userRole !== 'viewer' ? handleDeleteArtist : undefined} 
-                  />
+                  {artistsLoading ? (
+                    <div className="text-center text-gray-400">Chargement des artistes...</div>
+                  ) : (
+                    <ArtistsGrid 
+                      artists={artists} 
+                      onDeleteArtist={userRole !== 'viewer' ? handleDeleteArtist : undefined} 
+                    />
+                  )}
                 </CardContent>
               </Card>
 
@@ -184,10 +170,14 @@ export default function Index() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <GamesGrid 
-                    games={games} 
-                    onDeleteGame={userRole !== 'viewer' ? handleDeleteGame : undefined} 
-                  />
+                  {gamesLoading ? (
+                    <div className="text-center text-gray-400">Chargement des jeux...</div>
+                  ) : (
+                    <GamesGrid 
+                      games={games} 
+                      onDeleteGame={userRole !== 'viewer' ? handleDeleteGame : undefined} 
+                    />
+                  )}
                 </CardContent>
               </Card>
             </div>
