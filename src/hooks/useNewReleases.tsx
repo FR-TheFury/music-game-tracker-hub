@@ -23,31 +23,10 @@ export const useNewReleases = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const cleanupExpiredReleases = async () => {
-    try {
-      console.log('Triggering cleanup of expired notifications...');
-      const { data, error } = await supabase.functions.invoke('cleanup-expired-notifications');
-
-      if (error) {
-        console.error('Error calling cleanup function:', error);
-      } else {
-        console.log('Cleanup completed:', data);
-      }
-    } catch (error) {
-      console.error('Error during cleanup:', error);
-    }
-  };
-
   const fetchReleases = async () => {
     if (!user) return;
 
     try {
-      // Ne faire le nettoyage qu'au premier chargement, pas à chaque fetch
-      const shouldCleanup = releases.length === 0;
-      if (shouldCleanup) {
-        await cleanupExpiredReleases();
-      }
-
       const { data, error } = await supabase
         .from('new_releases')
         .select('*')
@@ -120,14 +99,10 @@ export const useNewReleases = () => {
     fetchReleases();
   }, [user]);
 
-  // Supprimer l'intervalle automatique qui causait le spam
-  // Le nettoyage se fera seulement au chargement initial
-
   return {
     releases,
     loading,
     removeRelease,
     refetch: fetchReleases,
-    cleanupExpiredReleases,
   };
 };

@@ -40,6 +40,34 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    // ÉTAPE 1: Nettoyer les notifications expirées AVANT de chercher de nouvelles sorties
+    console.log('Cleaning up expired notifications...');
+    const { data: expiredNotifications, error: selectError } = await supabaseClient
+      .from('new_releases')
+      .select('id, title, detected_at')
+      .lt('expires_at', new Date().toISOString());
+
+    if (selectError) {
+      console.error('Error selecting expired notifications:', selectError);
+    } else if (expiredNotifications && expiredNotifications.length > 0) {
+      const { error: deleteError } = await supabaseClient
+        .from('new_releases')
+        .delete()
+        .lt('expires_at', new Date().toISOString());
+
+      if (deleteError) {
+        console.error('Error deleting expired notifications:', deleteError);
+      } else {
+        console.log(`Successfully cleaned up ${expiredNotifications.length} expired notifications`);
+        expiredNotifications.forEach(notification => {
+          console.log(`Deleted notification: "${notification.title}" (detected: ${notification.detected_at})`);
+        });
+      }
+    } else {
+      console.log('No expired notifications to clean');
+    }
+
+    // ÉTAPE 2: Chercher de nouvelles sorties
     // Fetch all artists and games from all users
     const { data: artists, error: artistsError } = await supabaseClient
       .from('artists')
@@ -186,7 +214,8 @@ const handler = async (req: Request): Promise<Response> => {
       JSON.stringify({ 
         success: true, 
         newReleasesFound: newReleases.length,
-        message: `Global automated check completed: found ${newReleases.length} new releases`,
+        cleanedExpiredNotifications: expiredNotifications?.length || 0,
+        message: `Global automated check completed: found ${newReleases.length} new releases, cleaned ${expiredNotifications?.length || 0} expired notifications`,
         processedArtists: artists?.length || 0,
         processedGames: games?.length || 0,
         timestamp: new Date().toISOString()

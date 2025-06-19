@@ -55,6 +55,32 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Starting user-specific releases check for user: ${user.id}`);
     
+    // ÉTAPE 1: Nettoyer les notifications expirées pour cet utilisateur
+    console.log(`Cleaning up expired notifications for user ${user.id}...`);
+    const { data: expiredNotifications, error: selectError } = await supabaseClient
+      .from('new_releases')
+      .select('id, title, detected_at')
+      .eq('user_id', user.id)
+      .lt('expires_at', new Date().toISOString());
+
+    if (selectError) {
+      console.error('Error selecting expired notifications:', selectError);
+    } else if (expiredNotifications && expiredNotifications.length > 0) {
+      const { error: deleteError } = await supabaseClient
+        .from('new_releases')
+        .delete()
+        .eq('user_id', user.id)
+        .lt('expires_at', new Date().toISOString());
+
+      if (deleteError) {
+        console.error('Error deleting expired notifications:', deleteError);
+      } else {
+        console.log(`Successfully cleaned up ${expiredNotifications.length} expired notifications for user ${user.id}`);
+      }
+    } else {
+      console.log(`No expired notifications to clean for user ${user.id}`);
+    }
+
     // Fetch only this user's artists and games
     const { data: artists, error: artistsError } = await supabaseClient
       .from('artists')
@@ -177,7 +203,8 @@ const handler = async (req: Request): Promise<Response> => {
       JSON.stringify({ 
         success: true, 
         newReleasesFound: newReleases.length,
-        message: `User-specific check completed: found ${newReleases.length} new releases`,
+        cleanedExpiredNotifications: expiredNotifications?.length || 0,
+        message: `User-specific check completed: found ${newReleases.length} new releases, cleaned ${expiredNotifications?.length || 0} expired notifications`,
         processedArtists: artists?.length || 0,
         processedGames: games?.length || 0,
         timestamp: new Date().toISOString()
