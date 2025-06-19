@@ -39,18 +39,26 @@ export const ReadOnlyArtistsGrid: React.FC<ReadOnlyArtistsGridProps> = ({ artist
     }
   };
 
+  const getArtistImage = (artist: UserArtist) => {
+    // Vérifier profile_image_url en priorité, puis image_url
+    // Traiter les chaînes vides comme des valeurs nulles
+    const profileImageUrl = artist.profile_image_url && artist.profile_image_url.trim() !== '' ? artist.profile_image_url : null;
+    const imageUrl = artist.image_url && artist.image_url.trim() !== '' ? artist.image_url : null;
+    
+    return profileImageUrl || imageUrl;
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {artists.map((artist) => {
-        // Utiliser profile_image_url en priorité, puis image_url
-        const imageUrl = artist.profile_image_url || artist.image_url;
+        const finalImageUrl = getArtistImage(artist);
         
         console.log('Artist image data:', {
           name: artist.name,
           image_url: artist.image_url,
           profile_image_url: artist.profile_image_url,
-          finalImageUrl: imageUrl,
-          hasImage: !!imageUrl
+          finalImageUrl,
+          hasImage: !!finalImageUrl
         });
         
         return (
@@ -60,13 +68,13 @@ export const ReadOnlyArtistsGrid: React.FC<ReadOnlyArtistsGridProps> = ({ artist
           >
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0">
-                {imageUrl ? (
+                {finalImageUrl ? (
                   <img
-                    src={imageUrl}
+                    src={finalImageUrl}
                     alt={artist.name}
                     className="w-16 h-16 rounded-lg object-cover shadow-md"
                     onError={(e) => {
-                      console.log('Image failed to load for artist:', artist.name, 'URL:', imageUrl);
+                      console.log('Image failed to load for artist:', artist.name, 'URL:', finalImageUrl);
                     }}
                   />
                 ) : (
