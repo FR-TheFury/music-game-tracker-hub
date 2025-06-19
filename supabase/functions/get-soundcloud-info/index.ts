@@ -33,9 +33,41 @@ interface SoundCloudUser {
   verified: boolean;
 }
 
-// Cache pour l'access token OAuth
+// Cache pour l'access token OAuth avec un système de retry plus intelligent
 let cachedAccessToken: string | null = null;
 let tokenExpirationTime: number = 0;
+let lastRequestTime: number = 0;
+let requestCount: number = 0;
+
+// Système de rate limiting intelligent
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 50; // Limite conservatrice
+const MIN_REQUEST_INTERVAL = 1200; // 1.2 secondes entre les requêtes
+
+const waitForRateLimit = async () => {
+  const now = Date.now();
+  const timeSinceLastRequest = now - lastRequestTime;
+  
+  if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+    const waitTime = MIN_REQUEST_INTERVAL - timeSinceLastRequest;
+    console.log(`Rate limiting: waiting ${waitTime}ms`);
+    await new Promise(resolve => setTimeout(resolve, waitTime));
+  }
+  
+  // Reset counter si on a dépassé la fenêtre
+  if (now - lastRequestTime > RATE_LIMIT_WINDOW) {
+    requestCount = 0;
+  }
+  
+  requestCount++;
+  lastRequestTime = now;
+  
+  // Si on approche de la limite, attendre plus longtemps
+  if (requestCount > MAX_REQUESTS_PER_WINDOW * 0.8) {
+    console.log('Approaching rate limit, adding extra delay');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
+};
 
 const getAccessToken = async (): Promise<string | null> => {
   // Vérifier si le token en cache est encore valide
@@ -52,6 +84,8 @@ const getAccessToken = async (): Promise<string | null> => {
   }
 
   try {
+    await waitForRateLimit();
+    
     // OAuth 2.0 Client Credentials flow
     const tokenResponse = await fetch('https://api.soundcloud.com/oauth2/token', {
       method: 'POST',
@@ -66,13 +100,22 @@ const getAccessToken = async (): Promise<string | null> => {
     });
 
     if (!tokenResponse.ok) {
-      console.error('Erreur OAuth SoundCloud:', await tokenResponse.text());
+      const errorText = await tokenResponse.text();
+      console.error('Erreur OAuth SoundCloud:', errorText);
+      
+      // Si rate limited, attendre plus longtemps
+      if (tokenResponse.status === 429) {
+        console.log('OAuth rate limited, waiting 30 seconds...');
+        await new Promise(resolve => setTimeout(resolve, 30000));
+        throw new Error('rate_limit_exceeded');
+      }
+      
       return null;
     }
 
     const tokenData = await tokenResponse.json();
     cachedAccessToken = tokenData.access_token;
-    // Définir l'expiration à 1 heure par sécurité (les tokens durent généralement plus longtemps)
+    // Token valide pour 1 heure
     tokenExpirationTime = Date.now() + (3600 * 1000);
     
     console.log('Token SoundCloud obtenu avec succès');
@@ -83,25 +126,44 @@ const getAccessToken = async (): Promise<string | null> => {
   }
 };
 
-const makeAuthenticatedRequest = async (url: string): Promise<any> => {
+const makeAuthenticatedRequest = async (url: string, retryCount = 0): Promise<any> => {
   const accessToken = await getAccessToken();
   
   if (!accessToken) {
     throw new Error('Impossible d\'obtenir un token d\'accès SoundCloud');
   }
 
-  const response = await fetch(url, {
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Accept': 'application/json',
-    },
-  });
+  try {
+    await waitForRateLimit();
+    
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json',
+      },
+    });
 
-  if (!response.ok) {
-    throw new Error(`Erreur API SoundCloud: ${response.status} ${response.statusText}`);
+    if (!response.ok) {
+      if (response.status === 429 && retryCount < 3) {
+        const waitTime = Math.pow(2, retryCount) * 5000; // Backoff exponentiel
+        console.log(`Rate limited, retrying in ${waitTime}ms (attempt ${retryCount + 1})`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        return makeAuthenticatedRequest(url, retryCount + 1);
+      }
+      
+      throw new Error(`Erreur API SoundCloud: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    if (error.message.includes('rate_limit') && retryCount < 2) {
+      const waitTime = (retryCount + 1) * 10000;
+      console.log(`Network rate limit, retrying in ${waitTime}ms`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+      return makeAuthenticatedRequest(url, retryCount + 1);
+    }
+    throw error;
   }
-
-  return await response.json();
 };
 
 serve(async (req) => {
@@ -132,7 +194,7 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             artists: [],
-            warning: 'Recherche SoundCloud temporairement indisponible'
+            warning: 'Recherche SoundCloud temporairement indisponible - Rate limit atteint'
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -153,7 +215,10 @@ serve(async (req) => {
       } catch (error) {
         console.error('Erreur infos artiste SoundCloud:', error);
         return new Response(
-          JSON.stringify({ artist: null }),
+          JSON.stringify({ 
+            artist: null,
+            warning: 'Informations artiste temporairement indisponibles'
+          }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -172,7 +237,7 @@ serve(async (req) => {
             userId = userData.id;
             console.log('ID utilisateur résolu:', userId);
           } catch (error) {
-            console.log('Erreur de résolution:', error.message);
+            console.log('Erreur de résolution (tentative de fallback):', error.message);
           }
         }
 
@@ -181,8 +246,8 @@ serve(async (req) => {
           const tracksUrl = `https://api.soundcloud.com/users/${userId}/tracks?limit=${limit}`;
           tracks = await makeAuthenticatedRequest(tracksUrl);
         } else if (query) {
-          // Sinon, essayer la recherche par nom
-          const searchUrl = `https://api.soundcloud.com/tracks?q=${encodeURIComponent(query)}&limit=${limit}`;
+          // Sinon, essayer la recherche par nom (avec limitation)
+          const searchUrl = `https://api.soundcloud.com/tracks?q=${encodeURIComponent(query)}&limit=${Math.min(limit, 20)}`;
           const searchResults = await makeAuthenticatedRequest(searchUrl);
           
           // Filtrer pour l'artiste spécifique
@@ -213,13 +278,22 @@ serve(async (req) => {
         console.log(`Trouvé ${recentReleases.length} sorties récentes SoundCloud`);
 
         return new Response(
-          JSON.stringify({ releases: recentReleases }),
+          JSON.stringify({ 
+            releases: recentReleases,
+            rateLimitInfo: `${requestCount}/${MAX_REQUESTS_PER_WINDOW} requests in current window`
+          }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       } catch (error) {
         console.error('Erreur sorties SoundCloud:', error);
+        const isRateLimit = error.message.includes('rate_limit') || error.message.includes('429');
+        
         return new Response(
-          JSON.stringify({ releases: [] }),
+          JSON.stringify({ 
+            releases: [],
+            error: isRateLimit ? 'rate_limit_exceeded' : 'api_error',
+            message: isRateLimit ? 'Limite de taux SoundCloud atteinte, réessayez plus tard' : 'Erreur API SoundCloud'
+          }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -239,7 +313,10 @@ serve(async (req) => {
       } catch (error) {
         console.error('Erreur récupération tracks artiste:', error);
         return new Response(
-          JSON.stringify({ tracks: [] }),
+          JSON.stringify({ 
+            tracks: [],
+            warning: 'Tracks temporairement indisponibles'
+          }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -287,7 +364,8 @@ serve(async (req) => {
             totalPlays: 0, 
             totalLikes: 0, 
             trackCount: 0,
-            tracks: []
+            tracks: [],
+            warning: 'Stats temporairement indisponibles'
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -307,7 +385,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: 'Échec de récupération des données SoundCloud',
-        message: error.message || 'Le service SoundCloud est temporairement indisponible.'
+        message: 'Le service SoundCloud est temporairement indisponible à cause des limitations de taux. Réessayez dans quelques minutes.'
       }),
       { 
         status: 500, 

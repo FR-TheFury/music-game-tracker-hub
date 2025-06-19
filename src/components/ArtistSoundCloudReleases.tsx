@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,7 +33,7 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
   const [retryCount, setRetryCount] = useState(0);
   const { getArtistReleases, loading, error } = useSoundCloud();
 
-  const fetchReleases = async (isRetry = false) => {
+  const fetchReleases = useCallback(async (isRetry = false) => {
     if (!artistName) return;
 
     // Vérifier si l'artiste a SoundCloud configuré
@@ -54,10 +55,12 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
       
       // Ajouter un délai si c'est un retry pour éviter le rate limiting
       if (isRetry && retryCount > 0) {
-        await new Promise(resolve => setTimeout(resolve, retryCount * 2000));
+        const waitTime = Math.min(retryCount * 3000, 15000); // Max 15 secondes
+        console.log(`⏳ Attente de ${waitTime}ms avant retry...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
       }
       
-      const soundcloudReleases = await getArtistReleases(artistName, soundcloudUrl, 50);
+      const soundcloudReleases = await getArtistReleases(artistName, soundcloudUrl, 20);
       setHasSearched(true);
       
       console.log('📊 Résultats bruts SoundCloud:', soundcloudReleases);
@@ -104,7 +107,7 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
       setReleases([]);
       
       const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
-      if (errorMessage.includes('rate_limit_exceeded') || errorMessage.includes('429')) {
+      if (errorMessage.includes('rate_limit_exceeded') || errorMessage.includes('429') || errorMessage.includes('Limite de taux')) {
         setErrorType('rate_limit');
         setIsServiceAvailable(false);
       } else if (errorMessage.includes('OAuth') || errorMessage.includes('token') || errorMessage.includes('client')) {
@@ -115,16 +118,21 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
         setIsServiceAvailable(false);
       }
     }
-  };
+  }, [artistName, soundcloudUrl, getArtistReleases, retryCount]);
 
   useEffect(() => {
-    fetchReleases();
-  }, [artistName, soundcloudUrl]);
+    // Délai initial pour éviter trop d'appels simultanés
+    const timer = setTimeout(() => {
+      fetchReleases();
+    }, Math.random() * 2000); // 0-2 secondes de délai aléatoire
+    
+    return () => clearTimeout(timer);
+  }, [fetchReleases]);
 
-  const handleRetry = () => {
+  const handleRetry = useCallback(() => {
     setRetryCount(prev => prev + 1);
     fetchReleases(true);
-  };
+  }, [fetchReleases]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('fr-FR', {
@@ -185,19 +193,23 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
     let errorIcon = WifiOff;
     let errorTitle = "SoundCloud temporairement indisponible";
     let errorDescription = "Le service SoundCloud est en maintenance. Réessayez plus tard.";
+    let showRetry = true;
 
     if (errorType === 'rate_limit') {
       errorIcon = AlertTriangle;
       errorTitle = "Limite de taux SoundCloud atteinte";
-      errorDescription = `Trop de requêtes effectuées. ${retryCount > 0 ? `Tentative ${retryCount}/3` : 'Cliquez pour réessayer.'}`;
+      errorDescription = `Trop de requêtes effectuées. ${retryCount > 0 ? `Tentative ${retryCount}/3` : 'Les données seront rechargées automatiquement.'}`;
+      showRetry = retryCount < 3;
     } else if (errorType === 'config') {
       errorIcon = WifiOff;
       errorTitle = "Configuration SoundCloud requise";
       errorDescription = "Configuration OAuth SoundCloud manquante. Contactez l'administrateur.";
+      showRetry = false;
     } else if (errorType === 'api') {
       errorIcon = AlertTriangle;
       errorTitle = "Erreur API SoundCloud";
       errorDescription = error || "Une erreur est survenue lors de la communication avec SoundCloud.";
+      showRetry = retryCount < 2;
     }
 
     const IconComponent = errorIcon;
@@ -211,16 +223,22 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
               <div>
                 <p className="font-medium">{errorTitle}</p>
                 <p className="text-sm text-gray-400">{errorDescription}</p>
+                {errorType === 'rate_limit' && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Réessai automatique dans quelques minutes...
+                  </p>
+                )}
               </div>
             </div>
-            {(errorType === 'rate_limit' || errorType === 'api') && retryCount < 3 && (
+            {showRetry && (
               <Button 
                 onClick={handleRetry}
                 variant="outline"
                 size="sm"
                 className="border-orange-400/30 text-orange-300 hover:bg-orange-400/10"
+                disabled={loading}
               >
-                <RefreshCw className="h-4 w-4 mr-2" />
+                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                 Réessayer
               </Button>
             )}
@@ -253,8 +271,9 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
               variant="outline"
               size="sm"
               className="border-orange-400/30 text-orange-300 hover:bg-orange-400/10"
+              disabled={loading}
             >
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
               Actualiser
             </Button>
           </div>
@@ -282,8 +301,9 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
               variant="ghost"
               size="sm"
               className="h-8 w-8 p-0 text-gray-400 hover:text-white"
+              disabled={loading}
             >
-              <RefreshCw className="h-4 w-4" />
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
           </div>
         </CardTitle>
