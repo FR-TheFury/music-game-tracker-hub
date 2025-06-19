@@ -25,7 +25,7 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
 }) => {
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
-  const [slidesCount, setSlidesCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const isMobile = useIsMobile();
 
   if (items.length === 0) {
@@ -40,24 +40,22 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
     return 3;
   };
 
+  // Calculer le nombre total de pages
+  const calculateTotalPages = () => {
+    const actualItemsPerView = getActualItemsPerView();
+    return Math.ceil(items.length / actualItemsPerView);
+  };
+
   // Effet pour gérer les changements d'éléments et repositionner le carousel
   useEffect(() => {
     if (!api) return;
 
-    const actualItemsPerView = getActualItemsPerView();
-    const totalSlides = Math.ceil(items.length / actualItemsPerView);
-    setSlidesCount(totalSlides);
+    const pages = calculateTotalPages();
+    setTotalPages(pages);
 
-    // Calculer la nouvelle position optimale
-    let newPosition = current;
-
-    // Si la position actuelle dépasse le nombre total de slides possibles
-    if (current >= totalSlides) {
-      newPosition = Math.max(0, totalSlides - 1);
-    }
-
-    // Repositionner le carousel si nécessaire
-    if (newPosition !== current) {
+    // Si la position actuelle dépasse le nombre total de pages possibles
+    if (current >= pages) {
+      const newPosition = Math.max(0, pages - 1);
       api.scrollTo(newPosition);
       setCurrent(newPosition);
     } else {
@@ -82,21 +80,18 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
     };
   }, [api]);
 
-  // Mettre à jour le nombre de slides lors du redimensionnement
+  // Mettre à jour le nombre de pages lors du redimensionnement
   useEffect(() => {
     const handleResize = () => {
-      if (api) {
-        const actualItemsPerView = getActualItemsPerView();
-        const totalSlides = Math.ceil(items.length / actualItemsPerView);
-        setSlidesCount(totalSlides);
-      }
+      const pages = calculateTotalPages();
+      setTotalPages(pages);
     };
 
     window.addEventListener('resize', handleResize);
     handleResize(); // Calcul initial
 
     return () => window.removeEventListener('resize', handleResize);
-  }, [api, items.length]);
+  }, [items.length]);
 
   const canShowNavigation = items.length > getActualItemsPerView();
 
@@ -124,10 +119,10 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
         </CarouselContent>
       </Carousel>
       
-      {/* Points de navigation - un point par page */}
-      {canShowNavigation && slidesCount > 1 && (
+      {/* Points de navigation - un point par page basé sur le nombre d'items */}
+      {canShowNavigation && totalPages > 1 && (
         <div className="flex justify-center mt-4 space-x-2 select-none">
-          {Array.from({ length: slidesCount }, (_, pageIndex) => (
+          {Array.from({ length: totalPages }, (_, pageIndex) => (
             <button
               key={pageIndex}
               onClick={() => api?.scrollTo(pageIndex)}
