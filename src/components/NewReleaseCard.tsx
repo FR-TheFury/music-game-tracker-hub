@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,13 +24,29 @@ interface NewReleaseCardProps {
 
 export const NewReleaseCard: React.FC<NewReleaseCardProps> = ({ release }) => {
   const { removeRelease } = useNewReleases();
+  const [isRemoving, setIsRemoving] = useState(false);
 
   const handleRemove = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     console.log('Removing release:', release.id);
-    await removeRelease(release.id);
+    
+    // Marquer comme en cours de suppression pour masquer immédiatement
+    setIsRemoving(true);
+    
+    try {
+      await removeRelease(release.id);
+    } catch (error) {
+      // En cas d'erreur, restaurer l'affichage
+      setIsRemoving(false);
+      console.error('Failed to remove release:', error);
+    }
   };
+
+  // Si la notification est en cours de suppression, ne pas l'afficher
+  if (isRemoving) {
+    return null;
+  }
 
   const getTypeIcon = () => {
     return release.type === 'artist' ? (
