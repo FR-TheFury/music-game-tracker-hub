@@ -3,7 +3,8 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink, Trash2, Gamepad2, Calendar, Tag } from 'lucide-react';
+import { ExternalLink, Trash2, Gamepad2, Calendar, Tag, Eye } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface Game {
   id: string;
@@ -121,17 +122,30 @@ export const GameCard: React.FC<GameCardProps> = ({ game, onRemove }) => {
           <div className="text-xs text-gray-500">
             Ajouté le {formatDate(game.addedAt)}
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            asChild
-            className="border-blue-500/30 text-blue-300 hover:bg-blue-500/10 hover:border-blue-400"
-          >
-            <a href={game.url} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Voir
-            </a>
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              className="border-purple-500/30 text-purple-300 hover:bg-purple-500/10 hover:border-purple-400"
+            >
+              <Link to={`/game/${game.id}`}>
+                <Eye className="h-4 w-4 mr-2" />
+                Détails
+              </Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              className="border-blue-500/30 text-blue-300 hover:bg-blue-500/10 hover:border-blue-400"
+            >
+              <a href={game.url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Voir
+              </a>
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

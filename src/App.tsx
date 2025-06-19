@@ -8,6 +8,7 @@ import { UserRoleProvider } from "@/contexts/UserRoleContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import ArtistDetail from "./pages/ArtistDetail";
+import GameDetail from "./pages/GameDetail";
 import ResetPassword from "./pages/ResetPassword";
 import Admin from "./pages/Admin";
 import NotificationSettingsPage from "./pages/NotificationSettingsPage";
@@ -27,6 +28,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/artist/:id" element={<ArtistDetail />} />
+            <Route path="/game/:id" element={<GameDetail />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/notifications" element={<NotificationSettingsPage />} />
