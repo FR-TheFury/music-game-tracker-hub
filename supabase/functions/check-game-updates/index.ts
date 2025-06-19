@@ -25,7 +25,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const { gameId, userId } = requestBody;
-    console.log(`=== CHECK GAME UPDATES: Game ${gameId || 'ALL'}, User ${userId || 'UNKNOWN'} ===`);
+    console.log(`=== CHECK GAME RELEASES: Game ${gameId || 'ALL'}, User ${userId || 'UNKNOWN'} ===`);
     
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -85,7 +85,7 @@ const handler = async (req: Request): Promise<Response> => {
         JSON.stringify({ 
           success: true, 
           message: 'No games to check',
-          newUpdates: 0,
+          newReleases: 0,
           processedGames: 0
         }),
         {
@@ -95,139 +95,200 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    let totalNewUpdates = 0;
+    let totalNewReleases = 0;
     const processedGames = [];
 
     for (const game of games) {
       try {
         console.log(`Processing game: ${game.name} (${game.platform})`);
-        let gameUpdates = [];
+        let gameReleases = [];
 
-        // Vérifier les mises à jour selon la plateforme
-        if (game.platform.toLowerCase().includes('steam')) {
+        // Vérifier les sorties via RAWG API si disponible
+        if (game.rawg_url || game.name) {
           try {
-            console.log('Checking Steam updates for:', game.name);
+            console.log('Checking RAWG for game releases:', game.name);
             
-            // Simuler une vérification de mise à jour Steam
-            // Dans un vrai cas, vous appelleriez l'API Steam
-            const lastCheck = game.last_status_check ? new Date(game.last_status_check) : new Date(0);
-            const now = new Date();
-            const daysSinceLastCheck = (now.getTime() - lastCheck.getTime()) / (1000 * 60 * 60 * 24);
-
-            // Si plus de 7 jours depuis la dernière vérification, considérer comme une mise à jour potentielle
-            if (daysSinceLastCheck > 7) {
-              const uniqueHash = `steam_${game.id}_${Date.now()}`;
+            const rawgApiKey = Deno.env.get('RAWG_API_KEY');
+            if (rawgApiKey) {
+              // Rechercher le jeu sur RAWG
+              const searchUrl = `https://api.rawg.io/api/games?key=${rawgApiKey}&search=${encodeURIComponent(game.name)}&page_size=5`;
+              const searchResponse = await fetch(searchUrl);
               
-              const { data: existing } = await supabaseClient
-                .from('new_releases')
-                .select('id')
-                .eq('unique_hash', uniqueHash)
-                .maybeSingle();
+              if (searchResponse.ok) {
+                const searchData = await searchResponse.json();
+                const foundGame = searchData.results?.[0];
+                
+                if (foundGame) {
+                  // Vérifier si le jeu a une date de sortie récente ou confirmée
+                  const releaseDate = foundGame.released;
+                  const tbaDate = foundGame.tba;
+                  
+                  // Si le jeu était "à venir" et maintenant a une date de sortie
+                  if (releaseDate && (game.release_status === 'upcoming' || !game.release_date)) {
+                    const uniqueHash = `rawg_release_${game.id}_${releaseDate}`;
+                    
+                    const { data: existing } = await supabaseClient
+                      .from('new_releases')
+                      .select('id')
+                      .eq('unique_hash', uniqueHash)
+                      .maybeSingle();
 
-              if (!existing) {
-                gameUpdates.push({
-                  type: 'game',
-                  source_item_id: game.id,
-                  title: `Mise à jour disponible: ${game.name}`,
-                  description: `Une mise à jour pourrait être disponible pour ${game.name}`,
-                  image_url: game.image_url || null,
-                  platform_url: game.url || null,
-                  detected_at: new Date().toISOString(),
-                  expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-                  user_id: game.user_id,
-                  unique_hash: uniqueHash
-                });
-                console.log(`Potential update detected for: ${game.name}`);
+                    if (!existing) {
+                      gameReleases.push({
+                        type: 'game',
+                        source_item_id: game.id,
+                        title: `${game.name} - Date de sortie confirmée !`,
+                        description: `${game.name} est maintenant disponible depuis le ${new Date(releaseDate).toLocaleDateString('fr-FR')}`,
+                        image_url: foundGame.background_image || game.image_url,
+                        platform_url: game.url || `https://rawg.io/games/${foundGame.slug}`,
+                        detected_at: new Date().toISOString(),
+                        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                        user_id: game.user_id,
+                        unique_hash: uniqueHash
+                      });
+
+                      // Mettre à jour le jeu avec les nouvelles infos
+                      await supabaseClient
+                        .from('games')
+                        .update({ 
+                          release_date: releaseDate,
+                          release_status: 'released',
+                          last_status_check: new Date().toISOString()
+                        })
+                        .eq('id', game.id);
+
+                      console.log(`Release confirmed for: ${game.name} (${releaseDate})`);
+                    }
+                  }
+                  
+                  // Vérifier les changements de statut (early access, bêta, etc.)
+                  if (foundGame.released && foundGame.released !== game.release_date) {
+                    const uniqueHash = `rawg_status_${game.id}_${foundGame.released}`;
+                    
+                    const { data: existing } = await supabaseClient
+                      .from('new_releases')
+                      .select('id')
+                      .eq('unique_hash', uniqueHash)
+                      .maybeSingle();
+
+                    if (!existing) {
+                      gameReleases.push({
+                        type: 'game',
+                        source_item_id: game.id,
+                        title: `${game.name} - Nouvelle information de sortie`,
+                        description: `Nouvelle date de sortie confirmée pour ${game.name}`,
+                        image_url: foundGame.background_image || game.image_url,
+                        platform_url: game.url || `https://rawg.io/games/${foundGame.slug}`,
+                        detected_at: new Date().toISOString(),
+                        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                        user_id: game.user_id,
+                        unique_hash: uniqueHash
+                      });
+                      console.log(`Status update for: ${game.name}`);
+                    }
+                  }
+                }
+              }
+              
+              // Délai pour respecter les limites RAWG
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+          } catch (rawgError) {
+            console.error(`RAWG error for ${game.name}:`, rawgError);
+          }
+        }
+
+        // Vérifier via Steam si c'est un jeu Steam
+        if (game.platform.toLowerCase().includes('steam') && game.url) {
+          try {
+            console.log('Checking Steam for:', game.name);
+            
+            // Extraire l'ID Steam de l'URL
+            const steamIdMatch = game.url.match(/\/app\/(\d+)/);
+            if (steamIdMatch) {
+              const steamId = steamIdMatch[1];
+              const steamApiKey = Deno.env.get('STEAM_WEB_API_KEY');
+              
+              if (steamApiKey) {
+                const steamUrl = `https://store.steampowered.com/api/appdetails?appids=${steamId}`;
+                const steamResponse = await fetch(steamUrl);
+                
+                if (steamResponse.ok) {
+                  const steamData = await steamResponse.json();
+                  const appData = steamData[steamId];
+                  
+                  if (appData?.success && appData.data) {
+                    const gameData = appData.data;
+                    
+                    // Vérifier si le jeu est maintenant disponible
+                    if (!gameData.release_date?.coming_soon && game.release_status === 'upcoming') {
+                      const uniqueHash = `steam_released_${game.id}_${Date.now()}`;
+                      
+                      const { data: existing } = await supabaseClient
+                        .from('new_releases')
+                        .select('id')
+                        .eq('unique_hash', uniqueHash)
+                        .maybeSingle();
+
+                      if (!existing) {
+                        gameReleases.push({
+                          type: 'game',
+                          source_item_id: game.id,
+                          title: `${game.name} - Maintenant disponible sur Steam !`,
+                          description: `${game.name} est maintenant disponible sur Steam`,
+                          image_url: gameData.header_image || game.image_url,
+                          platform_url: game.url,
+                          detected_at: new Date().toISOString(),
+                          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                          user_id: game.user_id,
+                          unique_hash: uniqueHash
+                        });
+
+                        // Mettre à jour le statut du jeu
+                        await supabaseClient
+                          .from('games')
+                          .update({ 
+                            release_status: 'released',
+                            release_date: gameData.release_date?.date || 'Available now',
+                            last_status_check: new Date().toISOString()
+                          })
+                          .eq('id', game.id);
+
+                        console.log(`Steam release confirmed for: ${game.name}`);
+                      }
+                    }
+                  }
+                }
+                
+                // Délai pour respecter les limites Steam
+                await new Promise(resolve => setTimeout(resolve, 1500));
               }
             }
-
-            // Mettre à jour la dernière vérification
-            await supabaseClient
-              .from('games')
-              .update({ last_status_check: new Date().toISOString() })
-              .eq('id', game.id);
-
           } catch (steamError) {
             console.error(`Steam error for ${game.name}:`, steamError);
           }
         }
 
-        // Vérifier les changements de statut de sortie
-        if (game.release_status === 'upcoming' || game.release_status === 'early_access') {
-          try {
-            // Appeler l'API de recherche de jeux pour vérifier le statut
-            const { data: gameSearchData, error: searchError } = await supabaseClient.functions.invoke('search-games', {
-              body: {
-                query: game.name,
-                limit: 1
-              }
-            });
-
-            if (!searchError && gameSearchData?.games?.length > 0) {
-              const updatedGameInfo = gameSearchData.games[0];
-              
-              // Vérifier si le statut de sortie a changé
-              if (updatedGameInfo.release_status !== game.release_status) {
-                const uniqueHash = `release_status_${game.id}_${updatedGameInfo.release_status}`;
-                
-                const { data: existing } = await supabaseClient
-                  .from('new_releases')
-                  .select('id')
-                  .eq('unique_hash', uniqueHash)
-                  .maybeSingle();
-
-                if (!existing) {
-                  gameUpdates.push({
-                    type: 'game',
-                    source_item_id: game.id,
-                    title: `${game.name} - Changement de statut`,
-                    description: `${game.name} est maintenant ${updatedGameInfo.release_status === 'released' ? 'disponible' : updatedGameInfo.release_status}`,
-                    image_url: game.image_url || null,
-                    platform_url: game.url || null,
-                    detected_at: new Date().toISOString(),
-                    expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-                    user_id: game.user_id,
-                    unique_hash: uniqueHash
-                  });
-
-                  // Mettre à jour le statut du jeu
-                  await supabaseClient
-                    .from('games')
-                    .update({ 
-                      release_status: updatedGameInfo.release_status,
-                      release_date: updatedGameInfo.release_date || game.release_date
-                    })
-                    .eq('id', game.id);
-
-                  console.log(`Status change detected for: ${game.name} (${game.release_status} -> ${updatedGameInfo.release_status})`);
-                }
-              }
-            }
-          } catch (statusError) {
-            console.error(`Status check error for ${game.name}:`, statusError);
-          }
-        }
-
-        // Insérer les nouvelles mises à jour
-        if (gameUpdates.length > 0) {
+        // Insérer les nouvelles sorties
+        if (gameReleases.length > 0) {
           const { error: insertError } = await supabaseClient
             .from('new_releases')
-            .insert(gameUpdates);
+            .insert(gameReleases);
 
           if (insertError) {
             console.error('Insert error:', insertError);
           } else {
-            totalNewUpdates += gameUpdates.length;
-            console.log(`Inserted ${gameUpdates.length} new updates for ${game.name}`);
+            totalNewReleases += gameReleases.length;
+            console.log(`Inserted ${gameReleases.length} new releases for ${game.name}`);
 
             // Envoyer les notifications
             try {
               await supabaseClient.functions.invoke('send-release-notification', {
                 body: {
                   userId: game.user_id,
-                  releases: gameUpdates,
+                  releases: gameReleases,
                   userSettings: {},
-                  isDigest: gameUpdates.length > 1
+                  isDigest: gameReleases.length > 1
                 }
               });
               console.log(`Notification sent for ${game.name}`);
@@ -237,10 +298,16 @@ const handler = async (req: Request): Promise<Response> => {
           }
         }
 
+        // Mettre à jour la dernière vérification
+        await supabaseClient
+          .from('games')
+          .update({ last_status_check: new Date().toISOString() })
+          .eq('id', game.id);
+
         processedGames.push(game.name);
         
         // Délai entre chaque jeu
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
       } catch (gameError) {
         console.error(`Error processing ${game.name}:`, gameError);
@@ -248,15 +315,15 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    console.log(`=== COMPLETED: ${totalNewUpdates} new updates found for ${processedGames.length} games ===`);
+    console.log(`=== COMPLETED: ${totalNewReleases} new releases found for ${processedGames.length} games ===`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        newUpdates: totalNewUpdates,
+        newReleases: totalNewReleases,
         processedGames: processedGames.length,
         gamesProcessed: processedGames,
-        message: `Processed ${processedGames.length} games, found ${totalNewUpdates} new updates`
+        message: `Processed ${processedGames.length} games, found ${totalNewReleases} new releases`
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

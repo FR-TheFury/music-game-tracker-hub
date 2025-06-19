@@ -15,7 +15,6 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     let requestBody = {};
     
-    // Parse request body safely
     try {
       const bodyText = await req.text();
       if (bodyText && bodyText.trim() !== '') {
@@ -36,7 +35,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     let artists = [];
     
-    // Récupérer les artistes selon les paramètres
     if (artistId) {
       const { data: artist, error: artistError } = await supabaseClient
         .from('artists')
@@ -70,11 +68,10 @@ const handler = async (req: Request): Promise<Response> => {
       }
       artists = userArtists || [];
     } else {
-      // Récupérer tous les artistes avec limite
       const { data: allArtists, error: allArtistsError } = await supabaseClient
         .from('artists')
         .select('*')
-        .limit(20); // Réduire la limite pour éviter les timeouts
+        .limit(15);
 
       if (allArtistsError) {
         console.error('Error fetching all artists:', allArtistsError);
@@ -107,7 +104,7 @@ const handler = async (req: Request): Promise<Response> => {
         console.log(`Processing: ${artist.name} (${artist.platform})`);
         let newReleases = [];
 
-        // Vérification Spotify avec gestion d'erreur robuste
+        // Vérification Spotify avec période étendue
         if (artist.spotify_id) {
           try {
             console.log('Checking Spotify for:', artist.name);
@@ -120,13 +117,14 @@ const handler = async (req: Request): Promise<Response> => {
             });
 
             if (!spotifyError && spotifyData?.releases && Array.isArray(spotifyData.releases)) {
-              const twoWeeksAgo = new Date();
-              twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+              // Période étendue à 30 jours
+              const thirtyDaysAgo = new Date();
+              thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
               const recentReleases = spotifyData.releases.filter((release) => {
                 if (!release.release_date) return false;
                 const releaseDate = new Date(release.release_date);
-                return releaseDate > twoWeeksAgo;
+                return releaseDate > thirtyDaysAgo;
               });
 
               console.log(`Found ${recentReleases.length} recent Spotify releases for ${artist.name}`);
@@ -134,7 +132,6 @@ const handler = async (req: Request): Promise<Response> => {
               for (const release of recentReleases) {
                 const uniqueHash = `spotify_${artist.id}_${release.id}`;
                 
-                // Vérifier si la sortie existe déjà
                 const { data: existing } = await supabaseClient
                   .from('new_releases')
                   .select('id')
@@ -160,11 +157,10 @@ const handler = async (req: Request): Promise<Response> => {
             }
           } catch (spotifyError) {
             console.error(`Spotify error for ${artist.name}:`, spotifyError);
-            // Continue malgré l'erreur
           }
         }
 
-        // Vérification SoundCloud avec gestion robuste
+        // Vérification SoundCloud avec gestion améliorée du rate limiting
         const soundcloudUrl = artist.multiple_urls?.find((url) => 
           url.platform?.toLowerCase().includes('soundcloud')
         )?.url;
@@ -173,26 +169,27 @@ const handler = async (req: Request): Promise<Response> => {
           try {
             console.log('Checking SoundCloud for:', artist.name);
             
-            // Délai pour éviter le rate limiting
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            // Délai plus long pour éviter le rate limiting
+            await new Promise(resolve => setTimeout(resolve, 3000));
             
             const { data: soundcloudData, error: soundcloudError } = await supabaseClient.functions.invoke('get-soundcloud-info', {
               body: {
                 query: artist.name,
                 artistUrl: soundcloudUrl,
                 type: 'artist-releases',
-                limit: 5
+                limit: 10
               }
             });
 
             if (!soundcloudError && soundcloudData?.releases && Array.isArray(soundcloudData.releases)) {
-              const twoWeeksAgo = new Date();
-              twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+              // Période étendue à 30 jours
+              const thirtyDaysAgo = new Date();
+              thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
               const recentReleases = soundcloudData.releases.filter((release) => {
                 if (!release.created_at) return false;
                 const releaseDate = new Date(release.created_at);
-                return releaseDate > twoWeeksAgo;
+                return releaseDate > thirtyDaysAgo;
               });
 
               console.log(`Found ${recentReleases.length} recent SoundCloud releases for ${artist.name}`);
@@ -222,10 +219,73 @@ const handler = async (req: Request): Promise<Response> => {
                   console.log(`New SoundCloud release detected: ${release.title}`);
                 }
               }
+            } else if (soundcloudError && soundcloudError.includes('rate_limit')) {
+              console.log(`SoundCloud rate limited for ${artist.name}, skipping this time`);
             }
           } catch (soundcloudError) {
             console.error(`SoundCloud error for ${artist.name}:`, soundcloudError);
-            // Continue malgré l'erreur
+          }
+        }
+
+        // Vérification YouTube Music si disponible
+        const youtubeUrl = artist.multiple_urls?.find((url) => 
+          url.platform?.toLowerCase().includes('youtube')
+        )?.url;
+
+        if (youtubeUrl) {
+          try {
+            console.log('Checking YouTube for:', artist.name);
+            
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            const { data: youtubeData, error: youtubeError } = await supabaseClient.functions.invoke('get-youtube-music-info', {
+              body: {
+                query: artist.name,
+                channelUrl: youtubeUrl,
+                type: 'recent-uploads'
+              }
+            });
+
+            if (!youtubeError && youtubeData?.videos && Array.isArray(youtubeData.videos)) {
+              const thirtyDaysAgo = new Date();
+              thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+              const recentVideos = youtubeData.videos.filter((video) => {
+                if (!video.publishedAt) return false;
+                const publishDate = new Date(video.publishedAt);
+                return publishDate > thirtyDaysAgo;
+              });
+
+              console.log(`Found ${recentVideos.length} recent YouTube releases for ${artist.name}`);
+
+              for (const video of recentVideos) {
+                const uniqueHash = `youtube_${artist.id}_${video.id}`;
+                
+                const { data: existing } = await supabaseClient
+                  .from('new_releases')
+                  .select('id')
+                  .eq('unique_hash', uniqueHash)
+                  .maybeSingle();
+
+                if (!existing) {
+                  newReleases.push({
+                    type: 'artist',
+                    source_item_id: artist.id,
+                    title: video.title,
+                    description: `Nouvelle vidéo YouTube: ${video.title}`,
+                    image_url: video.thumbnail || null,
+                    platform_url: `https://youtube.com/watch?v=${video.id}`,
+                    detected_at: new Date().toISOString(),
+                    expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                    user_id: artist.user_id,
+                    unique_hash: uniqueHash
+                  });
+                  console.log(`New YouTube release detected: ${video.title}`);
+                }
+              }
+            }
+          } catch (youtubeError) {
+            console.error(`YouTube error for ${artist.name}:`, youtubeError);
           }
         }
 
@@ -261,7 +321,7 @@ const handler = async (req: Request): Promise<Response> => {
         processedArtists.push(artist.name);
         
         // Délai entre chaque artiste pour éviter le rate limiting
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 2500));
         
       } catch (artistError) {
         console.error(`Error processing ${artist.name}:`, artistError);

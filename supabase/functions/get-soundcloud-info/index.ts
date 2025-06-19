@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -33,26 +32,44 @@ interface SoundCloudUser {
   verified: boolean;
 }
 
-// Système de cache et rate limiting amélioré
+// Système de cache et rate limiting ultra-conservateur
 let cachedAccessToken: string | null = null;
 let tokenExpirationTime: number = 0;
 let lastRequestTime: number = 0;
 let requestCount: number = 0;
+let dailyRequestCount: number = 0;
+let lastResetTime: number = Date.now();
 let isRateLimited: boolean = false;
 let rateLimitResetTime: number = 0;
 
-const RATE_LIMIT_WINDOW = 60000; // 1 minute
-const MAX_REQUESTS_PER_WINDOW = 20; // Limite très conservatrice
-const MIN_REQUEST_INTERVAL = 3000; // 3 secondes entre les requêtes
-const RATE_LIMIT_BACKOFF = 300000; // 5 minutes de pause si rate limited
+const RATE_LIMIT_WINDOW = 300000; // 5 minutes
+const MAX_REQUESTS_PER_WINDOW = 5; // Très conservateur
+const MIN_REQUEST_INTERVAL = 10000; // 10 secondes entre les requêtes
+const RATE_LIMIT_BACKOFF = 1800000; // 30 minutes de pause si rate limited
+const MAX_DAILY_REQUESTS = 50; // Limite quotidienne
 
 const waitForRateLimit = async () => {
   const now = Date.now();
   
+  // Reset quotidien
+  if (now - lastResetTime > 24 * 60 * 60 * 1000) {
+    dailyRequestCount = 0;
+    lastResetTime = now;
+    console.log('Daily request count reset');
+  }
+  
+  // Vérifier la limite quotidienne
+  if (dailyRequestCount >= MAX_DAILY_REQUESTS) {
+    console.log('Daily limit reached, entering long cooldown');
+    isRateLimited = true;
+    rateLimitResetTime = lastResetTime + 24 * 60 * 60 * 1000;
+    throw new Error('daily_limit_reached');
+  }
+  
   // Vérifier si on est en période de rate limit
   if (isRateLimited && now < rateLimitResetTime) {
     const waitTime = rateLimitResetTime - now;
-    console.log(`Still rate limited, waiting ${Math.round(waitTime/1000)}s more`);
+    console.log(`Still rate limited, waiting ${Math.round(waitTime/60000)}m more`);
     throw new Error('rate_limit_active');
   } else if (isRateLimited && now >= rateLimitResetTime) {
     console.log('Rate limit period expired, resetting');
@@ -67,7 +84,7 @@ const waitForRateLimit = async () => {
   
   // Vérifier si on approche de la limite
   if (requestCount >= MAX_REQUESTS_PER_WINDOW) {
-    console.log('Approaching request limit, entering cooldown');
+    console.log('Request limit reached, entering cooldown');
     isRateLimited = true;
     rateLimitResetTime = now + RATE_LIMIT_BACKOFF;
     throw new Error('rate_limit_preemptive');
@@ -82,6 +99,7 @@ const waitForRateLimit = async () => {
   }
   
   requestCount++;
+  dailyRequestCount++;
   lastRequestTime = Date.now();
 };
 
@@ -105,6 +123,7 @@ const getAccessToken = async (): Promise<string | null> => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'Artist-Tracker/1.0',
       },
       body: new URLSearchParams({
         grant_type: 'client_credentials',
@@ -128,13 +147,13 @@ const getAccessToken = async (): Promise<string | null> => {
 
     const tokenData = await tokenResponse.json();
     cachedAccessToken = tokenData.access_token;
-    tokenExpirationTime = Date.now() + (3600 * 1000);
+    tokenExpirationTime = Date.now() + (3600 * 1000); // 1 heure
     
     console.log('SoundCloud token obtained successfully');
     return cachedAccessToken;
   } catch (error) {
     console.error('Token error:', error);
-    if (error.message.includes('rate_limit')) {
+    if (error.message.includes('rate_limit') || error.message.includes('daily_limit')) {
       throw error;
     }
     return null;
@@ -142,7 +161,6 @@ const getAccessToken = async (): Promise<string | null> => {
 };
 
 const makeAuthenticatedRequest = async (url: string, retryCount = 0): Promise<any> => {
-  // Vérifier le rate limiting avant même d'essayer
   if (isRateLimited) {
     throw new Error('rate_limit_active');
   }
@@ -160,15 +178,23 @@ const makeAuthenticatedRequest = async (url: string, retryCount = 0): Promise<an
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Accept': 'application/json',
+        'User-Agent': 'Artist-Tracker/1.0',
       },
     });
 
     if (!response.ok) {
       if (response.status === 429) {
-        console.log('API rate limited, entering cooldown');
+        console.log('API rate limited, entering extended cooldown');
         isRateLimited = true;
         rateLimitResetTime = Date.now() + RATE_LIMIT_BACKOFF;
         throw new Error('rate_limit_exceeded');
+      }
+      
+      if (response.status === 403) {
+        console.log('Access forbidden, may be rate limited');
+        isRateLimited = true;
+        rateLimitResetTime = Date.now() + RATE_LIMIT_BACKOFF;
+        throw new Error('access_forbidden');
       }
       
       throw new Error(`API error: ${response.status}`);
@@ -176,12 +202,12 @@ const makeAuthenticatedRequest = async (url: string, retryCount = 0): Promise<an
 
     return await response.json();
   } catch (error) {
-    if (error.message.includes('rate_limit') || retryCount >= 2) {
+    if (error.message.includes('rate_limit') || error.message.includes('access_forbidden') || retryCount >= 1) {
       throw error;
     }
     
-    // Retry avec backoff exponentiel pour les autres erreurs
-    const waitTime = Math.pow(2, retryCount) * 2000;
+    // Un seul retry avec délai plus long
+    const waitTime = 15000; // 15 secondes
     console.log(`Retrying in ${waitTime}ms (attempt ${retryCount + 1})`);
     await new Promise(resolve => setTimeout(resolve, waitTime));
     return makeAuthenticatedRequest(url, retryCount + 1);
@@ -196,16 +222,16 @@ serve(async (req) => {
   try {
     const { query, artistUrl, type, limit = 10 } = await req.json();
     
-    console.log(`SoundCloud request - Type: ${type}, Query: ${query}`);
+    console.log(`SoundCloud request - Type: ${type}, Query: ${query}, Daily: ${dailyRequestCount}/${MAX_DAILY_REQUESTS}`);
 
     // Vérifier immédiatement si on est rate limited
     if (isRateLimited) {
-      const waitTime = Math.round((rateLimitResetTime - Date.now()) / 1000);
+      const waitTime = Math.round((rateLimitResetTime - Date.now()) / 60000);
       return new Response(
         JSON.stringify({ 
           error: 'rate_limit_exceeded',
-          message: `SoundCloud API rate limited. Retry in ${waitTime} seconds.`,
-          retryAfter: waitTime
+          message: `SoundCloud API rate limited. Retry in ${waitTime} minutes.`,
+          retryAfter: waitTime * 60
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -216,7 +242,7 @@ serve(async (req) => {
 
     if (type === 'search-artists') {
       try {
-        const searchUrl = `https://api.soundcloud.com/users?q=${encodeURIComponent(query)}&limit=20`;
+        const searchUrl = `https://api.soundcloud.com/users?q=${encodeURIComponent(query)}&limit=10`;
         const data = await makeAuthenticatedRequest(searchUrl);
         
         const artists = Array.isArray(data) ? data : [];
@@ -233,6 +259,82 @@ serve(async (req) => {
             artists: [],
             error: error.message.includes('rate_limit') ? 'rate_limit_exceeded' : 'search_error',
             message: 'SoundCloud search temporarily unavailable'
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    if (type === 'artist-releases') {
+      try {
+        let tracks: SoundCloudTrack[] = [];
+        let userId = null;
+
+        // Essayer de résoudre l'URL d'abord
+        if (artistUrl) {
+          try {
+            const resolveUrl = `https://api.soundcloud.com/resolve?url=${encodeURIComponent(artistUrl)}`;
+            const userData = await makeAuthenticatedRequest(resolveUrl);
+            userId = userData.id;
+            console.log('User ID resolved:', userId);
+          } catch (error) {
+            console.log('Resolution failed, trying search fallback:', error.message);
+          }
+        }
+
+        if (userId) {
+          // Récupérer les tracks de l'utilisateur
+          const tracksUrl = `https://api.soundcloud.com/users/${userId}/tracks?limit=${Math.min(limit, 20)}`;
+          tracks = await makeAuthenticatedRequest(tracksUrl);
+        } else if (query) {
+          // Fallback sur la recherche
+          const searchUrl = `https://api.soundcloud.com/tracks?q=${encodeURIComponent(query)}&limit=${Math.min(limit, 15)}`;
+          const searchResults = await makeAuthenticatedRequest(searchUrl);
+          
+          // Filtrer pour garder seulement les tracks de l'artiste recherché
+          tracks = searchResults.filter((track: SoundCloudTrack) => 
+            track.user?.username?.toLowerCase().includes(query.toLowerCase())
+          );
+        }
+        
+        // Filtrer les sorties récentes (30 jours au lieu de 7)
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const recentReleases = tracks
+          .filter((track: SoundCloudTrack) => {
+            if (!track.created_at) return false;
+            return new Date(track.created_at) >= thirtyDaysAgo;
+          })
+          .map((track: SoundCloudTrack) => ({
+            id: track.id,
+            title: track.title,
+            created_at: track.created_at,
+            permalink_url: track.permalink_url,
+            artwork_url: track.artwork_url,
+            playback_count: track.playback_count || 0,
+            likes_count: track.likes_count || 0,
+            release_date: track.created_at,
+          }))
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+        console.log(`Found ${recentReleases.length} recent SoundCloud releases`);
+
+        return new Response(
+          JSON.stringify({ 
+            releases: recentReleases,
+            status: 'success',
+            dailyUsage: `${dailyRequestCount}/${MAX_DAILY_REQUESTS}`
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Releases error:', error);
+        return new Response(
+          JSON.stringify({ 
+            releases: [],
+            error: error.message.includes('rate_limit') ? 'rate_limit_exceeded' : 'api_error',
+            message: error.message.includes('rate_limit') ? 
+              'SoundCloud rate limit reached. Please try again later.' : 
+              'Error fetching SoundCloud releases'
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -257,75 +359,6 @@ serve(async (req) => {
             artist: null,
             error: error.message.includes('rate_limit') ? 'rate_limit_exceeded' : 'api_error',
             message: 'Artist info temporarily unavailable'
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    }
-
-    if (type === 'artist-releases') {
-      try {
-        let tracks: SoundCloudTrack[] = [];
-        let userId = null;
-
-        if (artistUrl) {
-          try {
-            const resolveUrl = `https://api.soundcloud.com/resolve?url=${artistUrl}`;
-            const userData = await makeAuthenticatedRequest(resolveUrl);
-            userId = userData.id;
-            console.log('User ID resolved:', userId);
-          } catch (error) {
-            console.log('Resolution error (trying fallback):', error.message);
-          }
-        }
-
-        if (userId) {
-          const tracksUrl = `https://api.soundcloud.com/users/${userId}/tracks?limit=${limit}`;
-          tracks = await makeAuthenticatedRequest(tracksUrl);
-        } else if (query) {
-          const searchUrl = `https://api.soundcloud.com/tracks?q=${encodeURIComponent(query)}&limit=${Math.min(limit, 20)}`;
-          const searchResults = await makeAuthenticatedRequest(searchUrl);
-          
-          tracks = searchResults.filter((track: SoundCloudTrack) => 
-            track.user?.username?.toLowerCase().includes(query.toLowerCase())
-          );
-        }
-        
-        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        const recentReleases = tracks
-          .filter((track: SoundCloudTrack) => {
-            if (!track.created_at) return false;
-            return new Date(track.created_at) >= thirtyDaysAgo;
-          })
-          .map((track: SoundCloudTrack) => ({
-            id: track.id,
-            title: track.title,
-            created_at: track.created_at,
-            permalink_url: track.permalink_url,
-            artwork_url: track.artwork_url,
-            playback_count: track.playback_count || 0,
-            likes_count: track.likes_count || 0,
-            release_date: track.created_at,
-          }));
-
-        console.log(`Found ${recentReleases.length} recent SoundCloud releases`);
-
-        return new Response(
-          JSON.stringify({ 
-            releases: recentReleases,
-            status: 'success'
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      } catch (error) {
-        console.error('Releases error:', error);
-        return new Response(
-          JSON.stringify({ 
-            releases: [],
-            error: error.message.includes('rate_limit') ? 'rate_limit_exceeded' : 'api_error',
-            message: error.message.includes('rate_limit') ? 
-              'SoundCloud rate limit reached. Please try again later.' : 
-              'Error fetching SoundCloud releases'
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -418,7 +451,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: 'Service temporarily unavailable',
-        message: 'SoundCloud service is experiencing issues. Please try again later.'
+        message: 'SoundCloud service is experiencing issues. Please try again later.',
+        dailyUsage: `${dailyRequestCount}/${MAX_DAILY_REQUESTS}`
       }),
       { 
         status: 503, 
