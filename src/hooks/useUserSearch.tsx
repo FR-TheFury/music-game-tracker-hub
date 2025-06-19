@@ -17,6 +17,7 @@ export interface UserArtist {
   platform: string;
   url: string;
   image_url?: string;
+  profile_image_url?: string;
   spotify_id?: string;
   followers_count?: number;
   popularity?: number;
@@ -110,11 +111,15 @@ export const useUserSearch = () => {
   const getUserData = async (userId: string) => {
     setLoadingUserData(true);
     try {
-      // Récupérer les artistes de l'utilisateur
+      // Récupérer les artistes de l'utilisateur directement
       const { data: artistsData, error: artistsError } = await supabase
-        .rpc('get_user_artists', { target_user_id: userId });
+        .from('artists')
+        .select('id, name, platform, url, image_url, profile_image_url, spotify_id, followers_count, popularity, created_at')
+        .eq('user_id', userId);
 
       if (artistsError) throw artistsError;
+
+      console.log('Raw artists data from DB:', artistsData);
 
       // Récupérer les jeux de l'utilisateur
       const { data: gamesData, error: gamesError } = await supabase
