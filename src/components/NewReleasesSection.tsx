@@ -79,32 +79,31 @@ export const NewReleasesSection: React.FC = () => {
             <span className="text-xs text-[#FF0751] font-medium">Expire dans 7 jours</span>
           </div>
           
-          {/* Bouton simplifié pour mobile */}
+          {/* Bouton simplifié pour mobile avec style 3D violet */}
           {isMobile && (
             <Button
               onClick={handleManualCheck}
               disabled={checking}
               variant="ghost"
               size="sm"
-              className="ml-auto p-1 h-8 w-8 hover:bg-purple-500/20"
+              className="ml-auto p-1 h-8 w-8 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white border border-purple-500 shadow-lg hover:shadow-purple-500/30 transition-all duration-300"
             >
               {checking ? (
-                <Loader2 className="h-4 w-4 animate-spin text-purple-400" />
+                <Loader2 className="h-4 w-4 animate-spin text-white" />
               ) : (
-                <RefreshCw className="h-4 w-4 text-purple-400" />
+                <RefreshCw className="h-4 w-4 text-white" />
               )}
             </Button>
           )}
         </div>
         
-        {/* Bouton complet pour desktop avec couleur violette */}
+        {/* Bouton complet pour desktop avec style 3D violet */}
         {!isMobile && (
           <Button
             onClick={handleManualCheck}
             disabled={checking}
-            variant="outline"
             size="sm"
-            className="border-purple-400/50 bg-purple-500/10 text-purple-300 hover:bg-purple-500/20 hover:border-purple-400 hover:text-white transition-all duration-300"
+            className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white border border-purple-500 shadow-lg hover:shadow-purple-500/30 hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 font-medium"
           >
             {checking ? (
               <>
