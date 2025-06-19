@@ -115,7 +115,7 @@ export const useUserSearch = () => {
       // Récupérer TOUS les utilisateurs récents comme suggestions
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, username, avatar_url')
+        .select('id, username, avatar_url, created_at')
         .order('created_at', { ascending: false })
         .limit(12);
 
