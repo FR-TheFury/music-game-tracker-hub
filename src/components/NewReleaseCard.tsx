@@ -84,6 +84,41 @@ export const NewReleaseCard: React.FC<NewReleaseCardProps> = ({ release }) => {
     });
   };
 
+  const getPlatformInfo = (url?: string) => {
+    if (!url) return { name: 'Plateforme inconnue', color: 'bg-gray-500' };
+    
+    const lowerUrl = url.toLowerCase();
+    if (lowerUrl.includes('spotify')) return { name: 'Spotify', color: 'bg-green-500' };
+    if (lowerUrl.includes('soundcloud')) return { name: 'SoundCloud', color: 'bg-orange-500' };
+    if (lowerUrl.includes('youtube')) return { name: 'YouTube', color: 'bg-red-500' };
+    if (lowerUrl.includes('apple')) return { name: 'Apple Music', color: 'bg-gray-800' };
+    if (lowerUrl.includes('deezer')) return { name: 'Deezer', color: 'bg-purple-500' };
+    if (lowerUrl.includes('steam')) return { name: 'Steam', color: 'bg-blue-600' };
+    if (lowerUrl.includes('rawg')) return { name: 'RAWG', color: 'bg-indigo-500' };
+    
+    return { name: 'Autre plateforme', color: 'bg-blue-500' };
+  };
+
+  const getArtistName = () => {
+    // Extraire le nom de l'artiste du titre (format: "Nom de l'artiste - Titre")
+    if (release.type === 'artist' && release.title.includes(' - ')) {
+      return release.title.split(' - ')[0];
+    }
+    return null;
+  };
+
+  const getCleanTitle = () => {
+    // Nettoyer le titre pour enlever le nom de l'artiste s'il est présent
+    if (release.type === 'artist' && release.title.includes(' - ')) {
+      return release.title.split(' - ').slice(1).join(' - ');
+    }
+    return release.title;
+  };
+
+  const platformInfo = getPlatformInfo(release.platformUrl);
+  const artistName = getArtistName();
+  const cleanTitle = getCleanTitle();
+
   return (
     <Card className="bg-slate-800/70 border-slate-700 backdrop-blur-sm hover:bg-slate-800/90 transition-all duration-300 group hover:scale-105 hover:shadow-xl hover:shadow-yellow-500/20 relative overflow-hidden h-80 flex flex-col">
       {/* Nouveau badge */}
@@ -101,11 +136,21 @@ export const NewReleaseCard: React.FC<NewReleaseCardProps> = ({ release }) => {
               {getTypeIcon()}
             </div>
             <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <Badge className={`${platformInfo.color} text-white border-0 text-xs`}>
+                  {platformInfo.name}
+                </Badge>
+                {artistName && (
+                  <Badge variant="outline" className="border-gray-500 text-gray-300 text-xs">
+                    {artistName}
+                  </Badge>
+                )}
+              </div>
               <h3 className="text-lg font-semibold text-white group-hover:text-yellow-300 transition-colors line-clamp-2">
-                {release.title}
+                {cleanTitle}
               </h3>
               <p className="text-sm text-gray-400 capitalize">
-                {release.type === 'artist' ? 'Nouvel album/single' : 'Nouveau jeu'}
+                {release.type === 'artist' ? 'Nouvelle sortie musicale' : 'Mise à jour de jeu'}
               </p>
             </div>
           </div>
@@ -148,7 +193,7 @@ export const NewReleaseCard: React.FC<NewReleaseCardProps> = ({ release }) => {
               >
                 <a href={release.platformUrl} target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="h-4 w-4 mr-2" />
-                  Voir
+                  Voir sur {platformInfo.name}
                 </a>
               </Button>
             ) : (
