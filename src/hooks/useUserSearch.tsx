@@ -51,30 +51,45 @@ export const useUserSearch = () => {
 
     setLoading(true);
     try {
-      // Rechercher les utilisateurs avec leurs photos de profil
-      const { data, error } = await supabase
+      // Première requête : récupérer les user_roles filtrés
+      const { data: userRolesData, error: userRolesError } = await supabase
         .from('user_roles')
-        .select(`
-          user_id,
-          role,
-          created_at,
-          profiles!user_roles_user_id_fkey(username, avatar_url)
-        `)
+        .select('user_id, role, created_at')
         .eq('role', 'viewer')
         .or('role.eq.editor,role.eq.admin')
-        .not('approved_at', 'is', null)
-        .ilike('profiles.username', `%${searchTerm}%`)
+        .not('approved_at', 'is', null);
+
+      if (userRolesError) throw userRolesError;
+
+      if (!userRolesData || userRolesData.length === 0) {
+        setSearchResults([]);
+        return;
+      }
+
+      // Extraire les user_ids
+      const userIds = userRolesData.map(ur => ur.user_id);
+
+      // Deuxième requête : récupérer les profils correspondants
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url')
+        .in('id', userIds)
+        .ilike('username', `%${searchTerm}%`)
         .limit(20);
 
-      if (error) throw error;
+      if (profilesError) throw profilesError;
 
-      const formattedResults = data?.map(item => ({
-        user_id: item.user_id,
-        username: item.profiles?.username || 'Utilisateur',
-        role: item.role,
-        created_at: item.created_at,
-        avatar_url: item.profiles?.avatar_url
-      })) || [];
+      // Combiner les données
+      const formattedResults = profilesData?.map(profile => {
+        const userRole = userRolesData.find(ur => ur.user_id === profile.id);
+        return {
+          user_id: profile.id,
+          username: profile.username || 'Utilisateur',
+          role: userRole?.role || 'viewer',
+          created_at: userRole?.created_at || '',
+          avatar_url: profile.avatar_url
+        };
+      }) || [];
 
       setSearchResults(formattedResults);
     } catch (error) {
