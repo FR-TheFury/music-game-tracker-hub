@@ -25,13 +25,13 @@ export const useNewReleases = () => {
 
   const cleanupExpiredReleases = async () => {
     try {
-      console.log('Triggering automatic cleanup of expired notifications...');
+      console.log('Triggering cleanup of expired notifications...');
       const { data, error } = await supabase.functions.invoke('cleanup-expired-notifications');
 
       if (error) {
         console.error('Error calling cleanup function:', error);
       } else {
-        console.log('Cleanup result:', data);
+        console.log('Cleanup completed:', data);
       }
     } catch (error) {
       console.error('Error during cleanup:', error);
@@ -42,14 +42,17 @@ export const useNewReleases = () => {
     if (!user) return;
 
     try {
-      // Nettoyer automatiquement les notifications expirées avant de récupérer les données
-      await cleanupExpiredReleases();
+      // Ne faire le nettoyage qu'au premier chargement, pas à chaque fetch
+      const shouldCleanup = releases.length === 0;
+      if (shouldCleanup) {
+        await cleanupExpiredReleases();
+      }
 
       const { data, error } = await supabase
         .from('new_releases')
         .select('*')
         .eq('user_id', user.id)
-        .gt('expires_at', new Date().toISOString()) // Ne récupérer que les notifications non expirées
+        .gt('expires_at', new Date().toISOString())
         .order('detected_at', { ascending: false });
 
       if (error) throw error;
@@ -84,8 +87,6 @@ export const useNewReleases = () => {
     try {
       console.log('Removing release with ID:', id);
       
-      // Faire directement l'appel à la base de données sans modifier l'état local
-      // La carte va se masquer via son état isRemoving
       const { error } = await supabase
         .from('new_releases')
         .delete()
@@ -98,7 +99,6 @@ export const useNewReleases = () => {
       
       console.log('Release successfully removed from database');
       
-      // Mettre à jour l'état local seulement après suppression réussie
       setReleases(prevReleases => prevReleases.filter(release => release.id !== id));
       
       toast({
@@ -112,18 +112,16 @@ export const useNewReleases = () => {
         description: "Impossible de supprimer la notification",
         variant: "destructive",
       });
-      throw error; // Re-throw pour que la carte puisse gérer l'erreur
+      throw error;
     }
   };
 
   useEffect(() => {
     fetchReleases();
-    
-    // Nettoyer automatiquement toutes les heures
-    const cleanupInterval = setInterval(cleanupExpiredReleases, 60 * 60 * 1000);
-    
-    return () => clearInterval(cleanupInterval);
   }, [user]);
+
+  // Supprimer l'intervalle automatique qui causait le spam
+  // Le nettoyage se fera seulement au chargement initial
 
   return {
     releases,
