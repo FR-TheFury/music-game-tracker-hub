@@ -57,8 +57,8 @@ export const useUserSearch = () => {
       // Recherche flexible dans les profils - TOUS les utilisateurs peuvent chercher
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, username, avatar_url')
-        .or(`username.ilike.%${searchTerm}%,id.ilike.%${searchTerm}%`)
+        .select('id, username, avatar_url, created_at')
+        .or(`username.ilike.%${searchTerm}%,id::text.ilike.%${searchTerm}%`)
         .limit(20);
 
       if (profilesError) throw profilesError;
@@ -90,7 +90,7 @@ export const useUserSearch = () => {
             user_id: profile.id,
             username: profile.username || 'Utilisateur',
             role: userRole?.role || 'non-assigné',
-            created_at: userRole?.created_at || new Date().toISOString(),
+            created_at: userRole?.created_at || profile.created_at || new Date().toISOString(),
             avatar_url: profile.avatar_url
           };
         }) as UserSearchResult[];
