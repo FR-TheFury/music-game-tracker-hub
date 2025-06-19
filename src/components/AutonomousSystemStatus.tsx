@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -65,20 +64,22 @@ export const AutonomousSystemStatus: React.FC = () => {
       });
 
       // 3. Vérifier les artistes et jeux suivis
-      const { data: artistsCount } = await supabase
+      const { count: artistsCount } = await supabase
         .from('artists')
-        .select('id', { count: 'exact', head: true });
+        .select('*', { count: 'exact', head: true });
 
-      const { data: gamesCount } = await supabase
+      const { count: gamesCount } = await supabase
         .from('games')
-        .select('id', { count: 'exact', head: true });
+        .select('*', { count: 'exact', head: true });
+
+      const totalTrackedContent = (artistsCount || 0) + (gamesCount || 0);
 
       status.push({
         component: 'tracked_content',
-        status: (artistsCount || 0) + (gamesCount || 0) > 0 ? 'active' : 'warning',
+        status: totalTrackedContent > 0 ? 'active' : 'warning',
         lastExecution: null,
         details: `${artistsCount || 0} artistes et ${gamesCount || 0} jeux suivis`,
-        count: (artistsCount || 0) + (gamesCount || 0)
+        count: totalTrackedContent
       });
 
       // 4. Tester la fonction de vérification manuelle

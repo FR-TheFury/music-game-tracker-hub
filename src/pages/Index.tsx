@@ -8,10 +8,14 @@ import { AutonomousSystemStatus } from '@/components/AutonomousSystemStatus';
 import { CleanupButton } from '@/components/CleanupButton';
 import { useUserRole } from '@/hooks/useUserRole';
 import { RoleGuard } from '@/components/RoleGuard';
+import { useArtists } from '@/hooks/useArtists';
+import { useGames } from '@/hooks/useGames';
 
 const Index = () => {
   const { user, loading } = useAuth();
-  const { role, loading: roleLoading } = useUserRole();
+  const { userRole, loading: roleLoading } = useUserRole();
+  const { artists, deleteArtist } = useArtists();
+  const { games, deleteGame } = useGames();
 
   if (loading || roleLoading) {
     return (
@@ -51,7 +55,7 @@ const Index = () => {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-white">Mes Artistes</h2>
           </div>
-          <ArtistsGrid />
+          <ArtistsGrid artists={artists} onDeleteArtist={deleteArtist} />
         </section>
 
         {/* Section Jeux */}
@@ -59,7 +63,7 @@ const Index = () => {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-white">Mes Jeux</h2>
           </div>
-          <GamesGrid />
+          <GamesGrid games={games} onDeleteGame={deleteGame} />
         </section>
       </div>
     </div>
