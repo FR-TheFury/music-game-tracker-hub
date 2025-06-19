@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Music, ExternalLink, Calendar, Play, Heart, AlertCircle, Wifi, WifiOff } from 'lucide-react';
+import { Music, ExternalLink, Calendar, Play, Heart, Wifi, WifiOff } from 'lucide-react';
 import { useSoundCloud } from '@/hooks/useSoundCloud';
 
 interface SoundCloudRelease {
@@ -41,7 +41,7 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
         
         if (soundcloudReleases.length === 0) {
           console.log('Aucune sortie SoundCloud trouvée pour', artistName);
-          setIsServiceAvailable(true); // Le service fonctionne mais pas de données
+          setIsServiceAvailable(true);
           return;
         }
         
@@ -103,7 +103,7 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
     );
   }
 
-  // Si le service n'est pas disponible
+  // Si le service n'est pas disponible ou erreur OAuth
   if (!isServiceAvailable || error) {
     return (
       <Card className="card-3d mb-8 border-orange-400/20">
@@ -113,7 +113,10 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
             <div>
               <p className="font-medium">SoundCloud temporairement indisponible</p>
               <p className="text-sm text-gray-400">
-                {error || 'Le service SoundCloud est en maintenance. Réessayez plus tard.'}
+                {error?.includes('OAuth') || error?.includes('token') 
+                  ? 'Configuration OAuth SoundCloud requise. Contactez l\'administrateur.'
+                  : error || 'Le service SoundCloud est en maintenance. Réessayez plus tard.'
+                }
               </p>
             </div>
           </div>

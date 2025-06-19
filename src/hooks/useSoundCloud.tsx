@@ -96,7 +96,11 @@ export const useSoundCloud = () => {
       return artists;
     } catch (error) {
       console.error('Erreur recherche artistes SoundCloud:', error);
-      setError(error instanceof Error ? error.message : 'Erreur inconnue');
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      setError(errorMessage);
+      
+      // Retourner un tableau vide plutôt que de lancer l'erreur
+      // pour permettre à l'application de continuer à fonctionner
       return [];
     } finally {
       setLoading(false);
@@ -123,7 +127,8 @@ export const useSoundCloud = () => {
       return artist;
     } catch (error) {
       console.error('Erreur infos artiste SoundCloud:', error);
-      setError(error instanceof Error ? error.message : 'Erreur inconnue');
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      setError(errorMessage);
       return null;
     } finally {
       setLoading(false);
@@ -151,7 +156,8 @@ export const useSoundCloud = () => {
       return tracks;
     } catch (error) {
       console.error('Erreur tracks SoundCloud:', error);
-      setError(error instanceof Error ? error.message : 'Erreur inconnue');
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      setError(errorMessage);
       return [];
     } finally {
       setLoading(false);
@@ -178,7 +184,8 @@ export const useSoundCloud = () => {
       return releases;
     } catch (error) {
       console.error('Erreur sorties SoundCloud:', error);
-      setError(error instanceof Error ? error.message : 'Erreur inconnue');
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      setError(errorMessage);
       return [];
     } finally {
       setLoading(false);
@@ -210,7 +217,8 @@ export const useSoundCloud = () => {
       return stats;
     } catch (error) {
       console.error('Erreur stats SoundCloud:', error);
-      setError(error instanceof Error ? error.message : 'Erreur inconnue');
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      setError(errorMessage);
       return null;
     } finally {
       setLoading(false);
