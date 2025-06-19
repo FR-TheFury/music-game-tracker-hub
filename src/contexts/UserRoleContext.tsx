@@ -58,20 +58,17 @@ export const UserRoleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (!user || userRole !== 'admin') return;
 
       try {
-        // Fixed query structure
+        // Query the pending_validations table directly
         const { data, error } = await supabase
-          .from('user_roles')
-          .select(`
-            user_id,
-            profiles!inner(email)
-          `)
-          .eq('role', 'pending');
+          .from('pending_validations')
+          .select('user_id, user_email')
+          .eq('status', 'pending');
 
         if (error) throw error;
 
         const validations = (data || []).map(item => ({
           id: item.user_id,
-          email: item.profiles?.email || 'N/A',
+          email: item.user_email,
         }));
 
         setPendingValidations(validations);
@@ -117,18 +114,15 @@ export const UserRoleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // Refresh pending validations for admin
       if (userRole === 'admin') {
         const { data, error } = await supabase
-          .from('user_roles')
-          .select(`
-            user_id,
-            profiles!inner(email)
-          `)
-          .eq('role', 'pending');
+          .from('pending_validations')
+          .select('user_id, user_email')
+          .eq('status', 'pending');
 
         if (error) throw error;
 
         const validations = (data || []).map(item => ({
           id: item.user_id,
-          email: item.profiles?.email || 'N/A',
+          email: item.user_email,
         }));
 
         setPendingValidations(validations);

@@ -7,7 +7,6 @@ interface Profile {
   id: string;
   username: string | null;
   avatar_url: string | null;
-  email: string;
 }
 
 export const useProfile = () => {
