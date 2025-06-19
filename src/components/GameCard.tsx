@@ -53,8 +53,21 @@ export const GameCard: React.FC<GameCardProps> = ({ game, onRemove }) => {
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-full bg-gradient-to-r ${getPlatformColor(game.platform)} flex items-center justify-center`}>
-              <Gamepad2 className="h-6 w-6 text-white" />
+            <div className="flex-shrink-0">
+              {game.imageUrl ? (
+                <img
+                  src={game.imageUrl}
+                  alt={game.name}
+                  className="w-12 h-12 rounded-lg object-cover shadow-md"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                  }}
+                />
+              ) : null}
+              <div className={`w-12 h-12 rounded-lg bg-gradient-to-r ${getPlatformColor(game.platform)} flex items-center justify-center shadow-md ${game.imageUrl ? 'hidden' : ''}`}>
+                <Gamepad2 className="h-6 w-6 text-white" />
+              </div>
             </div>
             <div>
               <h3 className="text-lg font-semibold text-white group-hover:text-blue-300 transition-colors">
