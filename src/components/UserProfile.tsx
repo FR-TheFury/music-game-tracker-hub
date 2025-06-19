@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -30,15 +29,15 @@ export const UserProfile: React.FC = () => {
     }
   };
 
-  // Si on est sur mobile, afficher un bouton de déconnexion direct
+  // Version mobile avec bouton de déconnexion visible
   if (isMobile) {
     return (
       <div className="flex items-center gap-2">
         <Button
           onClick={() => signOut()}
-          variant="outline"
+          variant="ghost"
           size="sm"
-          className="border-red-500 text-red-500 hover:bg-red-500/10"
+          className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
         >
           <LogOut className="h-4 w-4" />
         </Button>
@@ -89,6 +88,7 @@ export const UserProfile: React.FC = () => {
     );
   }
 
+  // ... keep existing code (version desktop)
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import {
   Carousel,
@@ -13,12 +12,14 @@ interface CarouselGridProps {
   items: React.ReactNode[];
   className?: string;
   itemsPerView?: number;
+  hideSideArrows?: boolean;
 }
 
 export const CarouselGrid: React.FC<CarouselGridProps> = ({ 
   items, 
   className = '', 
-  itemsPerView = 3 
+  itemsPerView = 3,
+  hideSideArrows = false
 }) => {
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
@@ -81,7 +82,8 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
             </CarouselItem>
           ))}
         </CarouselContent>
-        {canShowNavigation && (
+        {/* Afficher les flèches seulement si hideSideArrows est false */}
+        {canShowNavigation && !hideSideArrows && (
           <>
             <CarouselPrevious className="left-0 -translate-x-full" />
             <CarouselNext className="right-0 translate-x-full" />
@@ -89,6 +91,7 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
         )}
       </Carousel>
       
+      {/* Toujours afficher les points de navigation */}
       {canShowNavigation && totalPositions > 1 && (
         <div className="flex justify-center mt-4 space-x-2">
           {Array.from({ length: totalPositions }, (_, index) => (

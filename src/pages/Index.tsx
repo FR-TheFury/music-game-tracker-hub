@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { RoleGuard } from '@/components/RoleGuard';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { MobileMenu } from '@/components/MobileMenu';
 
 export default function Index() {
   const { artists, loading: artistsLoading, addArtist, removeArtist } = useArtists();
@@ -66,7 +67,10 @@ export default function Index() {
           <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
             <div className="flex items-center justify-between h-14 sm:h-16">
               <div className="flex items-center min-w-0">
-                <div className="p-1.5 sm:p-2 rounded-full bg-gradient-to-r from-[#FF0751] to-[#FF3971] rose-glow flex-shrink-0">
+                {/* Menu burger sur mobile */}
+                {isMobile && <MobileMenu />}
+                
+                <div className="p-1.5 sm:p-2 rounded-full bg-gradient-to-r from-[#FF0751] to-[#FF3971] rose-glow flex-shrink-0 ml-2 sm:ml-0">
                   <Music className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
                 </div>
                 <h1 className="ml-2 sm:ml-3 text-sm sm:text-xl font-bold bg-gradient-to-r from-[#FF0751] to-[#FF6B9D] bg-clip-text text-transparent truncate">
@@ -75,7 +79,7 @@ export default function Index() {
               </div>
               
               <div className="flex items-center gap-1 sm:gap-4">
-                {/* Boutons desktop */}
+                {/* Boutons desktop seulement */}
                 {!isMobile && (
                   <>
                     <Button
@@ -107,40 +111,6 @@ export default function Index() {
                       >
                         <Shield className="h-4 w-4 mr-2" />
                         Administration
-                      </Button>
-                    )}
-                  </>
-                )}
-                
-                {/* Boutons mobile simplifiés */}
-                {isMobile && (
-                  <>
-                    <Button
-                      onClick={() => navigate('/complete-profile')}
-                      variant="outline"
-                      size="sm"
-                      className="border-[#FF0751] text-[#FF0751] hover:bg-[#FF0751]/10"
-                    >
-                      <User className="h-4 w-4" />
-                    </Button>
-                    
-                    <Button
-                      onClick={() => navigate('/friends')}
-                      variant="outline"
-                      size="sm"
-                      className="border-[#FF0751] text-[#FF0751] hover:bg-[#FF0751]/10"
-                    >
-                      <Search className="h-4 w-4" />
-                    </Button>
-                    
-                    {userRole === 'admin' && (
-                      <Button
-                        onClick={() => navigate('/admin')}
-                        variant="outline"
-                        size="sm"
-                        className="border-[#FF0751] text-[#FF0751] hover:bg-[#FF0751]/10"
-                      >
-                        <Shield className="h-4 w-4" />
                       </Button>
                     )}
                   </>

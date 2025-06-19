@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNewReleases } from '@/hooks/useNewReleases';
 import { NewReleaseCard } from '@/components/NewReleaseCard';
@@ -7,11 +8,13 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export const NewReleasesSection: React.FC = () => {
   const { releases, loading, refetch } = useNewReleases();
   const { toast } = useToast();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [checking, setChecking] = React.useState(false);
 
   const handleManualCheck = async () => {
@@ -28,7 +31,6 @@ export const NewReleasesSection: React.FC = () => {
     try {
       console.log('Starting user-specific releases check...');
       
-      // Use the new user-specific function instead of the global one
       const { data, error } = await supabase.functions.invoke('check-user-releases', {
         headers: {
           'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
@@ -42,7 +44,6 @@ export const NewReleasesSection: React.FC = () => {
         description: `${data?.newReleasesFound || 0} nouvelles sorties détectées pour vos suivis`,
       });
       
-      // Refresh the data after checking
       setTimeout(() => {
         refetch();
       }, 1000);
@@ -77,27 +78,47 @@ export const NewReleasesSection: React.FC = () => {
             <Clock className="h-4 w-4 text-yellow-400" />
             <span className="text-xs text-yellow-400 font-medium">Expire dans 7 jours</span>
           </div>
+          
+          {/* Bouton simplifié pour mobile */}
+          {isMobile && (
+            <Button
+              onClick={handleManualCheck}
+              disabled={checking}
+              variant="ghost"
+              size="sm"
+              className="ml-auto p-1 h-8 w-8"
+            >
+              {checking ? (
+                <Loader2 className="h-4 w-4 animate-spin text-yellow-400" />
+              ) : (
+                <RefreshCw className="h-4 w-4 text-yellow-400" />
+              )}
+            </Button>
+          )}
         </div>
         
-        <Button
-          onClick={handleManualCheck}
-          disabled={checking}
-          variant="outline"
-          size="sm"
-          className="border-yellow-500/30 text-yellow-300 hover:bg-yellow-500/10"
-        >
-          {checking ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Vérification...
-            </>
-          ) : (
-            <>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Vérifier mes sorties
-            </>
-          )}
-        </Button>
+        {/* Bouton complet pour desktop */}
+        {!isMobile && (
+          <Button
+            onClick={handleManualCheck}
+            disabled={checking}
+            variant="outline"
+            size="sm"
+            className="border-yellow-500/30 text-yellow-300 hover:bg-yellow-500/10"
+          >
+            {checking ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Vérification...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Vérifier mes sorties
+              </>
+            )}
+          </Button>
+        )}
       </div>
       
       {releases.length === 0 ? (
@@ -119,6 +140,7 @@ export const NewReleasesSection: React.FC = () => {
           items={releases.map((release) => (
             <NewReleaseCard key={release.id} release={release} />
           ))}
+          hideSideArrows={isMobile}
         />
       )}
     </section>
