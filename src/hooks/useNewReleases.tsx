@@ -82,14 +82,20 @@ export const useNewReleases = () => {
 
   const removeRelease = async (id: string) => {
     try {
+      // Mettre à jour l'état local immédiatement pour un feedback instantané
+      setReleases(prev => prev.filter(release => release.id !== id));
+      
       const { error } = await supabase
         .from('new_releases')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
-
-      setReleases(prev => prev.filter(release => release.id !== id));
+      if (error) {
+        // Si l'erreur survient, restaurer l'état précédent
+        console.error('Error removing release:', error);
+        await fetchReleases(); // Recharger les données pour restaurer l'état correct
+        throw error;
+      }
       
       toast({
         title: "Notification supprimée",
