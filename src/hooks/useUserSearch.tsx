@@ -51,45 +51,48 @@ export const useUserSearch = () => {
 
     setLoading(true);
     try {
-      // Première requête : récupérer les user_roles filtrés
-      const { data: userRolesData, error: userRolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role, created_at')
-        .eq('role', 'viewer')
-        .or('role.eq.editor,role.eq.admin')
-        .not('approved_at', 'is', null);
-
-      if (userRolesError) throw userRolesError;
-
-      if (!userRolesData || userRolesData.length === 0) {
-        setSearchResults([]);
-        return;
-      }
-
-      // Extraire les user_ids
-      const userIds = userRolesData.map(ur => ur.user_id);
-
-      // Deuxième requête : récupérer les profils correspondants
+      // Première requête : chercher les profils qui correspondent au terme de recherche
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('id, username, avatar_url')
-        .in('id', userIds)
         .ilike('username', `%${searchTerm}%`)
         .limit(20);
 
       if (profilesError) throw profilesError;
 
+      if (!profilesData || profilesData.length === 0) {
+        setSearchResults([]);
+        return;
+      }
+
+      // Extraire les user_ids des profils trouvés
+      const userIds = profilesData.map(profile => profile.id);
+
+      // Deuxième requête : récupérer les rôles pour ces utilisateurs
+      const { data: userRolesData, error: userRolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role, created_at')
+        .in('user_id', userIds)
+        .in('role', ['admin', 'editor', 'viewer'])
+        .not('approved_at', 'is', null);
+
+      if (userRolesError) throw userRolesError;
+
       // Combiner les données
-      const formattedResults = profilesData?.map(profile => {
-        const userRole = userRolesData.find(ur => ur.user_id === profile.id);
-        return {
-          user_id: profile.id,
-          username: profile.username || 'Utilisateur',
-          role: userRole?.role || 'viewer',
-          created_at: userRole?.created_at || '',
-          avatar_url: profile.avatar_url
-        };
-      }) || [];
+      const formattedResults = profilesData
+        .map(profile => {
+          const userRole = userRolesData?.find(ur => ur.user_id === profile.id);
+          if (!userRole) return null; // Exclure les utilisateurs sans rôle approuvé
+          
+          return {
+            user_id: profile.id,
+            username: profile.username || 'Utilisateur',
+            role: userRole.role,
+            created_at: userRole.created_at,
+            avatar_url: profile.avatar_url
+          };
+        })
+        .filter(Boolean) as UserSearchResult[];
 
       setSearchResults(formattedResults);
     } catch (error) {
