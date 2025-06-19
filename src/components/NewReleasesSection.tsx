@@ -2,10 +2,44 @@
 import React from 'react';
 import { useNewReleases } from '@/hooks/useNewReleases';
 import { NewReleaseCard } from '@/components/NewReleaseCard';
-import { Loader2, Bell, Clock } from 'lucide-react';
+import { Loader2, Bell, Clock, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 export const NewReleasesSection: React.FC = () => {
-  const { releases, loading } = useNewReleases();
+  const { releases, loading, refetch } = useNewReleases();
+  const { toast } = useToast();
+  const [checking, setChecking] = React.useState(false);
+
+  const handleManualCheck = async () => {
+    setChecking(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('trigger-releases-check');
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Vérification terminée",
+        description: `${data?.result?.newReleasesFound || 0} nouvelles sorties détectées`,
+      });
+      
+      // Actualiser les données après la vérification
+      setTimeout(() => {
+        refetch();
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Error checking releases:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de vérifier les sorties",
+        variant: "destructive",
+      });
+    } finally {
+      setChecking(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -15,34 +49,60 @@ export const NewReleasesSection: React.FC = () => {
     );
   }
 
-  if (releases.length === 0) {
-    return (
-      <div className="text-center py-8">
-        <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-400 text-lg">Aucune nouvelle sortie pour le moment.</p>
-        <p className="text-gray-500 text-sm mt-2">
-          Les nouvelles sorties de vos artistes et jeux suivis apparaîtront ici !
-        </p>
-      </div>
-    );
-  }
-
   return (
     <section className="mb-12">
-      <div className="flex items-center gap-3 mb-6">
-        <Bell className="h-6 w-6 text-yellow-400" />
-        <h2 className="text-2xl font-bold text-white">Nouvelles Sorties</h2>
-        <div className="flex items-center gap-1 px-2 py-1 bg-yellow-500/10 rounded-full">
-          <Clock className="h-4 w-4 text-yellow-400" />
-          <span className="text-xs text-yellow-400 font-medium">Expire dans 7 jours</span>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <Bell className="h-6 w-6 text-yellow-400" />
+          <h2 className="text-2xl font-bold text-white">Nouvelles Sorties</h2>
+          <div className="flex items-center gap-1 px-2 py-1 bg-yellow-500/10 rounded-full">
+            <Clock className="h-4 w-4 text-yellow-400" />
+            <span className="text-xs text-yellow-400 font-medium">Expire dans 7 jours</span>
+          </div>
         </div>
+        
+        <Button
+          onClick={handleManualCheck}
+          disabled={checking}
+          variant="outline"
+          size="sm"
+          className="border-yellow-500/30 text-yellow-300 hover:bg-yellow-500/10"
+        >
+          {checking ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Vérification...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Vérifier maintenant
+            </>
+          )}
+        </Button>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {releases.map((release) => (
-          <NewReleaseCard key={release.id} release={release} />
-        ))}
-      </div>
+      {releases.length === 0 ? (
+        <div className="text-center py-8 bg-slate-800/50 rounded-lg border border-slate-700">
+          <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-400 text-lg mb-2">Aucune nouvelle sortie pour le moment.</p>
+          <p className="text-gray-500 text-sm mb-4">
+            Les nouvelles sorties de vos artistes et jeux suivis apparaîtront ici !
+          </p>
+          <div className="text-xs text-gray-600 space-y-1">
+            <p>💡 Le système vérifie automatiquement :</p>
+            <p>• Les nouveaux albums/singles sur Spotify</p>
+            <p>• Les mises à jour de jeux</p>
+            <p>• Et envoie des notifications par email si configuré</p>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {releases.map((release) => (
+            <NewReleaseCard key={release.id} release={release} />
+          ))}
+        </div>
+      )}
     </section>
   );
 };

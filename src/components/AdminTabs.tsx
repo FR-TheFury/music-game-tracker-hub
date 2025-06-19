@@ -1,18 +1,16 @@
 
 import React from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useUserRole } from '@/hooks/useUserRole';
-import { Shield, AlertCircle } from 'lucide-react';
+import { Shield, Users, Bell, Settings } from 'lucide-react';
+import { PendingValidationsTab } from '@/components/admin/PendingValidationsTab';
+import { UsersManagementTab } from '@/components/admin/UsersManagementTab';
+import { NotificationSettingsWrapper } from '@/components/NotificationSettingsWrapper';
+import { ManualReleaseChecker } from '@/components/ManualReleaseChecker';
 
 export const AdminTabs: React.FC = () => {
-  const { userRole } = useUserRole();
-
-  if (userRole !== 'admin') {
-    return null;
-  }
-
   return (
-    <Card className="mb-6 bg-slate-800/90 border-slate-700">
+    <Card className="bg-slate-800/90 border-[#FF0751]/30 shadow-2xl backdrop-blur-sm">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-white">
           <Shield className="h-5 w-5" />
@@ -20,15 +18,42 @@ export const AdminTabs: React.FC = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center gap-3 p-4 bg-blue-500/10 border border-blue-400/20 rounded-lg">
-          <AlertCircle className="h-5 w-5 text-blue-400" />
-          <div>
-            <p className="text-white font-medium">Administration déplacée</p>
-            <p className="text-gray-300 text-sm">
-              Utilisez le bouton "Administration" dans la barre de navigation pour accéder au panneau d'administration complet.
-            </p>
-          </div>
-        </div>
+        <Tabs defaultValue="pending" className="w-full">
+          <TabsList className="grid w-full grid-cols-4 bg-slate-700">
+            <TabsTrigger value="pending" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Validation
+            </TabsTrigger>
+            <TabsTrigger value="users" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Utilisateurs
+            </TabsTrigger>
+            <TabsTrigger value="releases" className="flex items-center gap-2">
+              <Bell className="h-4 w-4" />
+              Sorties
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Notifications
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="pending" className="mt-6">
+            <PendingValidationsTab />
+          </TabsContent>
+          
+          <TabsContent value="users" className="mt-6">
+            <UsersManagementTab />
+          </TabsContent>
+
+          <TabsContent value="releases" className="mt-6">
+            <ManualReleaseChecker />
+          </TabsContent>
+          
+          <TabsContent value="notifications" className="mt-6">
+            <NotificationSettingsWrapper />
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );
