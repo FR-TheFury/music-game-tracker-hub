@@ -86,25 +86,25 @@ export const NewReleasesSection: React.FC = () => {
               disabled={checking}
               variant="ghost"
               size="sm"
-              className="ml-auto p-1 h-8 w-8 hover:bg-[#FF0751]/20"
+              className="ml-auto p-1 h-8 w-8 hover:bg-purple-500/20"
             >
               {checking ? (
-                <Loader2 className="h-4 w-4 animate-spin text-[#FF0751]" />
+                <Loader2 className="h-4 w-4 animate-spin text-purple-400" />
               ) : (
-                <RefreshCw className="h-4 w-4 text-[#FF0751]" />
+                <RefreshCw className="h-4 w-4 text-purple-400" />
               )}
             </Button>
           )}
         </div>
         
-        {/* Bouton complet pour desktop avec nouvelles couleurs */}
+        {/* Bouton complet pour desktop avec couleur violette */}
         {!isMobile && (
           <Button
             onClick={handleManualCheck}
             disabled={checking}
             variant="outline"
             size="sm"
-            className="border-[#FF0751]/50 bg-[#FF0751]/10 text-[#FF0751] hover:bg-[#FF0751]/20 hover:border-[#FF0751] hover:text-white transition-all duration-300"
+            className="border-purple-400/50 bg-purple-500/10 text-purple-300 hover:bg-purple-500/20 hover:border-purple-400 hover:text-white transition-all duration-300"
           >
             {checking ? (
               <>
