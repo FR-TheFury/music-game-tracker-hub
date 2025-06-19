@@ -33,6 +33,17 @@ interface SoundCloudTrack {
   };
 }
 
+interface SoundCloudRelease {
+  id: number;
+  title: string;
+  created_at: string;
+  permalink_url: string;
+  artwork_url: string;
+  playback_count: number;
+  likes_count: number;
+  release_date: string;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -117,6 +128,96 @@ serve(async (req) => {
 
       return new Response(
         JSON.stringify({ tracks }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (type === 'artist-releases') {
+      // Extract username from URL or use direct artist ID
+      let userId = query;
+      if (artistUrl) {
+        const username = artistUrl.split('/').pop();
+        // First get user ID
+        const userResponse = await fetch(`https://api.soundcloud.com/resolve?url=${artistUrl}&client_id=${clientId}`);
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          userId = userData.id;
+        }
+      }
+
+      const tracksUrl = `https://api.soundcloud.com/users/${userId}/tracks?client_id=${clientId}&limit=${limit}&linked_partitioning=1`;
+      
+      console.log('Getting SoundCloud recent releases for user:', userId);
+      
+      const response = await fetch(tracksUrl);
+      if (!response.ok) {
+        throw new Error(`SoundCloud API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const tracks: SoundCloudTrack[] = data.collection || [];
+      
+      // Filter for recent releases (last 30 days)
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const recentReleases = tracks
+        .filter(track => new Date(track.created_at) >= thirtyDaysAgo)
+        .map(track => ({
+          id: track.id,
+          title: track.title,
+          created_at: track.created_at,
+          permalink_url: track.permalink_url,
+          artwork_url: track.artwork_url,
+          playback_count: track.playback_count,
+          likes_count: track.likes_count,
+          release_date: track.created_at,
+        }));
+
+      console.log(`Found ${recentReleases.length} recent SoundCloud releases`);
+
+      return new Response(
+        JSON.stringify({ releases: recentReleases }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (type === 'playback-stats') {
+      // Extract username or use direct artist ID
+      let userId = query;
+      if (artistUrl) {
+        const username = artistUrl.split('/').pop();
+        const userResponse = await fetch(`https://api.soundcloud.com/resolve?url=${artistUrl}&client_id=${clientId}`);
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          userId = userData.id;
+        }
+      }
+
+      const tracksUrl = `https://api.soundcloud.com/users/${userId}/tracks?client_id=${clientId}&limit=50&linked_partitioning=1`;
+      
+      console.log('Getting SoundCloud playback stats for user:', userId);
+      
+      const response = await fetch(tracksUrl);
+      if (!response.ok) {
+        throw new Error(`SoundCloud API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const tracks: SoundCloudTrack[] = data.collection || [];
+      
+      // Calculate total plays and likes
+      const totalPlays = tracks.reduce((sum, track) => sum + (track.playback_count || 0), 0);
+      const totalLikes = tracks.reduce((sum, track) => sum + (track.likes_count || 0), 0);
+      const trackCount = tracks.length;
+
+      console.log(`SoundCloud stats: ${totalPlays} total plays, ${totalLikes} total likes, ${trackCount} tracks`);
+
+      return new Response(
+        JSON.stringify({ 
+          totalPlays, 
+          totalLikes, 
+          trackCount,
+          tracks: tracks.slice(0, 10) // Return top 10 tracks for preview
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

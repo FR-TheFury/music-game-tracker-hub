@@ -29,6 +29,24 @@ interface SoundCloudTrack {
   };
 }
 
+interface SoundCloudRelease {
+  id: number;
+  title: string;
+  created_at: string;
+  permalink_url: string;
+  artwork_url: string;
+  playback_count: number;
+  likes_count: number;
+  release_date: string;
+}
+
+interface SoundCloudStats {
+  totalPlays: number;
+  totalLikes: number;
+  trackCount: number;
+  tracks: SoundCloudTrack[];
+}
+
 export const useSoundCloud = () => {
   const [loading, setLoading] = useState(false);
 
@@ -111,10 +129,68 @@ export const useSoundCloud = () => {
     }
   };
 
+  const getArtistReleases = async (artistQuery: string, artistUrl?: string, limit: number = 10): Promise<SoundCloudRelease[]> => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('get-soundcloud-info', {
+        body: { 
+          query: artistQuery,
+          artistUrl,
+          type: 'artist-releases',
+          limit
+        }
+      });
+
+      if (error) {
+        console.error('SoundCloud releases error:', error);
+        return [];
+      }
+
+      return data?.releases || [];
+    } catch (error) {
+      console.error('SoundCloud API error:', error);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getPlaybackStats = async (artistQuery: string, artistUrl?: string): Promise<SoundCloudStats | null> => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('get-soundcloud-info', {
+        body: { 
+          query: artistQuery,
+          artistUrl,
+          type: 'playback-stats'
+        }
+      });
+
+      if (error) {
+        console.error('SoundCloud stats error:', error);
+        return null;
+      }
+
+      return {
+        totalPlays: data?.totalPlays || 0,
+        totalLikes: data?.totalLikes || 0,
+        trackCount: data?.trackCount || 0,
+        tracks: data?.tracks || []
+      };
+    } catch (error) {
+      console.error('SoundCloud API error:', error);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     searchArtists,
     getArtistInfo,
     getArtistTracks,
+    getArtistReleases,
+    getPlaybackStats,
     loading,
   };
 };
