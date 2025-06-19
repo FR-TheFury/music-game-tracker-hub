@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,12 +29,69 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
   const [isServiceAvailable, setIsServiceAvailable] = useState(true);
   const [hasSearched, setHasSearched] = useState(false);
   const [errorType, setErrorType] = useState<'none' | 'rate_limit' | 'no_soundcloud' | 'no_results' | 'api_error'>('none');
-  const [retryCount, setRetryCount] = useState(0);
+  const [isRequestInProgress, setIsRequestInProgress] = useState(false);
   const [nextRetryTime, setNextRetryTime] = useState<number | null>(null);
+  const [rateLimitCooldown, setRateLimitCooldown] = useState<number | null>(null);
+  
+  // Refs pour éviter les boucles infinies
+  const retryCountRef = useRef(0);
+  const lastRequestTimeRef = useRef<number | null>(null);
+  const hasInitializedRef = useRef(false);
+  
   const { getArtistReleases, loading, error } = useSoundCloud();
 
-  const fetchReleases = useCallback(async (isRetry = false) => {
-    if (!artistName) return;
+  // Cache local pour éviter les requêtes répétées
+  const cacheRef = useRef<Map<string, { data: SoundCloudRelease[], timestamp: number }>>(new Map());
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+  const getCacheKey = useCallback((name: string, url?: string) => {
+    return `${name}-${url || 'no-url'}`;
+  }, []);
+
+  const getCachedData = useCallback((key: string) => {
+    const cached = cacheRef.current.get(key);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      return cached.data;
+    }
+    return null;
+  }, []);
+
+  const setCachedData = useCallback((key: string, data: SoundCloudRelease[]) => {
+    cacheRef.current.set(key, { data, timestamp: Date.now() });
+  }, []);
+
+  const resetState = useCallback(() => {
+    setErrorType('none');
+    setIsServiceAvailable(true);
+    setRateLimitCooldown(null);
+    setNextRetryTime(null);
+  }, []);
+
+  const handleRateLimitError = useCallback(() => {
+    console.log('SoundCloud rate limit detected, entering cooldown mode');
+    setErrorType('rate_limit');
+    setIsServiceAvailable(false);
+    setIsRequestInProgress(false);
+    
+    // Cooldown de 10 minutes pour le rate limit
+    const cooldownTime = Date.now() + 10 * 60 * 1000;
+    setRateLimitCooldown(cooldownTime);
+    
+    // Reset automatique après le cooldown
+    setTimeout(() => {
+      console.log('Rate limit cooldown expired');
+      setRateLimitCooldown(null);
+      setErrorType('none');
+      setIsServiceAvailable(true);
+      retryCountRef.current = 0;
+    }, 10 * 60 * 1000);
+  }, []);
+
+  const fetchReleases = useCallback(async (isManualRetry = false) => {
+    // Vérifications préliminaires
+    if (!artistName || isRequestInProgress) {
+      return;
+    }
 
     if (!soundcloudUrl) {
       console.log('No SoundCloud URL configured for', artistName);
@@ -46,50 +102,78 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
       return;
     }
 
+    // Vérifier le rate limit cooldown
+    if (rateLimitCooldown && Date.now() < rateLimitCooldown) {
+      console.log('Still in rate limit cooldown');
+      return;
+    }
+
+    // Vérifier le cache
+    const cacheKey = getCacheKey(artistName, soundcloudUrl);
+    const cachedData = getCachedData(cacheKey);
+    if (cachedData && !isManualRetry) {
+      console.log('Using cached SoundCloud data for', artistName);
+      setReleases(cachedData);
+      setHasSearched(true);
+      setErrorType(cachedData.length === 0 ? 'no_results' : 'none');
+      return;
+    }
+
+    // Protection contre les requêtes trop fréquentes
+    const now = Date.now();
+    if (lastRequestTimeRef.current && now - lastRequestTimeRef.current < 5000 && !isManualRetry) {
+      console.log('Skipping request - too frequent');
+      return;
+    }
+
+    setIsRequestInProgress(true);
+    setHasSearched(false);
+    resetState();
+    lastRequestTimeRef.current = now;
+
     try {
-      setHasSearched(false);
-      setErrorType('none');
-      setIsServiceAvailable(true);
-      
       console.log('Fetching SoundCloud releases for:', artistName, soundcloudUrl);
       
-      if (isRetry && retryCount > 0) {
-        const waitTime = Math.min(retryCount * 5000, 30000);
-        console.log(`Waiting ${waitTime}ms before retry...`);
+      // Backoff exponentiel pour les retries
+      if (!isManualRetry && retryCountRef.current > 0) {
+        const waitTime = Math.min(retryCountRef.current * 2000, 10000);
+        console.log(`Waiting ${waitTime}ms before retry (attempt ${retryCountRef.current + 1})`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
       }
       
-      const soundcloudReleases = await getArtistReleases(artistName, soundcloudUrl, 20);
-      setHasSearched(true);
+      const soundcloudReleases = await getArtistReleases(artistName, soundcloudUrl, 15);
       
-      console.log('SoundCloud releases received:', soundcloudReleases);
+      console.log('SoundCloud releases received:', soundcloudReleases?.length || 0);
       
       if (!soundcloudReleases || soundcloudReleases.length === 0) {
         console.log('No SoundCloud releases found for', artistName);
-        setIsServiceAvailable(true);
         setReleases([]);
         setErrorType('no_results');
-        return;
+        setCachedData(cacheKey, []);
+      } else {
+        // Filtrer les sorties récentes (dernier mois)
+        const oneMonthAgo = new Date();
+        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+        
+        const recentReleases = soundcloudReleases.filter(release => {
+          const releaseDate = new Date(release.created_at);
+          return releaseDate > oneMonthAgo;
+        });
+        
+        const sortedReleases = recentReleases.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        
+        console.log(`${sortedReleases.length} recent releases found out of ${soundcloudReleases.length} total`);
+        
+        setReleases(sortedReleases);
+        setErrorType(sortedReleases.length === 0 ? 'no_results' : 'none');
+        setCachedData(cacheKey, sortedReleases);
       }
       
-      const oneMonthAgo = new Date();
-      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-      
-      const recentReleases = soundcloudReleases.filter(release => {
-        const releaseDate = new Date(release.created_at);
-        return releaseDate > oneMonthAgo;
-      });
-      
-      console.log(`${recentReleases.length} recent releases found out of ${soundcloudReleases.length} total`);
-      
-      const sortedReleases = recentReleases.sort((a, b) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-      
-      setReleases(sortedReleases);
-      setErrorType(sortedReleases.length === 0 ? 'no_results' : 'none');
-      setRetryCount(0);
-      setNextRetryTime(null);
+      setHasSearched(true);
+      setIsServiceAvailable(true);
+      retryCountRef.current = 0;
       
     } catch (fetchError) {
       console.error('Error fetching SoundCloud releases:', fetchError);
@@ -97,36 +181,57 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
       setReleases([]);
       
       const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
+      
       if (errorMessage.includes('rate_limit') || errorMessage.includes('429')) {
-        setErrorType('rate_limit');
-        setIsServiceAvailable(false);
-        // Programmer un retry automatique dans 5 minutes
-        const retryTime = Date.now() + 300000;
-        setNextRetryTime(retryTime);
-        setTimeout(() => {
-          if (Date.now() >= retryTime) {
-            console.log('Auto-retrying after rate limit cooldown...');
-            fetchReleases(true);
-          }
-        }, 300000);
+        handleRateLimitError();
       } else {
         setErrorType('api_error');
         setIsServiceAvailable(false);
+        
+        // Limiter les retries automatiques
+        if (retryCountRef.current < 2 && !isManualRetry) {
+          retryCountRef.current++;
+          console.log(`Scheduling retry ${retryCountRef.current} in 5 seconds`);
+          setTimeout(() => {
+            if (!isRequestInProgress) {
+              fetchReleases();
+            }
+          }, 5000);
+        }
       }
+    } finally {
+      setIsRequestInProgress(false);
     }
-  }, [artistName, soundcloudUrl, getArtistReleases, retryCount]);
+  }, [
+    artistName, 
+    soundcloudUrl, 
+    getArtistReleases, 
+    rateLimitCooldown,
+    getCacheKey,
+    getCachedData,
+    setCachedData,
+    resetState,
+    handleRateLimitError
+  ]);
 
+  // Effect initial - ne se déclenche qu'une fois
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchReleases();
-    }, Math.random() * 3000);
-    
-    return () => clearTimeout(timer);
-  }, [fetchReleases]);
+    if (!hasInitializedRef.current && artistName) {
+      hasInitializedRef.current = true;
+      // Délai aléatoire pour éviter les requêtes simultanées
+      const delay = Math.random() * 2000 + 1000; // 1-3 secondes
+      
+      const timer = setTimeout(() => {
+        fetchReleases();
+      }, delay);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [artistName, fetchReleases]);
 
-  const handleRetry = useCallback(() => {
-    setRetryCount(prev => prev + 1);
-    setNextRetryTime(null);
+  const handleManualRetry = useCallback(() => {
+    retryCountRef.current = 0;
+    setRateLimitCooldown(null);
     fetchReleases(true);
   }, [fetchReleases]);
 
@@ -152,7 +257,7 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
     return artworkUrl.replace('-large', '-t500x500') || artworkUrl;
   };
 
-  if (loading) {
+  if (loading || isRequestInProgress) {
     return (
       <Card className="card-3d mb-8 border-orange-400/20">
         <CardContent className="p-6">
@@ -188,19 +293,25 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
     let errorTitle = "Service SoundCloud indisponible";
     let errorDescription = "Le service SoundCloud rencontre des difficultés techniques.";
     let showRetry = true;
+    let isInCooldown = false;
 
     if (errorType === 'rate_limit') {
       errorIcon = AlertTriangle;
       errorTitle = "Limite SoundCloud atteinte";
-      errorDescription = nextRetryTime ? 
-        `Trop de requêtes. Retry automatique programmé dans ${Math.round((nextRetryTime - Date.now()) / 60000)} minutes.` :
-        "Limite de requêtes atteinte. Les données seront rechargées automatiquement.";
-      showRetry = !nextRetryTime && retryCount < 3;
+      
+      if (rateLimitCooldown) {
+        const remainingTime = Math.max(0, Math.ceil((rateLimitCooldown - Date.now()) / 60000));
+        errorDescription = `Limite de requêtes atteinte. Retry automatique dans ${remainingTime} minute${remainingTime > 1 ? 's' : ''}.`;
+        isInCooldown = true;
+        showRetry = false;
+      } else {
+        errorDescription = "Limite de requêtes atteinte. Vous pouvez réessayer maintenant.";
+      }
     } else if (errorType === 'api_error') {
       errorIcon = AlertTriangle;
       errorTitle = "Erreur API SoundCloud";
       errorDescription = error || "Une erreur s'est produite lors de la communication avec SoundCloud.";
-      showRetry = retryCount < 2;
+      showRetry = retryCountRef.current < 3;
     }
 
     const IconComponent = errorIcon;
@@ -214,17 +325,22 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
               <div>
                 <p className="font-medium">{errorTitle}</p>
                 <p className="text-sm text-gray-400">{errorDescription}</p>
+                {isInCooldown && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Le système respecte les limites de l'API pour éviter les blocages.
+                  </p>
+                )}
               </div>
             </div>
             {showRetry && (
               <Button 
-                onClick={handleRetry}
+                onClick={handleManualRetry}
                 variant="outline"
                 size="sm"
                 className="border-orange-400/30 text-orange-300 hover:bg-orange-400/10"
-                disabled={loading}
+                disabled={loading || isRequestInProgress}
               >
-                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`h-4 w-4 mr-2 ${(loading || isRequestInProgress) ? 'animate-spin' : ''}`} />
                 Réessayer
               </Button>
             )}
@@ -249,13 +365,13 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
               </div>
             </div>
             <Button 
-              onClick={() => fetchReleases()}
+              onClick={handleManualRetry}
               variant="outline"
               size="sm"
               className="border-orange-400/30 text-orange-300 hover:bg-orange-400/10"
-              disabled={loading}
+              disabled={loading || isRequestInProgress}
             >
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4 w-4 mr-2 ${(loading || isRequestInProgress) ? 'animate-spin' : ''}`} />
               Actualiser
             </Button>
           </div>
@@ -278,13 +394,13 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
               <Wifi className="h-4 w-4 text-green-400" />
             </div>
             <Button 
-              onClick={() => fetchReleases()}
+              onClick={handleManualRetry}
               variant="ghost"
               size="sm"
               className="h-8 w-8 p-0 text-gray-400 hover:text-white"
-              disabled={loading}
+              disabled={loading || isRequestInProgress}
             >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4 w-4 ${(loading || isRequestInProgress) ? 'animate-spin' : ''}`} />
             </Button>
           </div>
         </CardTitle>
