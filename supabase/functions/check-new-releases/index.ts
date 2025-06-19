@@ -33,7 +33,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    console.log('Starting automated new releases check...');
+    console.log('Starting GLOBAL automated new releases check...');
     
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -53,7 +53,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error(`Failed to fetch data: ${artistsError?.message || gamesError?.message}`);
     }
 
-    console.log(`Found ${artists?.length || 0} artists and ${games?.length || 0} games to check`);
+    console.log(`Found ${artists?.length || 0} artists and ${games?.length || 0} games to check globally`);
 
     const newReleases = [];
 
@@ -79,7 +79,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    console.log(`Found ${newReleases.length} new releases to process`);
+    console.log(`Found ${newReleases.length} new releases to process globally`);
 
     // Insert new releases
     if (newReleases.length > 0) {
@@ -91,23 +91,32 @@ const handler = async (req: Request): Promise<Response> => {
         throw insertError;
       }
 
-      console.log(`Successfully inserted ${newReleases.length} new releases`);
+      console.log(`Successfully inserted ${newReleases.length} new releases globally`);
 
       // Send email notifications for users with notifications enabled
+      const processedUsers = new Set();
+      
       for (const release of newReleases) {
         try {
+          // Skip if we already processed this user in this batch
+          if (processedUsers.has(release.user_id)) {
+            continue;
+          }
+          
+          console.log(`Processing notifications for user: ${release.user_id}`);
+          
           // Get user's notification settings
           let { data: settings, error: settingsError } = await supabaseClient
             .from('notification_settings')
             .select('*')
             .eq('user_id', release.user_id)
-            .single();
+            .maybeSingle();
 
-          // Si l'utilisateur n'a pas de paramètres, créer des paramètres par défaut
-          if (settingsError || !settings) {
-            console.log(`Creating default notification settings for user ${release.user_id}`);
+          // Create default settings if they don't exist
+          if (settingsError && settingsError.code === 'PGRST116') {
+            console.log(`No notification settings found for user ${release.user_id}, creating default settings`);
             
-            const { error: createError } = await supabaseClient
+            const { data: newSettings, error: createError } = await supabaseClient
               .from('notification_settings')
               .insert({
                 user_id: release.user_id,
@@ -115,52 +124,58 @@ const handler = async (req: Request): Promise<Response> => {
                 notification_frequency: 'immediate',
                 artist_notifications_enabled: true,
                 game_notifications_enabled: true,
-              });
+              })
+              .select()
+              .single();
 
             if (createError) {
               console.error('Failed to create default notification settings:', createError);
-              continue; // Passer au prochain release
+              continue;
             }
 
-            // Récupérer les nouveaux paramètres créés
-            const { data: newSettings } = await supabaseClient
-              .from('notification_settings')
-              .select('*')
-              .eq('user_id', release.user_id)
-              .single();
-
+            console.log(`Created default notification settings for user ${release.user_id}:`, newSettings);
             settings = newSettings;
+          } else if (settingsError) {
+            console.error('Error fetching notification settings:', settingsError);
+            continue;
           }
 
           if (settings?.email_notifications_enabled && settings?.notification_frequency === 'immediate') {
-            // Vérifier si les notifications sont activées pour ce type
-            const shouldSendNotification = 
-              (release.type === 'artist' && settings.artist_notifications_enabled) ||
-              (release.type === 'game' && settings.game_notifications_enabled);
+            // Get all releases for this user to send in one email
+            const userReleases = newReleases.filter(r => r.user_id === release.user_id);
+            
+            for (const userRelease of userReleases) {
+              const shouldSendNotification = 
+                (userRelease.type === 'artist' && settings.artist_notifications_enabled) ||
+                (userRelease.type === 'game' && settings.game_notifications_enabled);
 
-            if (shouldSendNotification) {
-              console.log(`Sending email notification to user ${release.user_id} for release: ${release.title}`);
-              
-              // Call the email sending function with userId instead of userEmail
-              const { error: emailError } = await supabaseClient.functions.invoke('send-release-notification', {
-                body: { 
-                  release, 
-                  userId: release.user_id,
-                  userSettings: settings 
+              if (shouldSendNotification) {
+                console.log(`Sending email notification to user ${release.user_id} for release: ${userRelease.title}`);
+                
+                const { error: emailError } = await supabaseClient.functions.invoke('send-release-notification', {
+                  body: { 
+                    release: userRelease, 
+                    userId: release.user_id,
+                    userSettings: settings 
+                  }
+                });
+
+                if (emailError) {
+                  console.error('Failed to send email notification:', emailError);
+                } else {
+                  console.log(`Email notification request sent successfully for user ${release.user_id}`);
                 }
-              });
-
-              if (emailError) {
-                console.error('Failed to send email notification:', emailError);
               } else {
-                console.log(`Email notification request sent for user ${release.user_id}`);
+                console.log(`Notifications disabled for ${userRelease.type} for user ${release.user_id}`);
               }
-            } else {
-              console.log(`Notifications disabled for ${release.type} for user ${release.user_id}`);
             }
           } else {
             console.log(`Email notifications disabled or not immediate for user ${release.user_id}`);
           }
+          
+          // Mark user as processed
+          processedUsers.add(release.user_id);
+          
         } catch (emailError) {
           console.error('Failed to process email notification:', emailError);
         }
@@ -171,7 +186,7 @@ const handler = async (req: Request): Promise<Response> => {
       JSON.stringify({ 
         success: true, 
         newReleasesFound: newReleases.length,
-        message: `Automated check completed: found ${newReleases.length} new releases`,
+        message: `Global automated check completed: found ${newReleases.length} new releases`,
         processedArtists: artists?.length || 0,
         processedGames: games?.length || 0,
         timestamp: new Date().toISOString()
@@ -183,7 +198,7 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
   } catch (error) {
-    console.error('Error in automated check-new-releases function:', error);
+    console.error('Error in GLOBAL automated check-new-releases function:', error);
     return new Response(
       JSON.stringify({ 
         error: error.message,
@@ -371,7 +386,7 @@ function extractSteamAppId(url: string): string | null {
 
 async function checkSteamStatus(game: Game, appId: string, apiKey: string) {
   let statusChanged = false;
-  let newStatus = game.release_status || 'unknown';
+  let newStatus = game.release_status ||'unknown';
   let releaseDate = game.expected_release_date;
   let newReleaseDetected = false;
   let release = null;

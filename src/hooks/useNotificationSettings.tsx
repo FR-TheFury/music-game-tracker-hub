@@ -25,13 +25,13 @@ export const useNotificationSettings = () => {
     try {
       console.log('Fetching notification settings for user:', user.id);
       
-      const { data, error } = await supabase
+      const { data, error } = await supabaseClient
         .from('notification_settings')
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (error) {
+      if (error && error.code !== 'PGRST116') {
         console.error('Error fetching notification settings:', error);
         throw error;
       }
@@ -47,7 +47,7 @@ export const useNotificationSettings = () => {
           game_notifications_enabled: data.game_notifications_enabled,
         });
       } else {
-        console.log('No existing settings found, creating defaults');
+        console.log('No existing settings found, creating defaults for user:', user.id);
         // Create default settings if none exist
         const defaultSettings: Omit<NotificationSettings, 'id'> = {
           user_id: user.id,
@@ -68,7 +68,7 @@ export const useNotificationSettings = () => {
           throw createError;
         }
 
-        console.log('Created default settings:', newData);
+        console.log('Successfully created default settings:', newData);
         setSettings({
           id: newData.id,
           user_id: newData.user_id,
@@ -76,6 +76,11 @@ export const useNotificationSettings = () => {
           notification_frequency: newData.notification_frequency as 'immediate' | 'daily' | 'disabled',
           artist_notifications_enabled: newData.artist_notifications_enabled,
           game_notifications_enabled: newData.game_notifications_enabled,
+        });
+
+        toast({
+          title: "Paramètres créés",
+          description: "Vos paramètres de notification ont été configurés par défaut.",
         });
       }
     } catch (error) {
@@ -92,12 +97,13 @@ export const useNotificationSettings = () => {
 
   const updateSettings = async (newSettings: Partial<NotificationSettings>) => {
     if (!user || !settings) {
-      console.error('No user or settings available');
+      console.error('No user or settings available for update');
       return;
     }
 
     try {
       console.log('Updating settings with:', newSettings);
+      console.log('Current settings:', settings);
       
       const updatedSettings = {
         user_id: user.id,
@@ -109,7 +115,7 @@ export const useNotificationSettings = () => {
 
       console.log('Final settings to update:', updatedSettings);
 
-      // Update using the ID if we have one
+      // Update using the user_id
       const { data, error } = await supabase
         .from('notification_settings')
         .update(updatedSettings)

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNewReleases } from '@/hooks/useNewReleases';
 import { NewReleaseCard } from '@/components/NewReleaseCard';
@@ -7,34 +6,52 @@ import { Loader2, Bell, Clock, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 export const NewReleasesSection: React.FC = () => {
   const { releases, loading, refetch } = useNewReleases();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [checking, setChecking] = React.useState(false);
 
   const handleManualCheck = async () => {
+    if (!user) {
+      toast({
+        title: "Erreur",
+        description: "Vous devez être connecté pour vérifier les sorties",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setChecking(true);
     try {
-      const { data, error } = await supabase.functions.invoke('trigger-releases-check');
+      console.log('Starting user-specific releases check...');
+      
+      // Use the new user-specific function instead of the global one
+      const { data, error } = await supabase.functions.invoke('check-user-releases', {
+        headers: {
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+        }
+      });
       
       if (error) throw error;
       
       toast({
         title: "Vérification terminée",
-        description: `${data?.result?.newReleasesFound || 0} nouvelles sorties détectées`,
+        description: `${data?.newReleasesFound || 0} nouvelles sorties détectées pour vos suivis`,
       });
       
-      // Actualiser les données après la vérification
+      // Refresh the data after checking
       setTimeout(() => {
         refetch();
       }, 1000);
       
     } catch (error) {
-      console.error('Error checking releases:', error);
+      console.error('Error checking user releases:', error);
       toast({
         title: "Erreur",
-        description: "Impossible de vérifier les sorties",
+        description: "Impossible de vérifier vos sorties",
         variant: "destructive",
       });
     } finally {
@@ -77,7 +94,7 @@ export const NewReleasesSection: React.FC = () => {
           ) : (
             <>
               <RefreshCw className="h-4 w-4 mr-2" />
-              Vérifier maintenant
+              Vérifier mes sorties
             </>
           )}
         </Button>
