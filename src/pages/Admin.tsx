@@ -6,10 +6,11 @@ import { useUserRoleContext } from '@/contexts/UserRoleContext';
 import { useAuth } from '@/hooks/useAuth';
 import { RoleGuard } from '@/components/RoleGuard';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { Settings, Clock, Users } from 'lucide-react';
+import { Settings, Clock, Users, RefreshCw } from 'lucide-react';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { PendingValidationsTab } from '@/components/admin/PendingValidationsTab';
 import { UsersManagementTab } from '@/components/admin/UsersManagementTab';
+import { ManualReleaseChecker } from '@/components/ManualReleaseChecker';
 import { useAdminUsers } from '@/hooks/useAdminUsers';
 
 const Admin = () => {
@@ -50,7 +51,7 @@ const Admin = () => {
             </CardHeader>
             <CardContent className="p-6">
               <Tabs defaultValue="requests" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 bg-slate-700/50 border border-[#FF0751]/30">
+                <TabsList className="grid w-full grid-cols-3 bg-slate-700/50 border border-[#FF0751]/30">
                   <TabsTrigger 
                     value="requests" 
                     className="flex items-center gap-2 text-gray-300 data-[state=active]:text-white data-[state=active]:bg-[#FF0751]/20 data-[state=active]:shadow-lg transition-all duration-300"
@@ -64,6 +65,13 @@ const Admin = () => {
                   >
                     <Users className="h-4 w-4" />
                     Gestion des utilisateurs
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="releases" 
+                    className="flex items-center gap-2 text-gray-300 data-[state=active]:text-white data-[state=active]:bg-[#FF0751]/20 data-[state=active]:shadow-lg transition-all duration-300"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Vérification des sorties
                   </TabsTrigger>
                 </TabsList>
 
@@ -83,6 +91,10 @@ const Admin = () => {
                     onRefresh={fetchAllUsers}
                     onUpdateRole={updateUserRole}
                   />
+                </TabsContent>
+
+                <TabsContent value="releases" className="mt-6">
+                  <ManualReleaseChecker />
                 </TabsContent>
               </Tabs>
             </CardContent>
