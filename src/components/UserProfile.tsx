@@ -30,77 +30,20 @@ export const UserProfile: React.FC = () => {
     }
   };
 
-  // Version mobile avec bouton de déconnexion visible
-  if (isMobile) {
-    return (
-      <div className="flex items-center gap-2">
-        <Button
-          onClick={() => signOut()}
-          variant="ghost"
-          size="sm"
-          className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
-        >
-          <LogOut className="h-4 w-4" />
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={profile?.avatar_url} alt="Profile" />
-                <AvatarFallback className="bg-[#FF6B9D]/20 text-[#FF6B9D]">
-                  {profile?.username?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
-                </AvatarFallback>
-              </Avatar>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56" align="end" forceMount>
-            <DropdownMenuLabel className="font-normal">
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">
-                  {profile?.username || 'Utilisateur'}
-                </p>
-                <p className="text-xs leading-none text-muted-foreground">
-                  {user?.email}
-                </p>
-                <Badge 
-                  variant="outline" 
-                  className={getRoleBadgeClass(userRole)}
-                >
-                  {userRole}
-                </Badge>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link to="/profile" className="flex items-center gap-2">
-                <User className="h-4 w-4" />
-                Profil
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/notifications" className="flex items-center gap-2">
-                <Bell className="h-4 w-4" />
-                Notifications
-              </Link>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    );
-  }
-
-  // Version desktop avec bouton de déconnexion ajouté
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-3">
+      {/* Bouton de déconnexion toujours visible */}
       <Button
         onClick={() => signOut()}
         variant="ghost"
         size="sm"
-        className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
+        className="text-red-400 hover:bg-red-500/10 hover:text-red-300 border border-red-400/30 hover:border-red-400"
       >
-        <LogOut className="h-4 w-4 mr-2" />
-        Se déconnecter
+        <LogOut className="h-4 w-4 mr-1" />
+        {!isMobile && "Déconnexion"}
       </Button>
+      
+      {/* Menu profil */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-8 w-8 rounded-full">

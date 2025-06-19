@@ -66,10 +66,9 @@ export default function Index() {
         <header className="bg-gradient-to-r from-[#FF0751]/20 to-slate-800/90 backdrop-blur-sm border-b border-[#FF0751]/30 shadow-lg sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
             <div className="flex items-center justify-between h-14 sm:h-16">
+              {/* Section gauche : Logo + Titre */}
               <div className="flex items-center min-w-0">
-                {/* Menu burger sur mobile */}
                 {isMobile && <MobileMenu />}
-                
                 <div className="p-1.5 sm:p-2 rounded-full bg-gradient-to-r from-[#FF0751] to-[#FF3971] rose-glow flex-shrink-0 ml-2 sm:ml-0">
                   <Music className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
                 </div>
@@ -78,10 +77,11 @@ export default function Index() {
                 </h1>
               </div>
               
-              <div className="flex items-center gap-1 sm:gap-4">
-                {/* Boutons desktop seulement */}
+              {/* Section droite : Boutons navigation + Déconnexion + Avatar */}
+              <div className="flex items-center gap-2 sm:gap-4">
+                {/* Boutons navigation (desktop seulement) */}
                 {!isMobile && (
-                  <>
+                  <div className="flex items-center gap-2">
                     <Button
                       onClick={() => navigate('/complete-profile')}
                       variant="outline"
@@ -113,9 +113,10 @@ export default function Index() {
                         Administration
                       </Button>
                     )}
-                  </>
+                  </div>
                 )}
                 
+                {/* Profil utilisateur (maintenant à l'extrême droite) */}
                 <UserStatus />
               </div>
             </div>
