@@ -49,38 +49,54 @@ interface SoundCloudStats {
 
 export const useSoundCloud = () => {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const makeRequest = async (requestBody: any): Promise<any> => {
+    try {
+      console.log('SoundCloud request:', requestBody);
+      
+      const { data, error } = await supabase.functions.invoke('get-soundcloud-info', {
+        body: requestBody
+      });
+
+      if (error) {
+        console.error('SoundCloud Edge Function error:', error);
+        throw new Error(error.message || 'Erreur de connexion SoundCloud');
+      }
+
+      if (data?.error) {
+        console.error('SoundCloud API error:', data.error);
+        throw new Error(data.message || data.error);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('SoundCloud request failed:', error);
+      throw error;
+    }
+  };
 
   const searchArtists = async (query: string): Promise<SoundCloudArtist[]> => {
     if (!query.trim()) return [];
     
     setLoading(true);
+    setError(null);
+    
     try {
-      console.log('Searching SoundCloud artists for:', query);
+      console.log('Recherche d\'artistes SoundCloud pour:', query);
       
-      const { data, error } = await supabase.functions.invoke('get-soundcloud-info', {
-        body: { 
-          query,
-          type: 'search-artists'
-        }
+      const data = await makeRequest({
+        query,
+        type: 'search-artists'
       });
 
-      if (error) {
-        console.error('SoundCloud search error:', error);
-        // Return empty array instead of throwing to avoid breaking multi-platform search
-        return [];
-      }
-
-      if (!data) {
-        console.log('No SoundCloud data received');
-        return [];
-      }
-
-      const artists = data.artists || [];
-      console.log(`SoundCloud search found ${artists.length} artists`);
+      const artists = data?.artists || [];
+      console.log(`Recherche SoundCloud trouvé ${artists.length} artistes`);
+      
       return artists;
     } catch (error) {
-      console.error('SoundCloud API error:', error);
-      // Return empty array to prevent breaking the search flow
+      console.error('Erreur recherche artistes SoundCloud:', error);
+      setError(error instanceof Error ? error.message : 'Erreur inconnue');
       return [];
     } finally {
       setLoading(false);
@@ -91,22 +107,23 @@ export const useSoundCloud = () => {
     if (!artistUrl) return null;
     
     setLoading(true);
+    setError(null);
+    
     try {
-      const { data, error } = await supabase.functions.invoke('get-soundcloud-info', {
-        body: { 
-          artistUrl,
-          type: 'artist-info'
-        }
+      console.log('Récupération infos artiste SoundCloud:', artistUrl);
+      
+      const data = await makeRequest({
+        artistUrl,
+        type: 'artist-info'
       });
 
-      if (error) {
-        console.error('SoundCloud artist info error:', error);
-        return null;
-      }
-
-      return data?.artist || null;
+      const artist = data?.artist || null;
+      console.log('Infos artiste SoundCloud récupérées:', artist?.username);
+      
+      return artist;
     } catch (error) {
-      console.error('SoundCloud API error:', error);
+      console.error('Erreur infos artiste SoundCloud:', error);
+      setError(error instanceof Error ? error.message : 'Erreur inconnue');
       return null;
     } finally {
       setLoading(false);
@@ -117,23 +134,24 @@ export const useSoundCloud = () => {
     if (!artistUrl) return [];
     
     setLoading(true);
+    setError(null);
+    
     try {
-      const { data, error } = await supabase.functions.invoke('get-soundcloud-info', {
-        body: { 
-          artistUrl,
-          type: 'artist-tracks',
-          limit
-        }
+      console.log('Récupération tracks SoundCloud:', artistUrl);
+      
+      const data = await makeRequest({
+        artistUrl,
+        type: 'artist-tracks',
+        limit
       });
 
-      if (error) {
-        console.error('SoundCloud tracks error:', error);
-        return [];
-      }
-
-      return data?.tracks || [];
+      const tracks = data?.tracks || [];
+      console.log(`Récupéré ${tracks.length} tracks SoundCloud`);
+      
+      return tracks;
     } catch (error) {
-      console.error('SoundCloud API error:', error);
+      console.error('Erreur tracks SoundCloud:', error);
+      setError(error instanceof Error ? error.message : 'Erreur inconnue');
       return [];
     } finally {
       setLoading(false);
@@ -142,28 +160,25 @@ export const useSoundCloud = () => {
 
   const getArtistReleases = async (artistQuery: string, artistUrl?: string, limit: number = 10): Promise<SoundCloudRelease[]> => {
     setLoading(true);
+    setError(null);
+    
     try {
-      console.log('Fetching SoundCloud releases for:', artistQuery, artistUrl);
+      console.log('Récupération sorties SoundCloud pour:', artistQuery, artistUrl);
       
-      const { data, error } = await supabase.functions.invoke('get-soundcloud-info', {
-        body: { 
-          query: artistQuery,
-          artistUrl,
-          type: 'artist-releases',
-          limit
-        }
+      const data = await makeRequest({
+        query: artistQuery,
+        artistUrl,
+        type: 'artist-releases',
+        limit
       });
 
-      if (error) {
-        console.error('SoundCloud releases error:', error);
-        return [];
-      }
-
       const releases = data?.releases || [];
-      console.log(`SoundCloud getArtistReleases returned ${releases.length} releases`);
+      console.log(`SoundCloud getArtistReleases retourné ${releases.length} sorties`);
+      
       return releases;
     } catch (error) {
-      console.error('SoundCloud API error:', error);
+      console.error('Erreur sorties SoundCloud:', error);
+      setError(error instanceof Error ? error.message : 'Erreur inconnue');
       return [];
     } finally {
       setLoading(false);
@@ -172,28 +187,30 @@ export const useSoundCloud = () => {
 
   const getPlaybackStats = async (artistQuery: string, artistUrl?: string): Promise<SoundCloudStats | null> => {
     setLoading(true);
+    setError(null);
+    
     try {
-      const { data, error } = await supabase.functions.invoke('get-soundcloud-info', {
-        body: { 
-          query: artistQuery,
-          artistUrl,
-          type: 'playback-stats'
-        }
+      console.log('Récupération stats SoundCloud pour:', artistQuery, artistUrl);
+      
+      const data = await makeRequest({
+        query: artistQuery,
+        artistUrl,
+        type: 'playback-stats'
       });
 
-      if (error) {
-        console.error('SoundCloud stats error:', error);
-        return null;
-      }
-
-      return {
+      const stats = {
         totalPlays: data?.totalPlays || 0,
         totalLikes: data?.totalLikes || 0,
         trackCount: data?.trackCount || 0,
         tracks: data?.tracks || []
       };
+      
+      console.log('Stats SoundCloud récupérées:', stats);
+      
+      return stats;
     } catch (error) {
-      console.error('SoundCloud API error:', error);
+      console.error('Erreur stats SoundCloud:', error);
+      setError(error instanceof Error ? error.message : 'Erreur inconnue');
       return null;
     } finally {
       setLoading(false);
@@ -207,5 +224,6 @@ export const useSoundCloud = () => {
     getArtistReleases,
     getPlaybackStats,
     loading,
+    error,
   };
 };

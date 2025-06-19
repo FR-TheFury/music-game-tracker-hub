@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Music, ExternalLink, Calendar, Play, Heart, AlertCircle } from 'lucide-react';
+import { Music, ExternalLink, Calendar, Play, Heart, AlertCircle, Wifi, WifiOff } from 'lucide-react';
 import { useSoundCloud } from '@/hooks/useSoundCloud';
 
 interface SoundCloudRelease {
@@ -27,22 +27,21 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
   soundcloudUrl 
 }) => {
   const [releases, setReleases] = useState<SoundCloudRelease[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const { getArtistReleases, loading } = useSoundCloud();
+  const [isServiceAvailable, setIsServiceAvailable] = useState(true);
+  const { getArtistReleases, loading, error } = useSoundCloud();
 
   useEffect(() => {
     const fetchReleases = async () => {
       if (!artistName) return;
 
       try {
-        console.log('Fetching SoundCloud releases for:', artistName, soundcloudUrl);
-        setError(null);
+        console.log('Récupération des sorties SoundCloud pour:', artistName, soundcloudUrl);
         
         const soundcloudReleases = await getArtistReleases(artistName, soundcloudUrl, 10);
         
         if (soundcloudReleases.length === 0) {
-          console.log('No SoundCloud releases found for', artistName);
-          setError('Aucune sortie récente trouvée sur SoundCloud');
+          console.log('Aucune sortie SoundCloud trouvée pour', artistName);
+          setIsServiceAvailable(true); // Le service fonctionne mais pas de données
           return;
         }
         
@@ -55,20 +54,19 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
           return releaseDate > oneMonthAgo;
         });
         
-        console.log(`Found ${recentReleases.length} recent SoundCloud releases`);
+        console.log(`Trouvé ${recentReleases.length} sorties SoundCloud récentes`);
         setReleases(recentReleases);
+        setIsServiceAvailable(true);
         
-        if (recentReleases.length === 0) {
-          setError('Aucune sortie récente du dernier mois sur SoundCloud');
-        }
-      } catch (error) {
-        console.error('Error fetching SoundCloud releases:', error);
-        setError('Erreur lors de la récupération des données SoundCloud');
+      } catch (fetchError) {
+        console.error('Erreur lors de la récupération des sorties SoundCloud:', fetchError);
+        setIsServiceAvailable(false);
+        setReleases([]);
       }
     };
 
     fetchReleases();
-  }, [artistName, soundcloudUrl]);
+  }, [artistName, soundcloudUrl, getArtistReleases]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('fr-FR', {
@@ -89,28 +87,34 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
 
   const getArtworkUrl = (artworkUrl: string) => {
     if (!artworkUrl) return '/placeholder.svg';
-    // Remplacer par une version plus grande si possible
     return artworkUrl.replace('-large', '-t500x500') || artworkUrl;
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-400"></div>
-      </div>
+      <Card className="card-3d mb-8 border-orange-400/20">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-400"></div>
+            <span className="ml-3 text-orange-400">Connexion à SoundCloud...</span>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
-  // Show error state but don't break the page
-  if (error && releases.length === 0) {
+  // Si le service n'est pas disponible
+  if (!isServiceAvailable || error) {
     return (
       <Card className="card-3d mb-8 border-orange-400/20">
         <CardContent className="p-6">
           <div className="flex items-center gap-3 text-orange-400">
-            <AlertCircle className="h-5 w-5" />
+            <WifiOff className="h-5 w-5" />
             <div>
-              <p className="font-medium">SoundCloud</p>
-              <p className="text-sm text-gray-400">{error}</p>
+              <p className="font-medium">SoundCloud temporairement indisponible</p>
+              <p className="text-sm text-gray-400">
+                {error || 'Le service SoundCloud est en maintenance. Réessayez plus tard.'}
+              </p>
             </div>
           </div>
         </CardContent>
@@ -118,8 +122,23 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
     );
   }
 
+  // Si pas de sorties récentes
   if (releases.length === 0) {
-    return null;
+    return (
+      <Card className="card-3d mb-8 border-orange-400/20">
+        <CardContent className="p-6">
+          <div className="flex items-center gap-3 text-orange-400">
+            <Wifi className="h-5 w-5" />
+            <div>
+              <p className="font-medium">SoundCloud connecté</p>
+              <p className="text-sm text-gray-400">
+                Aucune sortie récente du dernier mois trouvée pour {artistName}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
@@ -131,6 +150,7 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
           <Badge variant="outline" className="border-orange-400/50 text-orange-400 bg-orange-400/10">
             {releases.length}
           </Badge>
+          <Wifi className="h-4 w-4 text-green-400 ml-auto" title="Service connecté" />
         </CardTitle>
       </CardHeader>
       <CardContent className="p-6">
@@ -195,15 +215,6 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
             </div>
           ))}
         </div>
-        
-        {error && releases.length > 0 && (
-          <div className="mt-4 p-3 bg-orange-400/10 border border-orange-400/20 rounded-lg">
-            <div className="flex items-center gap-2 text-orange-400 text-sm">
-              <AlertCircle className="h-4 w-4" />
-              <span>Certaines données SoundCloud peuvent être incomplètes</span>
-            </div>
-          </div>
-        )}
       </CardContent>
     </Card>
   );

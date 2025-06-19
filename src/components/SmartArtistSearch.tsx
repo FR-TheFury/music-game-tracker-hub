@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Search, Loader2, CheckCircle, AlertCircle, Music, Play, TrendingUp, Calendar } from 'lucide-react';
+import { Search, Loader2, CheckCircle, AlertCircle, Music, Play, TrendingUp, Calendar, Wifi, WifiOff } from 'lucide-react';
 import { useSmartArtistSearch } from '@/hooks/useSmartArtistSearch';
 import { PlatformSelector, type PlatformConfig } from './PlatformSelector';
 
@@ -20,6 +20,7 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
 }) => {
   const [results, setResults] = useState<any[]>([]);
   const [showResults, setShowResults] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [platforms, setPlatforms] = useState<PlatformConfig>({
     spotify: true,
     deezer: true,
@@ -31,12 +32,30 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
   const searchArtists = async () => {
     if (!searchQuery.trim()) return;
     
-    const smartResults = await smartSearch(searchQuery, platforms);
-    setResults(smartResults);
-    setShowResults(true);
+    setSearchError(null);
+    console.log('Recherche intelligente pour:', searchQuery, 'Plateformes:', platforms);
+    
+    try {
+      const smartResults = await smartSearch(searchQuery, platforms);
+      console.log('Résultats de recherche intelligente:', smartResults);
+      
+      setResults(smartResults);
+      setShowResults(true);
+      
+      if (smartResults.length === 0) {
+        setSearchError('Aucun artiste trouvé sur les plateformes sélectionnées');
+      }
+    } catch (error) {
+      console.error('Erreur de recherche intelligente:', error);
+      setSearchError('Erreur lors de la recherche. Veuillez réessayer.');
+      setResults([]);
+      setShowResults(true);
+    }
   };
 
   const selectArtist = (artist: any) => {
+    console.log('Sélection de l\'artiste:', artist);
+    
     // Ensure platformUrls exists and has valid data
     const platformUrls = artist.platformUrls || {};
     
@@ -66,6 +85,8 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
       platformStats: artist.platformStats,
     };
 
+    console.log('Données artiste sélectionnées:', artistData);
+    
     onArtistSelect(artistData);
     setShowResults(false);
     setSearchQuery(artist.name);
@@ -84,6 +105,18 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
     };
     
     return colors[platform] || 'bg-gray-600';
+  };
+
+  const getPlatformStatus = (platform: string, platformStats: any[]) => {
+    const stat = platformStats?.find((stat: any) => 
+      stat.platform.toLowerCase() === platform.toLowerCase()
+    );
+    
+    if (stat?.error) {
+      return { available: false, error: stat.error };
+    }
+    
+    return { available: !!stat, error: null };
   };
 
   const formatNumber = (num: number): string => {
@@ -132,6 +165,12 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
               )}
             </div>
           </div>
+          {searchError && (
+            <div className="text-sm text-red-400 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              {searchError}
+            </div>
+          )}
         </div>
         
         <PlatformSelector
@@ -209,7 +248,7 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
                 </div>
               )}
               
-              {/* Plateformes disponibles */}
+              {/* Plateformes disponibles avec statut */}
               <div className="flex flex-wrap gap-1 mt-2">
                 {artist.platformUrls && Object.entries(artist.platformUrls).map(([platform, url]) => {
                   if (!url) return null;
@@ -217,16 +256,21 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
                     stat.platform.toLowerCase() === platform.toLowerCase()
                   );
                   const isVerified = platformStat?.verified || false;
+                  const status = getPlatformStatus(platform, artist.platformStats);
                   
                   return (
                     <Badge
                       key={platform}
                       className={`${getPlatformColor(platform, isVerified)} text-white text-xs flex items-center gap-1`}
                     >
-                      {isVerified ? (
-                        <CheckCircle className="h-3 w-3" />
+                      {status.available ? (
+                        isVerified ? (
+                          <CheckCircle className="h-3 w-3" />
+                        ) : (
+                          <Wifi className="h-3 w-3" />
+                        )
                       ) : (
-                        <AlertCircle className="h-3 w-3" />
+                        <WifiOff className="h-3 w-3" title={status.error || 'Service indisponible'} />
                       )}
                       {platform === 'youtubeMusic' ? 'YT Music' : 
                        platform === 'amazonMusic' ? 'Amazon' :
@@ -248,7 +292,7 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
         </div>
       )}
       
-      {showResults && results.length === 0 && !loading && enabledPlatformsCount > 0 && (
+      {showResults && results.length === 0 && !loading && enabledPlatformsCount > 0 && !searchError && (
         <div className="bg-slate-700 border border-slate-600 rounded-md p-4 text-center text-gray-400">
           Aucun artiste trouvé pour "{searchQuery}" sur les plateformes sélectionnées
         </div>
