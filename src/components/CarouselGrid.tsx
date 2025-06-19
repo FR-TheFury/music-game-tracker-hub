@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import {
   Carousel,
@@ -19,7 +20,7 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
   items, 
   className = '', 
   itemsPerView = 3,
-  hideSideArrows = true // Toujours cacher les flèches par défaut
+  hideSideArrows = true
 }) => {
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
@@ -28,19 +29,36 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
     return null;
   }
 
-  // Effet pour gérer les changements d'éléments
+  // Effet pour gérer les changements d'éléments et repositionner le carousel
   useEffect(() => {
     if (!api) return;
 
-    // Toujours revenir à la position 0 quand on supprime un élément
-    if (current > 0) {
-      api.scrollTo(0);
-      setCurrent(0);
+    // Calculer la nouvelle position optimale
+    const totalPositions = Math.max(1, items.length - itemsPerView + 1);
+    let newPosition = current;
+
+    // Si la position actuelle dépasse le nombre total de positions possibles
+    if (current >= totalPositions) {
+      newPosition = Math.max(0, totalPositions - 1);
     }
 
-    // Réinitialiser le carousel pour qu'il recalcule ses positions
-    api.reInit();
-  }, [items.length, api]);
+    // Si on est à la fin et qu'il y a encore assez d'éléments pour remplir la vue
+    if (current > 0 && items.length >= itemsPerView) {
+      const itemsAfterCurrent = items.length - (current * itemsPerView);
+      if (itemsAfterCurrent < itemsPerView && totalPositions > 1) {
+        newPosition = Math.max(0, totalPositions - 1);
+      }
+    }
+
+    // Repositionner le carousel si nécessaire
+    if (newPosition !== current) {
+      api.scrollTo(newPosition);
+      setCurrent(newPosition);
+    } else {
+      // Réinitialiser le carousel pour qu'il recalcule ses positions
+      api.reInit();
+    }
+  }, [items.length, api, current, itemsPerView]);
 
   // Effet pour suivre l'item actuel
   useEffect(() => {
@@ -82,10 +100,9 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
             </CarouselItem>
           ))}
         </CarouselContent>
-        {/* Les flèches sont maintenant toujours cachées */}
       </Carousel>
       
-      {/* Toujours afficher les points de navigation */}
+      {/* Points de navigation */}
       {canShowNavigation && totalPositions > 1 && (
         <div className="flex justify-center mt-4 space-x-2">
           {Array.from({ length: totalPositions }, (_, index) => (
