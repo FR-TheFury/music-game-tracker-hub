@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 
@@ -44,7 +45,6 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Authorization header required');
     }
 
-    // Get user info from the auth token
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(
       authHeader.replace('Bearer ', '')
     );
@@ -139,14 +139,12 @@ const handler = async (req: Request): Promise<Response> => {
       // Send email notifications if enabled for this user
       for (const release of newReleases) {
         try {
-          // Get user's notification settings
           let { data: settings, error: settingsError } = await supabaseClient
             .from('notification_settings')
             .select('*')
             .eq('user_id', user.id)
             .single();
 
-          // Create default settings if they don't exist
           if (settingsError || !settings) {
             console.log(`Creating default notification settings for user ${user.id}`);
             
@@ -230,7 +228,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-// Helper functions (same as in check-new-releases but simplified)
+// Helper functions
 async function checkSpotifyReleases(artist: Artist) {
   const releases = [];
   
@@ -342,7 +340,6 @@ async function checkGameReleases(game: Game, supabaseClient: any) {
           }
         } catch (steamError) {
           console.error(`Steam API error for ${game.name}:`, steamError);
-          // NO FALLBACK - just skip this game
         }
       }
     }
@@ -377,7 +374,6 @@ async function checkGameReleases(game: Game, supabaseClient: any) {
         }
       } catch (rawgError) {
         console.error(`RAWG API error for ${game.name}:`, rawgError);
-        // NO FALLBACK - just skip this game
       }
     }
 
@@ -414,48 +410,53 @@ async function checkSteamGameStatus(game: Game, appId: string, apiKey: string) {
 
     const gameData = appData.data;
     
-    // Check for status changes
+    // Check for status changes (release)
     const currentStatus = gameData.coming_soon ? 'coming_soon' : 'released';
     const previousStatus = game.release_status || 'unknown';
     
-    if (previousStatus !== currentStatus) {
-      console.log(`Status change detected for ${game.name}: ${previousStatus} -> ${currentStatus}`);
+    if (previousStatus !== currentStatus && currentStatus === 'released') {
+      console.log(`Release detected for ${game.name}: ${previousStatus} -> ${currentStatus}`);
       return {
         hasUpdate: true,
-        updateType: currentStatus === 'released' ? 'Sortie confirmée' : 'Mise à jour du statut',
-        description: currentStatus === 'released' 
-          ? `${game.name} est maintenant disponible sur Steam !`
-          : `Mise à jour du statut de sortie pour ${game.name}`,
+        updateType: 'Sortie confirmée',
+        description: `${game.name} est maintenant disponible sur Steam !`,
         image_url: gameData.header_image,
       };
     }
 
-    // Check for recent news/updates
-    const newsResponse = await fetch(`https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid=${appId}&count=5&maxlength=300&format=json`);
-    
-    if (newsResponse.ok) {
-      const newsData = await newsResponse.json();
-      const recentNews = newsData.appnews?.newsitems?.find((item: any) => {
-        const newsDate = new Date(item.date * 1000);
-        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        return newsDate >= sevenDaysAgo && 
-               (item.title.toLowerCase().includes('update') || 
-                item.title.toLowerCase().includes('patch') ||
-                item.title.toLowerCase().includes('hotfix'));
-      });
+    // Check for price changes or promotions
+    if (gameData.price_overview) {
+      const currentPrice = gameData.price_overview.final_formatted;
+      const currentDiscount = gameData.price_overview.discount_percent;
+      
+      // If there's a significant discount (>= 20%)
+      if (currentDiscount >= 20) {
+        const { data: existing } = await createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        )
+          .from('new_releases')
+          .select('id')
+          .eq('source_item_id', game.id)
+          .eq('type', 'game')
+          .eq('user_id', game.user_id)
+          .ilike('title', '%Promotion%')
+          .gte('detected_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+          .maybeSingle();
 
-      if (recentNews) {
-        console.log(`Recent update found for ${game.name}: ${recentNews.title}`);
-        return {
-          hasUpdate: true,
-          updateType: 'Mise à jour',
-          description: `Nouvelle mise à jour détectée: ${recentNews.title}`,
-          image_url: gameData.header_image,
-        };
+        if (!existing) {
+          console.log(`Promotion detected for ${game.name}: ${currentDiscount}% off`);
+          return {
+            hasUpdate: true,
+            updateType: 'Promotion',
+            description: `${game.name} est en promotion à ${currentDiscount}% de réduction ! Prix : ${currentPrice}`,
+            image_url: gameData.header_image,
+          };
+        }
       }
     }
 
-    console.log(`No updates found for ${game.name}`);
+    console.log(`No significant updates found for ${game.name}`);
     return { hasUpdate: false };
 
   } catch (error) {
@@ -485,6 +486,22 @@ async function checkRAWGGameStatus(game: Game, apiKey: string) {
       throw new Error(`No RAWG match found for game: ${game.name}`);
     }
 
+    // Check for release status changes
+    const previousStatus = game.release_status || 'unknown';
+    const currentStatus = gameMatch.released && gameMatch.released !== '' ? 'released' : 'coming_soon';
+    
+    if (previousStatus !== currentStatus && currentStatus === 'released') {
+      console.log(`Release detected for ${game.name}: ${previousStatus} -> ${currentStatus}`);
+      const releaseDateStr = gameMatch.released ? new Date(gameMatch.released).toLocaleDateString('fr-FR') : 'récemment';
+      
+      return {
+        hasUpdate: true,
+        updateType: 'Sortie confirmée',
+        description: `${game.name} est sorti le ${releaseDateStr}`,
+        image_url: gameMatch.background_image,
+      };
+    }
+
     // Check for recent DLC or additions
     const additionsResponse = await fetch(`https://api.rawg.io/api/games/${gameMatch.id}/additions?key=${apiKey}`);
     
@@ -508,7 +525,7 @@ async function checkRAWGGameStatus(game: Game, apiKey: string) {
       }
     }
 
-    console.log(`No DLC/additions found for ${game.name}`);
+    console.log(`No significant updates found for ${game.name}`);
     return { hasUpdate: false };
 
   } catch (error) {
