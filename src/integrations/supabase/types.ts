@@ -157,8 +157,10 @@ export type Database = {
           name: string
           platform: string
           price: string | null
+          rawg_url: string | null
           release_date: string | null
           release_status: string | null
+          shop_url: string | null
           updated_at: string | null
           url: string
           user_id: string
@@ -173,8 +175,10 @@ export type Database = {
           name: string
           platform: string
           price?: string | null
+          rawg_url?: string | null
           release_date?: string | null
           release_status?: string | null
+          shop_url?: string | null
           updated_at?: string | null
           url: string
           user_id: string
@@ -189,8 +193,10 @@ export type Database = {
           name?: string
           platform?: string
           price?: string | null
+          rawg_url?: string | null
           release_date?: string | null
           release_status?: string | null
+          shop_url?: string | null
           updated_at?: string | null
           url?: string
           user_id?: string
