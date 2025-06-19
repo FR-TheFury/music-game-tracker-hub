@@ -50,10 +50,10 @@ export const GameCard: React.FC<GameCardProps> = ({ game, onRemove }) => {
   };
 
   return (
-    <Card className="bg-slate-800/70 border-slate-700 backdrop-blur-sm hover:bg-slate-800/90 transition-all duration-300 group hover:scale-105 hover:shadow-xl hover:shadow-blue-500/20">
-      <CardContent className="p-6">
+    <Card className="bg-slate-800/70 border-slate-700 backdrop-blur-sm hover:bg-slate-800/90 transition-all duration-300 group hover:scale-105 hover:shadow-xl hover:shadow-blue-500/20 h-80 flex flex-col">
+      <CardContent className="p-6 flex flex-col h-full">
         <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
             <div className="flex-shrink-0">
               {game.imageUrl ? (
                 <img
@@ -70,8 +70,8 @@ export const GameCard: React.FC<GameCardProps> = ({ game, onRemove }) => {
                 <Gamepad2 className="h-6 w-6 text-white" />
               </div>
             </div>
-            <div>
-              <h3 className="text-lg font-semibold text-white group-hover:text-blue-300 transition-colors">
+            <div className="min-w-0 flex-1">
+              <h3 className="text-lg font-semibold text-white group-hover:text-blue-300 transition-colors line-clamp-2">
                 {game.name}
               </h3>
               <p className="text-sm text-gray-400">
@@ -83,68 +83,73 @@ export const GameCard: React.FC<GameCardProps> = ({ game, onRemove }) => {
             variant="ghost"
             size="sm"
             onClick={() => onRemove(game.id)}
-            className="text-gray-400 hover:text-red-400 hover:bg-red-500/10"
+            className="text-gray-400 hover:text-red-400 hover:bg-red-500/10 flex-shrink-0"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
 
-        <div className="space-y-3 mb-4">
-          {game.price && (
-            <div className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg border border-slate-600">
-              <div className="flex items-center gap-2">
-                <Tag className="h-4 w-4 text-yellow-400" />
-                <span className="text-sm font-medium text-yellow-400">Prix</span>
+        <div className="flex-1 flex flex-col justify-between">
+          <div className="space-y-3 mb-4">
+            {game.price && (
+              <div className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg border border-slate-600">
+                <div className="flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-yellow-400" />
+                  <span className="text-sm font-medium text-yellow-400">Prix</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-white font-semibold">{game.price}</span>
+                  {game.discount && (
+                    <Badge variant="destructive" className="bg-green-600 hover:bg-green-700">
+                      -{game.discount}
+                    </Badge>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-white font-semibold">{game.price}</span>
-                {game.discount && (
-                  <Badge variant="destructive" className="bg-green-600 hover:bg-green-700">
-                    -{game.discount}
-                  </Badge>
-                )}
-              </div>
-            </div>
-          )}
+            )}
 
-          {game.releaseDate && (
-            <div className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg border border-slate-600">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-blue-400" />
-                <span className="text-sm font-medium text-blue-400">Sortie</span>
+            {game.releaseDate && (
+              <div className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg border border-slate-600">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-blue-400" />
+                  <span className="text-sm font-medium text-blue-400">Sortie</span>
+                </div>
+                <span className="text-white text-sm">{game.releaseDate}</span>
               </div>
-              <span className="text-white text-sm">{game.releaseDate}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div className="text-xs text-gray-500">
-            Ajouté le {formatDate(game.addedAt)}
+            )}
           </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              asChild
-              className="border-purple-500/30 text-purple-300 hover:bg-purple-500/10 hover:border-purple-400"
-            >
-              <Link to={`/game/${game.id}`}>
-                <Eye className="h-4 w-4 mr-2" />
-                Détails
-              </Link>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              asChild
-              className="border-blue-500/30 text-blue-300 hover:bg-blue-500/10 hover:border-blue-400"
-            >
-              <a href={game.url} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Voir
-              </a>
-            </Button>
+
+          <div className="mt-auto">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-xs text-gray-500">
+                Ajouté le {formatDate(game.addedAt)}
+              </div>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                className="border-purple-500/30 text-purple-300 hover:bg-purple-500/10 hover:border-purple-400 flex-1"
+              >
+                <Link to={`/game/${game.id}`}>
+                  <Eye className="h-4 w-4 mr-2" />
+                  Détails
+                </Link>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                className="border-blue-500/30 text-blue-300 hover:bg-blue-500/10 hover:border-blue-400 flex-1"
+              >
+                <a href={game.url} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Voir
+                </a>
+              </Button>
+            </div>
           </div>
         </div>
       </CardContent>

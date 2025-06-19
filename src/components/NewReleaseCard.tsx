@@ -85,7 +85,7 @@ export const NewReleaseCard: React.FC<NewReleaseCardProps> = ({ release }) => {
   };
 
   return (
-    <Card className="bg-slate-800/70 border-slate-700 backdrop-blur-sm hover:bg-slate-800/90 transition-all duration-300 group hover:scale-105 hover:shadow-xl hover:shadow-yellow-500/20 relative overflow-hidden">
+    <Card className="bg-slate-800/70 border-slate-700 backdrop-blur-sm hover:bg-slate-800/90 transition-all duration-300 group hover:scale-105 hover:shadow-xl hover:shadow-yellow-500/20 relative overflow-hidden h-80 flex flex-col">
       {/* Nouveau badge */}
       <div className="absolute top-2 right-2 z-10">
         <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white border-0 animate-pulse">
@@ -94,13 +94,13 @@ export const NewReleaseCard: React.FC<NewReleaseCardProps> = ({ release }) => {
         </Badge>
       </div>
 
-      <CardContent className="p-6">
+      <CardContent className="p-6 flex flex-col h-full">
         <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-full bg-gradient-to-r ${getTypeColor()} flex items-center justify-center`}>
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className={`w-12 h-12 rounded-full bg-gradient-to-r ${getTypeColor()} flex items-center justify-center flex-shrink-0`}>
               {getTypeIcon()}
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <h3 className="text-lg font-semibold text-white group-hover:text-yellow-300 transition-colors line-clamp-2">
                 {release.title}
               </h3>
@@ -113,46 +113,48 @@ export const NewReleaseCard: React.FC<NewReleaseCardProps> = ({ release }) => {
             variant="ghost"
             size="sm"
             onClick={handleRemove}
-            className="text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            className="text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
 
         {release.description && (
-          <div className="mb-4 p-3 bg-slate-700/50 rounded-lg border border-slate-600">
+          <div className="mb-4 p-3 bg-slate-700/50 rounded-lg border border-slate-600 flex-shrink-0">
             <p className="text-sm text-gray-300 line-clamp-3">{release.description}</p>
           </div>
         )}
 
-        <div className="space-y-2 mb-4">
-          <div className="flex items-center justify-between text-xs">
-            <div className="flex items-center gap-1 text-green-400">
-              <Clock className="h-3 w-3" />
-              <span>Détecté le {formatDate(release.detectedAt)}</span>
+        <div className="flex-1 flex flex-col justify-between">
+          <div className="space-y-2 mb-4">
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-1 text-green-400">
+                <Clock className="h-3 w-3" />
+                <span>Détecté le {formatDate(release.detectedAt)}</span>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-yellow-400 font-medium">{formatTimeLeft()}</span>
             </div>
           </div>
-          
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-yellow-400 font-medium">{formatTimeLeft()}</span>
-          </div>
-        </div>
 
-        <div className="flex items-center justify-between">
-          {release.platformUrl ? (
-            <Button
-              size="sm"
-              asChild
-              className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white border border-purple-500 shadow-lg hover:shadow-purple-500/30 hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 font-medium"
-            >
-              <a href={release.platformUrl} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Voir
-              </a>
-            </Button>
-          ) : (
-            <div></div>
-          )}
+          <div className="flex items-center justify-between mt-auto">
+            {release.platformUrl ? (
+              <Button
+                size="sm"
+                asChild
+                className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white border border-purple-500 shadow-lg hover:shadow-purple-500/30 hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 font-medium"
+              >
+                <a href={release.platformUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Voir
+                </a>
+              </Button>
+            ) : (
+              <div></div>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

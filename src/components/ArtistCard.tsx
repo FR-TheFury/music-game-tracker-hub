@@ -110,11 +110,11 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
   };
 
   return (
-    <Card className="bg-slate-800/70 border-slate-700 backdrop-blur-sm hover:bg-slate-800/90 transition-all duration-300 group hover:scale-105 hover:shadow-xl hover:shadow-purple-500/20">
-      <CardContent className="p-6">
+    <Card className="bg-slate-800/70 border-slate-700 backdrop-blur-sm hover:bg-slate-800/90 transition-all duration-300 group hover:scale-105 hover:shadow-xl hover:shadow-purple-500/20 h-80 flex flex-col">
+      <CardContent className="p-6 flex flex-col h-full">
         <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="relative">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="relative flex-shrink-0">
               {artist.profileImageUrl ? (
                 <img
                   src={getDisplayImage()}
@@ -142,12 +142,12 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
                 </TooltipProvider>
               )}
             </div>
-            <div>
-              <h3 className="text-lg font-semibold text-white group-hover:text-purple-300 transition-colors">
+            <div className="min-w-0 flex-1">
+              <h3 className="text-lg font-semibold text-white group-hover:text-purple-300 transition-colors line-clamp-1">
                 {artist.name}
               </h3>
               <div className="flex items-center gap-2">
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-gray-400 truncate">
                   {totalPlatformCount > 1 ? `${totalPlatformCount} plateformes` : artist.platform}
                 </p>
                 {artist.followersCount && (
@@ -161,7 +161,7 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
                 )}
               </div>
               {artist.genres && artist.genres.length > 0 && (
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 mt-1 truncate">
                   {artist.genres.slice(0, 2).join(', ')}
                 </p>
               )}
@@ -171,76 +171,83 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
             variant="ghost"
             size="sm"
             onClick={handleRemoveClick}
-            className="text-gray-400 hover:text-red-400 hover:bg-red-500/10"
+            className="text-gray-400 hover:text-red-400 hover:bg-red-500/10 flex-shrink-0"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
 
-        {artist.lastRelease && (
-          <div className="mb-4 p-3 bg-slate-700/50 rounded-lg border border-slate-600">
-            <div className="flex items-center gap-2 mb-1">
-              <Calendar className="h-4 w-4 text-green-400" />
-              <span className="text-sm font-medium text-green-400">Dernière sortie</span>
-            </div>
-            <p className="text-sm text-gray-300">{artist.lastRelease}</p>
-          </div>
-        )}
-
-        {artist.bio && (
-          <div className="mb-4">
-            <p className="text-sm text-gray-400 line-clamp-2">{artist.bio}</p>
-          </div>
-        )}
-
-        <div className="flex items-center justify-between">
-          <div className="text-xs text-gray-500">
-            Ajouté le {formatDate(artist.addedAt)}
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDetailsClick}
-              className="border-purple-500/30 text-purple-300 hover:bg-purple-500/10 hover:border-purple-400"
-            >
-              <Eye className="h-4 w-4 mr-2" />
-              Détails
-            </Button>
-            
-            {totalPlatformCount > 1 && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleLinkClick}
-                      className="border-slate-600 text-gray-300 hover:bg-slate-600"
-                    >
-                      +{totalPlatformCount - 1}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium">Autres plateformes :</p>
-                      {allPlatforms.slice(1).map((platform, index) => (
-                        <div key={index} className="text-xs">
-                          <a 
-                            href={platform.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-purple-300 hover:text-purple-100"
-                          >
-                            {platform.name} →
-                          </a>
-                        </div>
-                      ))}
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+        <div className="flex-1 flex flex-col justify-between">
+          <div className="space-y-3">
+            {artist.lastRelease && (
+              <div className="p-3 bg-slate-700/50 rounded-lg border border-slate-600">
+                <div className="flex items-center gap-2 mb-1">
+                  <Calendar className="h-4 w-4 text-green-400" />
+                  <span className="text-sm font-medium text-green-400">Dernière sortie</span>
+                </div>
+                <p className="text-sm text-gray-300 line-clamp-2">{artist.lastRelease}</p>
+              </div>
             )}
+
+            {artist.bio && (
+              <div>
+                <p className="text-sm text-gray-400 line-clamp-2">{artist.bio}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-auto pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-xs text-gray-500">
+                Ajouté le {formatDate(artist.addedAt)}
+              </div>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDetailsClick}
+                className="border-purple-500/30 text-purple-300 hover:bg-purple-500/10 hover:border-purple-400 flex-1"
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Détails
+              </Button>
+              
+              {totalPlatformCount > 1 && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleLinkClick}
+                        className="border-slate-600 text-gray-300 hover:bg-slate-600"
+                      >
+                        +{totalPlatformCount - 1}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium">Autres plateformes :</p>
+                        {allPlatforms.slice(1).map((platform, index) => (
+                          <div key={index} className="text-xs">
+                            <a 
+                              href={platform.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-purple-300 hover:text-purple-100"
+                            >
+                              {platform.name} →
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
           </div>
         </div>
       </CardContent>
