@@ -46,11 +46,6 @@ export default function FriendsSearch() {
     return username.split(' ').map(name => name.charAt(0)).join('').toUpperCase().slice(0, 2);
   };
 
-  const getUserAvatarUrl = (userId: string) => {
-    // Generate a consistent avatar URL based on user ID
-    return `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`;
-  };
-
   return (
     <RoleGuard allowedRoles={['admin', 'editor', 'viewer']}>
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-[#FF0751] to-slate-900">
@@ -108,7 +103,7 @@ export default function FriendsSearch() {
                 </CardContent>
               </Card>
 
-              {/* Résultats de recherche avec avatars */}
+              {/* Résultats de recherche avec vraies photos de profil */}
               {searchResults.length > 0 && (
                 <Card className="bg-slate-800/90 border-[#FF0751]/30 shadow-2xl backdrop-blur-sm">
                   <CardHeader>
@@ -125,7 +120,7 @@ export default function FriendsSearch() {
                           <div className="flex items-center gap-3">
                             <Avatar className="h-12 w-12">
                               <AvatarImage 
-                                src={getUserAvatarUrl(user.user_id)} 
+                                src={user.avatar_url || undefined} 
                                 alt={user.username}
                               />
                               <AvatarFallback className="bg-blue-500/20 text-blue-400 text-sm font-medium">
@@ -159,7 +154,7 @@ export default function FriendsSearch() {
               )}
             </div>
           ) : (
-            // Interface d'affichage des données utilisateur avec avatar
+            // Interface d'affichage des données utilisateur avec vraie photo de profil
             <div className="space-y-6">
               <Card className="bg-slate-800/90 border-[#FF0751]/30 shadow-2xl backdrop-blur-sm">
                 <CardHeader>
@@ -167,7 +162,7 @@ export default function FriendsSearch() {
                     <CardTitle className="text-white flex items-center gap-3">
                       <Avatar className="h-8 w-8">
                         <AvatarImage 
-                          src={getUserAvatarUrl(selectedUser.user_id)} 
+                          src={selectedUser.avatar_url || undefined} 
                           alt={selectedUser.username}
                         />
                         <AvatarFallback className="bg-blue-500/20 text-blue-400 text-xs">
@@ -190,7 +185,7 @@ export default function FriendsSearch() {
                   <div className="flex items-center gap-4">
                     <Avatar className="h-16 w-16">
                       <AvatarImage 
-                        src={getUserAvatarUrl(selectedUser.user_id)} 
+                        src={selectedUser.avatar_url || undefined} 
                         alt={selectedUser.username}
                       />
                       <AvatarFallback className="bg-blue-500/20 text-blue-400 text-lg">
