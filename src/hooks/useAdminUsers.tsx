@@ -8,7 +8,7 @@ import { UserRole } from '@/contexts/UserRoleContext';
 export interface User {
   id: string;
   email: string;
-  username?: string;
+  username: string;
   role: UserRole;
   created_at: string;
   approved_at?: string;
@@ -22,81 +22,39 @@ export const useAdminUsers = (userRole: UserRole | null) => {
   const [loadingUsers, setLoadingUsers] = useState(false);
 
   const fetchAllUsers = async () => {
-    if (!user || !userRole || userRole === 'pending') return;
+    if (!user || !userRole || userRole !== 'admin') return;
 
     setLoadingUsers(true);
     try {
-      console.log('Récupération de tous les utilisateurs...');
+      console.log('Récupération de tous les utilisateurs via la fonction SQL...');
 
-      // Étape 1: Récupérer tous les rôles utilisateur
-      const { data: userRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role, created_at, approved_at, approved_by')
-        .order('created_at', { ascending: false });
+      // Utiliser la fonction SQL sécurisée pour récupérer tous les utilisateurs
+      const { data: usersData, error } = await supabase.rpc('get_all_users_for_admin');
 
-      if (rolesError) {
-        console.error('Erreur lors de la récupération des rôles:', rolesError);
-        throw rolesError;
+      if (error) {
+        console.error('Erreur lors de la récupération des utilisateurs:', error);
+        throw error;
       }
 
-      console.log('Rôles utilisateurs récupérés:', userRoles);
+      console.log('Utilisateurs récupérés:', usersData);
 
-      // Étape 2: Récupérer tous les profils
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, username');
-
-      if (profilesError) {
-        console.error('Erreur lors de la récupération des profils:', profilesError);
-        throw profilesError;
-      }
-
-      console.log('Profils récupérés:', profiles);
-
-      // Étape 3: Pour les admins seulement, essayer de récupérer les métadonnées auth
-      let authUsers: any[] = [];
-      if (userRole === 'admin') {
-        try {
-          const { data: authResponse, error: authError } = await supabase.auth.admin.listUsers();
-          if (authError) {
-            console.warn('Impossible de récupérer les utilisateurs auth (permissions insuffisantes):', authError);
-          } else {
-            authUsers = authResponse?.users || [];
-            console.log('Utilisateurs auth récupérés:', authUsers);
-          }
-        } catch (error) {
-          console.warn('Erreur lors de la récupération des utilisateurs auth:', error);
-        }
-      }
-
-      // Étape 4: Combiner toutes les données
-      const combinedUsers: User[] = (userRoles || []).map((roleItem) => {
-        // Trouver le profil correspondant
-        const profile = profiles?.find(p => p.id === roleItem.user_id);
+      // Transformer les données pour inclure l'email de la session utilisateur
+      const combinedUsers: User[] = (usersData || []).map((userData: any) => {
+        // Pour l'utilisateur actuel, utiliser son email de session
+        const email = userData.user_id === user.id ? user.email || 'Email non disponible' : 'Email privé';
         
-        // Trouver les données auth correspondantes (si disponibles)
-        const authUser = authUsers?.find(u => u.id === roleItem.user_id);
-        
-        // Utiliser l'email depuis auth.users si disponible, sinon générer un fallback
-        const email = authUser?.email || `user-${roleItem.user_id.slice(0, 8)}@domain.local`;
-        
-        // Utiliser le username depuis profiles, sinon depuis auth metadata, sinon 'Utilisateur'
-        const username = profile?.username || 
-                        authUser?.user_metadata?.username || 
-                        'Utilisateur';
-
         return {
-          id: roleItem.user_id,
+          id: userData.user_id,
           email: email,
-          username: username,
-          role: roleItem.role as UserRole,
-          created_at: roleItem.created_at || '',
-          approved_at: roleItem.approved_at || undefined,
-          approved_by: roleItem.approved_by || undefined,
+          username: userData.username || 'Utilisateur',
+          role: userData.role as UserRole,
+          created_at: userData.created_at || '',
+          approved_at: userData.approved_at || undefined,
+          approved_by: userData.approved_by || undefined,
         };
       });
 
-      console.log('Utilisateurs combinés final:', combinedUsers);
+      console.log('Utilisateurs formatés:', combinedUsers);
       setAllUsers(combinedUsers);
     } catch (error) {
       console.error('Erreur lors de la récupération des utilisateurs:', error);
@@ -148,7 +106,7 @@ export const useAdminUsers = (userRole: UserRole | null) => {
   };
 
   useEffect(() => {
-    if (userRole && userRole !== 'pending') {
+    if (userRole === 'admin') {
       fetchAllUsers();
     }
   }, [userRole]);

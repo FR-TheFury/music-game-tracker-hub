@@ -40,12 +40,24 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
         });
         onAuthSuccess();
       } else {
+        // Validation des données d'inscription
+        if (!username.trim()) {
+          toast({
+            title: "Erreur",
+            description: "Le nom d'utilisateur est requis pour l'inscription.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        console.log('Inscription avec:', { email, username });
+
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
-              username,
+              username: username.trim(),
             },
             emailRedirectTo: `${window.location.origin}/`,
           },
@@ -59,6 +71,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
         });
       }
     } catch (error: any) {
+      console.error('Erreur d\'authentification:', error);
       toast({
         title: "Erreur",
         description: error.message,
@@ -100,7 +113,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
             {!isLogin && (
               <div>
                 <Label htmlFor="username" className="text-gray-200">
-                  Nom d'utilisateur
+                  Nom d'utilisateur *
                 </Label>
                 <Input
                   id="username"

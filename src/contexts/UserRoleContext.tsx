@@ -68,16 +68,23 @@ export const UserRoleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (!user || userRole !== 'admin') return;
 
     try {
+      console.log('Récupération des validations en attente...');
       const { data, error } = await supabase
         .from('pending_validations')
         .select('*')
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erreur lors de la récupération des validations:', error);
+        throw error;
+      }
+      
+      console.log('Validations en attente récupérées:', data);
       setPendingValidations(data || []);
     } catch (error) {
       console.error('Error fetching pending validations:', error);
+      setPendingValidations([]);
     }
   };
 
@@ -169,7 +176,6 @@ export const UserRoleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         },
         (payload) => {
           console.log('Changement de rôle détecté:', payload);
-          // Rafraîchir le rôle utilisateur quand il y a un changement
           fetchUserRole();
         }
       )
