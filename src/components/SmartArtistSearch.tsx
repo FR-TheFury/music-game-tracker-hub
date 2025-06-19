@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Search, Loader2, CheckCircle, AlertCircle, Music, Play, TrendingUp, Calendar, Wifi, WifiOff } from 'lucide-react';
+import { Search, Loader2, CheckCircle, AlertCircle, Music, Play, TrendingUp, Wifi, WifiOff } from 'lucide-react';
 import { useSmartArtistSearch } from '@/hooks/useSmartArtistSearch';
 import { PlatformSelector, type PlatformConfig } from './PlatformSelector';
 
@@ -24,20 +24,20 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
   const [platforms, setPlatforms] = useState<PlatformConfig>({
     spotify: true,
     deezer: true,
-    youtube: true,
-    soundcloud: true
+    youtube: false, // Désactivé par défaut pour la performance
+    soundcloud: false // Désactivé par défaut pour éviter le rate limiting
   });
   const { smartSearch, loading } = useSmartArtistSearch();
 
   const searchArtists = async () => {
-    if (!searchQuery.trim()) return;
+    if (!searchQuery.trim() || searchQuery.length < 3) return;
     
     setSearchError(null);
-    console.log('Recherche intelligente pour:', searchQuery, 'Plateformes:', platforms);
+    console.log('Recherche optimisée pour:', searchQuery, 'Plateformes:', platforms);
     
     try {
       const smartResults = await smartSearch(searchQuery, platforms);
-      console.log('Résultats de recherche intelligente:', smartResults);
+      console.log('Résultats de recherche:', smartResults);
       
       setResults(smartResults);
       setShowResults(true);
@@ -46,7 +46,7 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
         setSearchError('Aucun artiste trouvé sur les plateformes sélectionnées');
       }
     } catch (error) {
-      console.error('Erreur de recherche intelligente:', error);
+      console.error('Erreur de recherche:', error);
       setSearchError('Erreur lors de la recherche. Veuillez réessayer.');
       setResults([]);
       setShowResults(true);
@@ -56,10 +56,8 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
   const selectArtist = (artist: any) => {
     console.log('Sélection de l\'artiste:', artist);
     
-    // Ensure platformUrls exists and has valid data
     const platformUrls = artist.platformUrls || {};
     
-    // Créer les URLs multiples pour le formulaire principal
     const multipleUrls = Object.entries(platformUrls)
       .filter(([_, url]) => url)
       .map(([platform, url]) => ({
@@ -78,7 +76,6 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
       profileImageUrl: artist.profileImageUrl,
       bio: artist.bio,
       multipleUrls,
-      // Nouvelles propriétés cumulées
       totalFollowers: artist.totalFollowers,
       averagePopularity: artist.averagePopularity,
       totalPlays: artist.totalPlays,
@@ -107,18 +104,6 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
     return colors[platform] || 'bg-gray-600';
   };
 
-  const getPlatformStatus = (platform: string, platformStats: any[]) => {
-    const stat = platformStats?.find((stat: any) => 
-      stat.platform.toLowerCase() === platform.toLowerCase()
-    );
-    
-    if (stat?.error) {
-      return { available: false, error: stat.error };
-    }
-    
-    return { available: !!stat, error: null };
-  };
-
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
       return `${(num / 1000000).toFixed(1)}M`;
@@ -129,15 +114,19 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
     return num.toString();
   };
 
+  // Délai de recherche optimisé
   useEffect(() => {
     const delayedSearch = setTimeout(() => {
-      if (searchQuery && searchQuery.length > 2) {
+      if (searchQuery && searchQuery.length >= 3) {
         const enabledCount = Object.values(platforms).filter(Boolean).length;
         if (enabledCount > 0) {
           searchArtists();
         }
+      } else {
+        setResults([]);
+        setShowResults(false);
       }
-    }, 500);
+    }, 800); // Délai augmenté pour éviter trop de requêtes
 
     return () => clearTimeout(delayedSearch);
   }, [searchQuery, platforms]);
@@ -148,14 +137,15 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
     <div className="space-y-4">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-2">
-          <Label className="text-gray-300">Recherche intelligente d'artiste</Label>
+          <Label className="text-gray-300">Recherche intelligente d'artiste (optimisée)</Label>
           <div className="relative">
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tapez le nom d'un artiste pour une recherche multi-plateformes..."
+              placeholder="Tapez au moins 3 caractères..."
               className="bg-slate-700/50 border-slate-600 text-white placeholder:text-gray-400 pr-10"
               disabled={enabledPlatformsCount === 0}
+              minLength={3}
             />
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
               {loading ? (
@@ -165,6 +155,11 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
               )}
             </div>
           </div>
+          {searchQuery.length > 0 && searchQuery.length < 3 && (
+            <div className="text-sm text-yellow-400">
+              Tapez au moins 3 caractères pour commencer la recherche
+            </div>
+          )}
           {searchError && (
             <div className="text-sm text-red-400 flex items-center gap-2">
               <AlertCircle className="h-4 w-4" />
@@ -178,6 +173,18 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
           onPlatformChange={setPlatforms}
           className="lg:row-start-1"
         />
+      </div>
+
+      {/* Info sur la recherche optimisée */}
+      <div className="bg-blue-500/10 border border-blue-400/20 rounded-md p-3 text-sm text-blue-400">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="h-4 w-4" />
+          <span className="font-medium">Recherche optimisée</span>
+        </div>
+        <p className="mt-1 text-blue-300">
+          Priorité donnée à Spotify et Deezer pour une recherche plus rapide. 
+          YouTube et SoundCloud disponibles mais peuvent ralentir la recherche.
+        </p>
       </div>
       
       {showResults && results.length > 0 && (
@@ -211,12 +218,6 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
                         {formatNumber(artist.totalFollowers)} followers total
                       </span>
                     )}
-                    {artist.totalPlays > 0 && (
-                      <span className="flex items-center gap-1">
-                        <Play className="h-3 w-3" />
-                        {formatNumber(artist.totalPlays)} écoutes
-                      </span>
-                    )}
                     {artist.genres && artist.genres.length > 0 && (
                       <span>• {artist.genres.slice(0, 2).join(', ')}</span>
                     )}
@@ -227,28 +228,7 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
                 </div>
               </div>
               
-              {/* Nouvelles sorties récentes */}
-              {artist.recentReleases && artist.recentReleases.length > 0 && (
-                <div className="mb-2 p-2 bg-slate-800/50 rounded">
-                  <div className="text-xs text-green-400 mb-1 flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    Sorties récentes ({artist.recentReleases.length})
-                  </div>
-                  <div className="text-xs text-gray-300">
-                    {artist.recentReleases.slice(0, 2).map((release: any, idx: number) => (
-                      <div key={idx} className="truncate">
-                        • {release.title} ({release.platform})
-                        {release.plays && <span className="text-gray-500"> - {formatNumber(release.plays)} écoutes</span>}
-                      </div>
-                    ))}
-                    {artist.recentReleases.length > 2 && (
-                      <div className="text-gray-500">+{artist.recentReleases.length - 2} autres...</div>
-                    )}
-                  </div>
-                </div>
-              )}
-              
-              {/* Plateformes disponibles avec statut */}
+              {/* Plateformes disponibles */}
               <div className="flex flex-wrap gap-1 mt-2">
                 {artist.platformUrls && Object.entries(artist.platformUrls).map(([platform, url]) => {
                   if (!url) return null;
@@ -256,22 +236,17 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
                     stat.platform.toLowerCase() === platform.toLowerCase()
                   );
                   const isVerified = platformStat?.verified || false;
-                  const status = getPlatformStatus(platform, artist.platformStats);
                   
                   return (
                     <Badge
                       key={platform}
                       className={`${getPlatformColor(platform, isVerified)} text-white text-xs flex items-center gap-1`}
                     >
-                      <div title={status.error || (isVerified ? 'Vérifié' : 'Service indisponible')}>
-                        {status.available ? (
-                          isVerified ? (
-                            <CheckCircle className="h-3 w-3" />
-                          ) : (
-                            <Wifi className="h-3 w-3" />
-                          )
+                      <div title={isVerified ? 'Vérifié' : 'URL générée'}>
+                        {isVerified ? (
+                          <CheckCircle className="h-3 w-3" />
                         ) : (
-                          <WifiOff className="h-3 w-3" />
+                          <Wifi className="h-3 w-3" />
                         )}
                       </div>
                       {platform === 'youtubeMusic' ? 'YT Music' : 
@@ -286,15 +261,14 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
               </div>
               
               <div className="text-xs text-gray-500 mt-2">
-                Cliquez pour remplir automatiquement tous les champs • {artist.platformStats?.length || 1} plateforme{(artist.platformStats?.length || 1) > 1 ? 's' : ''} détectée{(artist.platformStats?.length || 1) > 1 ? 's' : ''}
-                {artist.totalPlays > 0 && <span> • {formatNumber(artist.totalPlays)} écoutes cumulées</span>}
+                Cliquez pour remplir automatiquement • {artist.platformStats?.length || 1} plateforme{(artist.platformStats?.length || 1) > 1 ? 's' : ''} vérifiée{(artist.platformStats?.length || 1) > 1 ? 's' : ''}
               </div>
             </div>
           ))}
         </div>
       )}
       
-      {showResults && results.length === 0 && !loading && enabledPlatformsCount > 0 && !searchError && (
+      {showResults && results.length === 0 && !loading && enabledPlatformsCount > 0 && !searchError && searchQuery.length >= 3 && (
         <div className="bg-slate-700 border border-slate-600 rounded-md p-4 text-center text-gray-400">
           Aucun artiste trouvé pour "{searchQuery}" sur les plateformes sélectionnées
         </div>

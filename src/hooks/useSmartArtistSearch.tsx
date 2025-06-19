@@ -8,7 +8,6 @@ import { supabase } from '@/integrations/supabase/client';
 import type { PlatformConfig } from '@/components/PlatformSelector';
 
 interface SmartArtistResult {
-  // Données principales (Spotify)
   id: string;
   name: string;
   spotifyId: string;
@@ -18,7 +17,6 @@ interface SmartArtistResult {
   profileImageUrl: string;
   bio?: string;
   
-  // URLs vérifiées pour toutes les plateformes
   platformUrls: {
     spotify: string;
     deezer?: string;
@@ -28,7 +26,6 @@ interface SmartArtistResult {
     soundcloud?: string;
   };
   
-  // Statistiques par plateforme
   platformStats: Array<{
     platform: string;
     followers?: number;
@@ -38,7 +35,6 @@ interface SmartArtistResult {
     recentReleases?: number;
   }>;
   
-  // Statistiques cumulées
   totalFollowers: number;
   averagePopularity: number;
   totalPlays: number;
@@ -51,18 +47,10 @@ interface SmartArtistResult {
   }>;
 }
 
-interface YouTubeVerificationResult {
-  url: string | null;
-  verified: boolean;
-  followers?: number;
-}
-
 export const useSmartArtistSearch = () => {
   const [loading, setLoading] = useState(false);
   const { searchArtists: searchSpotify } = useSpotify();
   const { searchArtists: searchDeezer } = useDeezer();
-  const { searchArtists: searchYouTube } = useYouTube();
-  const { searchArtists: searchSoundCloud, getPlaybackStats, getArtistReleases } = useSoundCloud();
 
   const generatePlatformUrls = (artistName: string) => {
     const cleanName = artistName.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '-');
@@ -75,7 +63,7 @@ export const useSmartArtistSearch = () => {
     };
   };
 
-  const verifyYouTubeUrl = async (artistName: string): Promise<YouTubeVerificationResult> => {
+  const verifyYouTubeUrl = async (artistName: string) => {
     try {
       const { data, error } = await supabase.functions.invoke('get-youtube-info', {
         body: { artistName, type: 'generateUrl' }
@@ -85,30 +73,13 @@ export const useSmartArtistSearch = () => {
         return { url: null, verified: false };
       }
       
-      // Si on a trouvé une chaîne, essayer de récupérer les statistiques
-      if (data.url && data.verified) {
-        try {
-          const channelId = data.url.split('/').pop();
-          const statsData = await supabase.functions.invoke('get-youtube-info', {
-            body: { channelId, type: 'artist' }
-          });
-          
-          const subscriberCount = statsData.data?.subscriberCount ? 
-            parseInt(statsData.data.subscriberCount) : undefined;
-          
-          return { 
-            url: data.url, 
-            verified: true,
-            followers: subscriberCount
-          };
-        } catch (statsError) {
-          return { url: data.url, verified: true };
-        }
-      }
-      
-      return { url: data.url, verified: data.verified || false };
+      return { 
+        url: data.url, 
+        verified: data.verified || false,
+        followers: data.subscriberCount
+      };
     } catch (error) {
-      console.error('Error verifying YouTube URL:', error);
+      console.error('YouTube verification error:', error);
       return { url: null, verified: false };
     }
   };
@@ -120,34 +91,20 @@ export const useSmartArtistSearch = () => {
     verified: boolean;
     totalPlays?: number;
   }>) => {
-    console.log('Calcul des statistiques cumulées pour:', platformStats);
-    
     let totalFollowers = 0;
     let totalPlays = 0;
     let popularitySum = 0;
     let popularityCount = 0;
 
     platformStats.forEach(stat => {
-      console.log(`Plateforme ${stat.platform}:`, {
-        followers: stat.followers,
-        popularity: stat.popularity,
-        totalPlays: stat.totalPlays,
-        verified: stat.verified
-      });
-
-      // Additionner tous les followers des plateformes vérifiées
       if (stat.followers && stat.verified && stat.followers > 0) {
         totalFollowers += stat.followers;
-        console.log(`Ajout de ${stat.followers} followers de ${stat.platform}`);
       }
 
-      // Additionner toutes les écoutes
       if (stat.totalPlays && stat.totalPlays > 0) {
         totalPlays += stat.totalPlays;
-        console.log(`Ajout de ${stat.totalPlays} écoutes de ${stat.platform}`);
       }
 
-      // Calculer la moyenne des popularités
       if (stat.popularity && stat.popularity > 0) {
         popularitySum += stat.popularity;
         popularityCount++;
@@ -155,13 +112,6 @@ export const useSmartArtistSearch = () => {
     });
 
     const averagePopularity = popularityCount > 0 ? Math.round(popularitySum / popularityCount) : 0;
-
-    console.log('Résultat final:', {
-      totalFollowers,
-      totalPlays,
-      averagePopularity,
-      platformCount: platformStats.length
-    });
 
     return {
       totalFollowers,
@@ -181,97 +131,82 @@ export const useSmartArtistSearch = () => {
     
     setLoading(true);
     try {
-      console.log('Recherche intelligente pour:', query, 'Plateformes:', enabledPlatforms);
+      console.log('Recherche optimisée pour:', query);
       
-      // 1. Recherches en parallèle selon les plateformes activées
+      // Prioriser Spotify et Deezer car ils sont plus fiables
       const searchPromises = [];
       
       if (enabledPlatforms.spotify) {
-        searchPromises.push(searchSpotify(query).then(results => ({ platform: 'spotify', results })));
+        searchPromises.push(
+          searchSpotify(query)
+            .then(results => ({ platform: 'spotify', results }))
+            .catch(error => {
+              console.error('Spotify search error:', error);
+              return { platform: 'spotify', results: [] };
+            })
+        );
       }
       
       if (enabledPlatforms.deezer) {
-        searchPromises.push(searchDeezer(query).then(results => ({ platform: 'deezer', results })));
-      }
-      
-      if (enabledPlatforms.youtube) {
-        searchPromises.push(searchYouTube(query).then(results => ({ platform: 'youtube', results })));
-      }
-      
-      if (enabledPlatforms.soundcloud) {
-        searchPromises.push(searchSoundCloud(query).then(results => ({ platform: 'soundcloud', results })));
+        searchPromises.push(
+          searchDeezer(query)
+            .then(results => ({ platform: 'deezer', results }))
+            .catch(error => {
+              console.error('Deezer search error:', error);
+              return { platform: 'deezer', results: [] };
+            })
+        );
       }
 
+      // Attendre seulement les recherches principales (Spotify + Deezer)
       const searchResults = await Promise.all(searchPromises);
       
-      console.log('Résultats par plateforme:', searchResults.map(r => `${r.platform}: ${r.results.length}`));
+      console.log('Résultats obtenus:', searchResults.map(r => `${r.platform}: ${r.results.length}`));
       
-      // 2. Utiliser Spotify comme base si disponible, sinon la première plateforme avec des résultats
+      // Utiliser Spotify comme base, sinon Deezer
       let baseResults = [];
-      let spotifyResults = [];
-      
       const spotifyData = searchResults.find(r => r.platform === 'spotify');
       if (spotifyData && spotifyData.results.length > 0) {
-        baseResults = spotifyData.results;
-        spotifyResults = spotifyData.results;
+        baseResults = spotifyData.results.slice(0, 3); // Limiter à 3 pour la performance
       } else {
-        // Prendre la première plateforme avec des résultats comme base
-        const firstPlatformWithResults = searchResults.find(r => r.results.length > 0);
-        if (firstPlatformWithResults) {
-          baseResults = firstPlatformWithResults.results.slice(0, 5); // Limiter à 5 résultats max
+        const deezerData = searchResults.find(r => r.platform === 'deezer');
+        if (deezerData && deezerData.results.length > 0) {
+          baseResults = deezerData.results.slice(0, 3);
         }
       }
 
       if (baseResults.length === 0) {
-        console.log('Aucun résultat trouvé sur les plateformes sélectionnées');
+        console.log('Aucun résultat trouvé');
         return [];
       }
 
-      // 3. Pour chaque résultat de base, enrichir avec les autres plateformes
+      // Enrichir les résultats de manière séquentielle pour éviter le rate limiting
       const enrichedResults = await Promise.all(
         baseResults.map(async (baseArtist, index) => {
           console.log('Enrichissement pour:', baseArtist.name || baseArtist.username);
           
-          // Générer les URLs de base
           const generatedUrls = generatePlatformUrls(baseArtist.name || baseArtist.username);
           
-          // Vérifier YouTube avec l'API si activé
-          let youtubeVerification: YouTubeVerificationResult = { url: null, verified: false };
-          if (enabledPlatforms.youtube) {
-            youtubeVerification = await verifyYouTubeUrl(baseArtist.name || baseArtist.username);
+          // Vérification YouTube seulement si activée et de manière limitée
+          let youtubeVerification = { url: null, verified: false, followers: undefined };
+          if (enabledPlatforms.youtube && index === 0) { // Seulement pour le premier résultat
+            try {
+              youtubeVerification = await verifyYouTubeUrl(baseArtist.name || baseArtist.username);
+            } catch (error) {
+              console.error('YouTube verification failed:', error);
+            }
           }
           
-          // Trouver les correspondances sur autres plateformes
+          // Trouver les correspondances Deezer
           const deezerResults = searchResults.find(r => r.platform === 'deezer')?.results || [];
-          const youtubeResults = searchResults.find(r => r.platform === 'youtube')?.results || [];
-          const soundcloudResults = searchResults.find(r => r.platform === 'soundcloud')?.results || [];
-
           const deezerMatch = deezerResults.find(
             deezer => deezer.name.toLowerCase() === (baseArtist.name || baseArtist.username).toLowerCase()
           );
-
-          const youtubeMatch = youtubeResults.find(
-            yt => yt.name.toLowerCase().includes((baseArtist.name || baseArtist.username).toLowerCase()) ||
-                 (baseArtist.name || baseArtist.username).toLowerCase().includes(yt.name.toLowerCase())
-          );
-
-          const soundcloudMatch = soundcloudResults.find(
-            sc => sc.username.toLowerCase().includes((baseArtist.name || baseArtist.username).toLowerCase()) ||
-                  (baseArtist.name || baseArtist.username).toLowerCase().includes(sc.username.toLowerCase())
-          );
-          
-          // Récupérer les statistiques SoundCloud avancées si disponible
-          let soundcloudStats = null;
-          let soundcloudReleases = [];
-          if (soundcloudMatch) {
-            soundcloudStats = await getPlaybackStats(soundcloudMatch.id.toString(), soundcloudMatch.permalink_url);
-            soundcloudReleases = await getArtistReleases(soundcloudMatch.id.toString(), soundcloudMatch.permalink_url, 5);
-          }
           
           // Construire les statistiques par plateforme
           const platformStats = [];
 
-          // Spotify (si c'est la base ou disponible)
+          // Spotify
           if (baseArtist.followers && baseArtist.followers.total !== undefined) {
             platformStats.push({
               platform: 'Spotify',
@@ -281,6 +216,7 @@ export const useSmartArtistSearch = () => {
             });
           }
 
+          // Deezer
           if (deezerMatch && deezerMatch.nb_fan) {
             platformStats.push({
               platform: 'Deezer',
@@ -289,6 +225,7 @@ export const useSmartArtistSearch = () => {
             });
           }
 
+          // YouTube (seulement si vérifié)
           if (youtubeVerification.verified && youtubeVerification.followers) {
             platformStats.push({
               platform: 'YouTube',
@@ -297,33 +234,7 @@ export const useSmartArtistSearch = () => {
             });
           }
 
-          if (soundcloudMatch) {
-            platformStats.push({
-              platform: 'SoundCloud',
-              followers: soundcloudMatch.followers_count || 0,
-              verified: true,
-              totalPlays: soundcloudStats?.totalPlays || 0,
-              recentReleases: soundcloudReleases.length
-            });
-          }
-
-          // Calculer les statistiques cumulées
           const { totalFollowers, totalPlays, averagePopularity } = calculateCumulativeStats(platformStats);
-          
-          //Construire les nouvelles sorties récentes
-          const recentReleases = [];
-          
-          if (soundcloudReleases.length > 0) {
-            soundcloudReleases.forEach(release => {
-              recentReleases.push({
-                platform: 'SoundCloud',
-                title: release.title,
-                url: release.permalink_url,
-                date: release.created_at,
-                plays: release.playback_count
-              });
-            });
-          }
           
           const result: SmartArtistResult = {
             id: baseArtist.id || `enriched-${index}`,
@@ -341,22 +252,19 @@ export const useSmartArtistSearch = () => {
               youtube: youtubeVerification.url || undefined,
               youtubeMusic: generatedUrls.youtubeMusic,
               amazonMusic: generatedUrls.amazonMusic,
-              soundcloud: soundcloudMatch?.permalink_url,
             },
             
             platformStats,
             totalFollowers,
             totalPlays,
             averagePopularity,
-            recentReleases
+            recentReleases: []
           };
           
-          console.log('Résultat enrichi pour', baseArtist.name || baseArtist.username, ':', {
+          console.log('Résultat enrichi:', baseArtist.name, {
             platformsCount: platformStats.length,
             totalFollowers,
-            totalPlays,
-            averagePopularity,
-            recentReleasesCount: recentReleases.length
+            averagePopularity
           });
           
           return result;
