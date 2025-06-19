@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Gamepad2, X, Plus } from 'lucide-react';
+import { Gamepad2, X, Plus, Info, ShoppingCart } from 'lucide-react';
 import { SmartGameSearch } from './SmartGameSearch';
 
 interface Game {
@@ -16,6 +16,8 @@ interface Game {
   price?: string;
   discount?: string;
   releaseDate?: string;
+  rawgUrl?: string;
+  shopUrl?: string;
 }
 
 interface AddGameFormProps {
@@ -33,6 +35,8 @@ export const AddGameForm: React.FC<AddGameFormProps> = ({ onSubmit, onCancel }) 
     price: '',
     discount: '',
     releaseDate: '',
+    rawgUrl: '',
+    shopUrl: '',
   });
 
   const platforms = [
@@ -52,7 +56,17 @@ export const AddGameForm: React.FC<AddGameFormProps> = ({ onSubmit, onCancel }) 
     e.preventDefault();
     if (formData.name && formData.platform && formData.url) {
       onSubmit(formData);
-      setFormData({ name: '', platform: '', url: '', imageUrl: '', price: '', discount: '', releaseDate: '' });
+      setFormData({ 
+        name: '', 
+        platform: '', 
+        url: '', 
+        imageUrl: '', 
+        price: '', 
+        discount: '', 
+        releaseDate: '',
+        rawgUrl: '',
+        shopUrl: '',
+      });
     }
   };
 
@@ -86,6 +100,8 @@ export const AddGameForm: React.FC<AddGameFormProps> = ({ onSubmit, onCancel }) 
       price: game.price || '',
       discount: game.discount || '',
       releaseDate: game.releaseDate || '',
+      rawgUrl: game.url.includes('rawg.io') ? game.url : '',
+      shopUrl: !game.url.includes('rawg.io') ? game.url : '',
     });
     setShowSmartSearch(false);
   };
@@ -169,7 +185,7 @@ export const AddGameForm: React.FC<AddGameFormProps> = ({ onSubmit, onCancel }) 
 
           <div className="space-y-2">
             <Label htmlFor="url" className="text-gray-300">
-              Lien vers le jeu *
+              Lien principal du jeu *
             </Label>
             <Input
               id="url"
@@ -181,8 +197,46 @@ export const AddGameForm: React.FC<AddGameFormProps> = ({ onSubmit, onCancel }) 
               required
             />
             <p className="text-xs text-gray-500">
-              Collez le lien du jeu depuis votre plateforme de jeux préférée
+              Lien principal vers le jeu (boutique ou RAWG)
             </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="rawgUrl" className="text-gray-300 flex items-center gap-2">
+                <Info className="h-4 w-4 text-blue-400" />
+                Lien RAWG (optionnel)
+              </Label>
+              <Input
+                id="rawgUrl"
+                type="url"
+                value={formData.rawgUrl}
+                onChange={(e) => setFormData(prev => ({ ...prev, rawgUrl: e.target.value }))}
+                placeholder="https://rawg.io/games/..."
+                className="bg-slate-700/50 border-slate-600 text-white placeholder:text-gray-400"
+              />
+              <p className="text-xs text-gray-500">
+                Lien vers la page RAWG pour les informations détaillées
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="shopUrl" className="text-gray-300 flex items-center gap-2">
+                <ShoppingCart className="h-4 w-4 text-green-400" />
+                Lien boutique (optionnel)
+              </Label>
+              <Input
+                id="shopUrl"
+                type="url"
+                value={formData.shopUrl}
+                onChange={(e) => setFormData(prev => ({ ...prev, shopUrl: e.target.value }))}
+                placeholder="https://store.steampowered.com/app/..."
+                className="bg-slate-700/50 border-slate-600 text-white placeholder:text-gray-400"
+              />
+              <p className="text-xs text-gray-500">
+                Lien direct vers la boutique pour acheter le jeu
+              </p>
+            </div>
           </div>
 
           <div className="space-y-2">

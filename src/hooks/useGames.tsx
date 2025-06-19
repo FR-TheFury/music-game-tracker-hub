@@ -16,6 +16,8 @@ interface Game {
   releaseStatus?: string;
   expectedReleaseDate?: string;
   lastStatusCheck?: string;
+  rawgUrl?: string;
+  shopUrl?: string;
   addedAt: string;
 }
 
@@ -49,6 +51,8 @@ export const useGames = () => {
         releaseStatus: game.release_status,
         expectedReleaseDate: game.expected_release_date,
         lastStatusCheck: game.last_status_check,
+        rawgUrl: game.rawg_url,
+        shopUrl: game.shop_url,
         addedAt: game.created_at,
       }));
 
@@ -87,6 +91,8 @@ export const useGames = () => {
             release_date: gameData.releaseDate,
             release_status: gameData.releaseStatus || 'unknown',
             expected_release_date: gameData.expectedReleaseDate,
+            rawg_url: gameData.rawgUrl,
+            shop_url: gameData.shopUrl,
           },
         ])
         .select()
@@ -106,6 +112,8 @@ export const useGames = () => {
         releaseStatus: data.release_status,
         expectedReleaseDate: data.expected_release_date,
         lastStatusCheck: data.last_status_check,
+        rawgUrl: data.rawg_url,
+        shopUrl: data.shop_url,
         addedAt: data.created_at,
       };
 
