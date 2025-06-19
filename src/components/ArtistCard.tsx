@@ -1,10 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ExternalLink, Trash2, Music, Calendar, Users, Eye, Play } from 'lucide-react';
-import { useArtistSoundCloudStats } from '@/hooks/useArtistSoundCloudStats';
 
 interface Artist {
   id: string;
@@ -35,40 +35,11 @@ interface ArtistCardProps {
 export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
   const navigate = useNavigate();
   const [localArtist, setLocalArtist] = useState(artist);
-  const [loadingStats, setLoadingStats] = useState(false);
-  const { fetchArtistStats } = useArtistSoundCloudStats();
 
-  // Charger les stats SoundCloud si pas déjà présentes
+  // Mettre à jour l'artiste local quand les props changent
   useEffect(() => {
-    const loadSoundCloudStats = async () => {
-      if (localArtist.soundcloudStats) return; // Déjà chargées
-      
-      const hasSoundCloud = localArtist.multipleUrls?.some(url => 
-        url.platform?.toLowerCase().includes('soundcloud')
-      ) || localArtist.platform?.toLowerCase().includes('soundcloud');
-      
-      if (!hasSoundCloud) return; // Pas de SoundCloud configuré
-      
-      setLoadingStats(true);
-      try {
-        const stats = await fetchArtistStats(localArtist.name, localArtist);
-        if (stats) {
-          setLocalArtist(prev => ({
-            ...prev,
-            soundcloudStats: stats
-          }));
-        }
-      } catch (error) {
-        console.error('Erreur chargement stats SoundCloud:', error);
-      } finally {
-        setLoadingStats(false);
-      }
-    };
-
-    // Délai pour éviter trop d'appels simultanés
-    const timer = setTimeout(loadSoundCloudStats, Math.random() * 2000);
-    return () => clearTimeout(timer);
-  }, [localArtist.name, localArtist.soundcloudStats, fetchArtistStats]);
+    setLocalArtist(artist);
+  }, [artist]);
 
   const getPlatformColor = (platform: string) => {
     switch (platform.toLowerCase()) {
@@ -207,13 +178,6 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
                 <div className="flex items-center gap-1 text-sm text-orange-400 mt-1">
                   <Play className="h-3 w-3" />
                   <span>{formatFollowers(localArtist.soundcloudStats.totalPlays)} écoutes SC</span>
-                </div>
-              )}
-              
-              {loadingStats && (
-                <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
-                  <div className="animate-spin rounded-full h-3 w-3 border border-orange-400 border-t-transparent"></div>
-                  <span>Chargement stats...</span>
                 </div>
               )}
               
