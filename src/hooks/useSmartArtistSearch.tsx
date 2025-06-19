@@ -51,6 +51,12 @@ interface SmartArtistResult {
   }>;
 }
 
+interface YouTubeVerificationResult {
+  url: string | null;
+  verified: boolean;
+  followers?: number;
+}
+
 export const useSmartArtistSearch = () => {
   const [loading, setLoading] = useState(false);
   const { searchArtists: searchSpotify } = useSpotify();
@@ -69,7 +75,7 @@ export const useSmartArtistSearch = () => {
     };
   };
 
-  const verifyYouTubeUrl = async (artistName: string): Promise<{ url: string | null; verified: boolean; followers?: number }> => {
+  const verifyYouTubeUrl = async (artistName: string): Promise<YouTubeVerificationResult> => {
     try {
       const { data, error } = await supabase.functions.invoke('get-youtube-info', {
         body: { artistName, type: 'generateUrl' }
@@ -230,7 +236,7 @@ export const useSmartArtistSearch = () => {
           const generatedUrls = generatePlatformUrls(baseArtist.name || baseArtist.username);
           
           // Vérifier YouTube avec l'API si activé
-          let youtubeVerification = { url: null, verified: false };
+          let youtubeVerification: YouTubeVerificationResult = { url: null, verified: false };
           if (enabledPlatforms.youtube) {
             youtubeVerification = await verifyYouTubeUrl(baseArtist.name || baseArtist.username);
           }
