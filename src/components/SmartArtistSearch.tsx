@@ -68,6 +68,7 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
       youtube: 'bg-red-600',
       youtubeMusic: 'bg-red-700',
       amazonMusic: 'bg-blue-600',
+      soundcloud: 'bg-orange-500',
     };
     
     return colors[platform] || 'bg-gray-600';
@@ -127,14 +128,15 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
                 <div className="flex-1">
                   <div className="text-white font-medium">{artist.name}</div>
                   <div className="text-gray-400 text-sm">
-                    {artist.followersCount ? `${Math.floor(artist.followersCount / 1000)}k followers` : ''}
+                    {artist.totalFollowers ? `${Math.floor(artist.totalFollowers / 1000)}k followers total` : 
+                     artist.followersCount ? `${Math.floor(artist.followersCount / 1000)}k followers` : ''}
                     {artist.genres && artist.genres.length > 0 && (
                       <span className="ml-2">• {artist.genres.slice(0, 2).join(', ')}</span>
                     )}
                   </div>
                 </div>
                 <div className="text-yellow-400 text-sm">
-                  ⭐ {artist.popularity || 0}
+                  ⭐ {artist.averagePopularity || artist.popularity || 0}
                 </div>
               </div>
               
@@ -142,7 +144,10 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
               <div className="flex flex-wrap gap-1 mt-2">
                 {artist.platformUrls && Object.entries(artist.platformUrls).map(([platform, url]) => {
                   if (!url) return null;
-                  const isVerified = artist.verified && artist.verified[platform as keyof typeof artist.verified];
+                  const platformStat = artist.platformStats?.find((stat: any) => 
+                    stat.platform.toLowerCase() === platform.toLowerCase()
+                  );
+                  const isVerified = platformStat?.verified || false;
                   
                   return (
                     <Badge
@@ -154,14 +159,16 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
                       ) : (
                         <AlertCircle className="h-3 w-3" />
                       )}
-                      {platform.charAt(0).toUpperCase() + platform.slice(1)}
+                      {platform === 'youtubeMusic' ? 'YT Music' : 
+                       platform === 'amazonMusic' ? 'Amazon' :
+                       platform.charAt(0).toUpperCase() + platform.slice(1)}
                     </Badge>
                   );
                 })}
               </div>
               
               <div className="text-xs text-gray-500 mt-1">
-                Cliquez pour remplir automatiquement tous les champs
+                Cliquez pour remplir automatiquement tous les champs • {artist.platformStats?.length || 1} plateforme{(artist.platformStats?.length || 1) > 1 ? 's' : ''} détectée{(artist.platformStats?.length || 1) > 1 ? 's' : ''}
               </div>
             </div>
           ))}

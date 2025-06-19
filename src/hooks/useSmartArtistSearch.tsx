@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useSpotify } from './useSpotify';
 import { useDeezer } from './useDeezer';
 import { useYouTube } from './useYouTube';
+import { useSoundCloud } from './useSoundCloud';
 import { supabase } from '@/integrations/supabase/client';
 
 interface SmartArtistResult {
@@ -23,6 +24,7 @@ interface SmartArtistResult {
     youtube?: string;
     youtubeMusic?: string;
     amazonMusic?: string;
+    soundcloud?: string;
   };
   
   // Statistiques par plateforme
@@ -43,6 +45,7 @@ export const useSmartArtistSearch = () => {
   const { searchArtists: searchSpotify } = useSpotify();
   const { searchArtists: searchDeezer } = useDeezer();
   const { searchArtists: searchYouTube } = useYouTube();
+  const { searchArtists: searchSoundCloud } = useSoundCloud();
 
   const generatePlatformUrls = (artistName: string) => {
     const cleanName = artistName.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '-');
@@ -52,7 +55,6 @@ export const useSmartArtistSearch = () => {
       amazonMusic: `https://music.amazon.com/search/${encodeURIComponent(artistName)}`,
       appleMusic: `https://music.apple.com/search?term=${encodeURIComponent(artistName)}`,
       tidal: `https://listen.tidal.com/search?q=${encodeURIComponent(artistName)}`,
-      soundcloud: `https://soundcloud.com/search?q=${encodeURIComponent(artistName)}`,
     };
   };
 
@@ -152,14 +154,16 @@ export const useSmartArtistSearch = () => {
       const spotifyResults = await searchSpotify(query);
       console.log('Résultats Spotify:', spotifyResults.length);
       
-      // 2. Recherche complémentaire sur Deezer et YouTube
-      const [deezerResults, youtubeResults] = await Promise.all([
+      // 2. Recherche complémentaire sur toutes les plateformes
+      const [deezerResults, youtubeResults, soundcloudResults] = await Promise.all([
         searchDeezer(query),
-        searchYouTube(query)
+        searchYouTube(query),
+        searchSoundCloud(query)
       ]);
       
       console.log('Résultats Deezer:', deezerResults.length);
       console.log('Résultats YouTube:', youtubeResults.length);
+      console.log('Résultats SoundCloud:', soundcloudResults.length);
       
       // 3. Pour chaque résultat Spotify, enrichir avec les autres plateformes
       const enrichedResults = await Promise.all(
@@ -180,6 +184,11 @@ export const useSmartArtistSearch = () => {
           const youtubeMatch = youtubeResults.find(
             yt => yt.name.toLowerCase().includes(spotifyArtist.name.toLowerCase()) ||
                  spotifyArtist.name.toLowerCase().includes(yt.name.toLowerCase())
+          );
+
+          const soundcloudMatch = soundcloudResults.find(
+            sc => sc.username.toLowerCase().includes(spotifyArtist.name.toLowerCase()) ||
+                  spotifyArtist.name.toLowerCase().includes(sc.username.toLowerCase())
           );
           
           // Construire les statistiques par plateforme
@@ -210,6 +219,15 @@ export const useSmartArtistSearch = () => {
             });
           }
 
+          if (soundcloudMatch && soundcloudMatch.followers_count) {
+            platformStats.push({
+              platform: 'SoundCloud',
+              followers: soundcloudMatch.followers_count,
+              popularity: undefined,
+              verified: true
+            });
+          }
+
           // Calculer les statistiques cumulées
           const { totalFollowers, averagePopularity } = calculateCumulativeStats(platformStats);
           
@@ -229,6 +247,7 @@ export const useSmartArtistSearch = () => {
               youtube: youtubeVerification.url || undefined,
               youtubeMusic: generatedUrls.youtubeMusic,
               amazonMusic: generatedUrls.amazonMusic,
+              soundcloud: soundcloudMatch?.permalink_url,
             },
             
             platformStats,
@@ -239,7 +258,8 @@ export const useSmartArtistSearch = () => {
           console.log('Résultat enrichi pour', spotifyArtist.name, ':', {
             platformsCount: platformStats.length,
             totalFollowers,
-            averagePopularity
+            averagePopularity,
+            hasSoundCloud: !!soundcloudMatch
           });
           
           return result;
