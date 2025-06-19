@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ExternalLink, Trash2, Music, Calendar, Users } from 'lucide-react';
+import { ExternalLink, Trash2, Music, Calendar, Users, Eye } from 'lucide-react';
 
 interface Artist {
   id: string;
@@ -96,7 +96,7 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
   const allPlatforms = getAllPlatforms();
   const totalPlatformCount = allPlatforms.length;
 
-  const handleCardClick = () => {
+  const handleDetailsClick = () => {
     navigate(`/artist/${artist.id}`);
   };
 
@@ -110,10 +110,7 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
   };
 
   return (
-    <Card 
-      className="bg-slate-800/70 border-slate-700 backdrop-blur-sm hover:bg-slate-800/90 transition-all duration-300 group hover:scale-105 hover:shadow-xl hover:shadow-purple-500/20 cursor-pointer"
-      onClick={handleCardClick}
-    >
+    <Card className="bg-slate-800/70 border-slate-700 backdrop-blur-sm hover:bg-slate-800/90 transition-all duration-300 group hover:scale-105 hover:shadow-xl hover:shadow-purple-500/20">
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
@@ -204,14 +201,11 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
             <Button
               variant="outline"
               size="sm"
-              asChild
-              onClick={handleLinkClick}
+              onClick={handleDetailsClick}
               className="border-purple-500/30 text-purple-300 hover:bg-purple-500/10 hover:border-purple-400"
             >
-              <a href={artist.url} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Écouter
-              </a>
+              <Eye className="h-4 w-4 mr-2" />
+              Détails
             </Button>
             
             {totalPlatformCount > 1 && (
