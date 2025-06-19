@@ -2,8 +2,10 @@
 import React from 'react';
 import { useUserRoleContext, UserRole } from '@/contexts/UserRoleContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { Clock, AlertCircle } from 'lucide-react';
+import { Clock, AlertCircle, ArrowLeft } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface RoleGuardProps {
   children: React.ReactNode;
@@ -17,6 +19,7 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
   fallback 
 }) => {
   const { userRole, loading } = useUserRoleContext();
+  const { user, signOut } = useAuth();
 
   // Pendant le chargement
   if (loading) {
@@ -27,8 +30,17 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
     );
   }
 
-  // Utilisateur en attente de validation
+  // Si l'utilisateur n'est pas connecté, ne pas afficher la page d'attente
+  if (!user) {
+    return <>{children}</>;
+  }
+
+  // Utilisateur connecté mais en attente de validation
   if (!userRole || userRole === 'pending') {
+    const handleBackToLogin = async () => {
+      await signOut();
+    };
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-[#FF0751] to-slate-900 flex items-center justify-center px-4">
         <Card className="w-full max-w-md bg-slate-800/90 border-[#FF0751]/30 shadow-2xl backdrop-blur-sm">
@@ -40,13 +52,21 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
               Compte en attente
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-center">
+          <CardContent className="text-center space-y-4">
             <p className="text-gray-300 mb-4">
               Votre compte est en cours de validation par un administrateur.
             </p>
             <p className="text-gray-400 text-sm">
               Vous recevrez un email une fois votre compte approuvé.
             </p>
+            <Button
+              onClick={handleBackToLogin}
+              variant="outline"
+              className="w-full border-[#FF0751] text-[#FF0751] hover:bg-[#FF0751]/10"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Retour à la connexion
+            </Button>
           </CardContent>
         </Card>
       </div>
