@@ -25,7 +25,7 @@ export const useNotificationSettings = () => {
     try {
       console.log('Fetching notification settings for user:', user.id);
       
-      const { data, error } = await supabaseClient
+      const { data, error } = await supabase
         .from('notification_settings')
         .select('*')
         .eq('user_id', user.id)
