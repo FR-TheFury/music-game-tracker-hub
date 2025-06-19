@@ -64,12 +64,15 @@ export const useSoundCloud = () => {
 
       if (error) {
         console.error('SoundCloud search error:', error);
+        // Si l'API SoundCloud n'est pas disponible, retourner un tableau vide
+        // au lieu de faire planter l'application
         return [];
       }
 
       return data?.artists || [];
     } catch (error) {
       console.error('SoundCloud API error:', error);
+      // Retourner un tableau vide en cas d'erreur pour éviter de casser la recherche globale
       return [];
     } finally {
       setLoading(false);
