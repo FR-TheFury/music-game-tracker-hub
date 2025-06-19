@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -8,6 +9,7 @@ interface UserRoleContextProps {
   userRole: UserRole | null;
   pendingValidations: { id: string; email: string }[];
   loadingRole: boolean;
+  loading: boolean; // Added this property
   approveUser: (userId: string, role: UserRole) => void;
   rejectUser: (userId: string) => void;
 }
@@ -56,11 +58,14 @@ export const UserRoleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (!user || userRole !== 'admin') return;
 
       try {
+        // Fixed query structure
         const { data, error } = await supabase
           .from('user_roles')
-          .select('user_id, profiles(email)')
-          .eq('role', 'pending')
-          .not('profiles.email', 'is', null);
+          .select(`
+            user_id,
+            profiles!inner(email)
+          `)
+          .eq('role', 'pending');
 
         if (error) throw error;
 
@@ -108,15 +113,16 @@ export const UserRoleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
 
       setPendingValidations(prev => prev.filter(v => v.id !== userId));
-      setUserRole(role);
       
       // Refresh pending validations for admin
       if (userRole === 'admin') {
         const { data, error } = await supabase
           .from('user_roles')
-          .select('user_id, profiles(email)')
-          .eq('role', 'pending')
-          .not('profiles.email', 'is', null);
+          .select(`
+            user_id,
+            profiles!inner(email)
+          `)
+          .eq('role', 'pending');
 
         if (error) throw error;
 
@@ -148,7 +154,14 @@ export const UserRoleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   return (
-    <UserRoleContext.Provider value={{ userRole, pendingValidations, loadingRole, approveUser, rejectUser }}>
+    <UserRoleContext.Provider value={{ 
+      userRole, 
+      pendingValidations, 
+      loadingRole, 
+      loading: loadingRole, // Added this for backward compatibility
+      approveUser, 
+      rejectUser 
+    }}>
       {children}
     </UserRoleContext.Provider>
   );
@@ -160,4 +173,9 @@ export const useUserRoleContext = () => {
     throw new Error('useUserRoleContext must be used within a UserRoleProvider');
   }
   return context;
+};
+
+// Export useUserRole for backward compatibility
+export const useUserRole = () => {
+  return useUserRoleContext();
 };

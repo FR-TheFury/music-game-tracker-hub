@@ -1,10 +1,11 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from '@/hooks/useAuth';
-import { useUserRole } from '@/contexts/UserRoleContext';
+import { useUserRole } from '@/hooks/useUserRole';
 import { LogOut, User, Bell } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useProfile } from '@/hooks/useProfile';
@@ -64,7 +65,7 @@ export const UserProfile: React.FC = () => {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link to="/notification-settings" className="flex items-center gap-2">
+          <Link to="/notifications" className="flex items-center gap-2">
             <Bell className="h-4 w-4" />
             Notifications
           </Link>
