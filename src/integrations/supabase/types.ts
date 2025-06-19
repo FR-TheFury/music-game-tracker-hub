@@ -366,6 +366,7 @@ export type Database = {
         Returns: {
           user_id: string
           username: string
+          user_email: string
           role: Database["public"]["Enums"]["user_role"]
           created_at: string
           approved_at: string

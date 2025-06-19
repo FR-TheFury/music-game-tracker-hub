@@ -28,7 +28,7 @@ export const useAdminUsers = (userRole: UserRole | null) => {
     try {
       console.log('Récupération de tous les utilisateurs via la fonction SQL...');
 
-      // Utiliser la fonction SQL sécurisée pour récupérer tous les utilisateurs
+      // Utiliser la fonction SQL mise à jour qui retourne les emails
       const { data: usersData, error } = await supabase.rpc('get_all_users_for_admin');
 
       if (error) {
@@ -38,14 +38,11 @@ export const useAdminUsers = (userRole: UserRole | null) => {
 
       console.log('Utilisateurs récupérés:', usersData);
 
-      // Transformer les données pour inclure l'email de la session utilisateur
+      // Transformer les données en utilisant les emails de la base de données
       const combinedUsers: User[] = (usersData || []).map((userData: any) => {
-        // Pour l'utilisateur actuel, utiliser son email de session
-        const email = userData.user_id === user.id ? user.email || 'Email non disponible' : 'Email privé';
-        
         return {
           id: userData.user_id,
-          email: email,
+          email: userData.user_email || 'Email non disponible',
           username: userData.username || 'Utilisateur',
           role: userData.role as UserRole,
           created_at: userData.created_at || '',
