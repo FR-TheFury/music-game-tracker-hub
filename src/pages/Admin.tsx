@@ -11,6 +11,7 @@ import { AdminHeader } from '@/components/admin/AdminHeader';
 import { PendingValidationsTab } from '@/components/admin/PendingValidationsTab';
 import { UsersManagementTab } from '@/components/admin/UsersManagementTab';
 import { ManualReleaseChecker } from '@/components/ManualReleaseChecker';
+import { GameStatusCleanupButton } from '@/components/GameStatusCleanupButton';
 import { useAdminUsers } from '@/hooks/useAdminUsers';
 
 const Admin = () => {
@@ -94,7 +95,13 @@ const Admin = () => {
                 </TabsContent>
 
                 <TabsContent value="releases" className="mt-6">
-                  <ManualReleaseChecker />
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-semibold text-white">Gestion des sorties</h3>
+                      <GameStatusCleanupButton />
+                    </div>
+                    <ManualReleaseChecker />
+                  </div>
                 </TabsContent>
               </Tabs>
             </CardContent>

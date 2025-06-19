@@ -8,7 +8,7 @@ import { GamesGrid } from '@/components/GamesGrid';
 import { NewReleasesSection } from '@/components/NewReleasesSection';
 import { useArtists } from '@/hooks/useArtists';
 import { useGames } from '@/hooks/useGames';
-import { UserStatus } from '@/components/UserStatus';
+import { UserProfile } from '@/components/UserProfile';
 import { useUserRoleContext } from '@/contexts/UserRoleContext';
 import { Button } from '@/components/ui/button';
 import { RoleGuard } from '@/components/RoleGuard';
@@ -117,7 +117,7 @@ export default function Index() {
                 )}
                 
                 {/* Profil utilisateur (maintenant à l'extrême droite) */}
-                <UserStatus />
+                <UserProfile />
               </div>
             </div>
           </div>
