@@ -67,7 +67,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Check for new game releases (simulé)
+    // Check for new game releases using Steam and RAWG APIs
     for (const game of games || []) {
       try {
         const gameReleases = await checkGameReleases(game);
@@ -246,20 +246,193 @@ async function checkSpotifyReleases(artist: Artist) {
 async function checkGameReleases(game: Game) {
   const releases = [];
   
-  // Simuler des mises à jour de jeux (2% de chance pour éviter le spam)
-  // Dans un vrai système, on intégrerait Steam API, Epic Games API, etc.
-  if (Math.random() < 0.02) {
-    const updateTypes = ['Mise à jour majeure', 'DLC', 'Patch', 'Extension'];
-    const randomType = updateTypes[Math.floor(Math.random() * updateTypes.length)];
+  try {
+    const steamApiKey = Deno.env.get('STEAM_WEB_API_KEY');
+    const rawgApiKey = Deno.env.get('RAWG_API_KEY');
+
+    if (!steamApiKey && !rawgApiKey) {
+      console.log('No game API keys configured, skipping game checks');
+      return releases;
+    }
+
+    // Extract Steam App ID from URL if it's a Steam game
+    if (game.platform.toLowerCase().includes('steam') && game.url.includes('store.steampowered.com')) {
+      const steamAppId = extractSteamAppId(game.url);
+      if (steamAppId && steamApiKey) {
+        const steamReleases = await checkSteamUpdates(game, steamAppId, steamApiKey);
+        releases.push(...steamReleases);
+      }
+    }
+
+    // Use RAWG API for general game information and updates
+    if (rawgApiKey) {
+      const rawgReleases = await checkRAWGUpdates(game, rawgApiKey);
+      releases.push(...rawgReleases);
+    }
+
+  } catch (error) {
+    console.error(`Error checking game releases for ${game.name}:`, error);
+  }
+
+  return releases;
+}
+
+function extractSteamAppId(url: string): string | null {
+  const match = url.match(/\/app\/(\d+)/);
+  return match ? match[1] : null;
+}
+
+async function checkSteamUpdates(game: Game, appId: string, apiKey: string) {
+  const releases = [];
+  
+  try {
+    // Get app details from Steam API
+    const appDetailsResponse = await fetch(`https://store.steampowered.com/api/appdetails?appids=${appId}`);
     
-    releases.push({
-      type: 'game' as const,
-      source_item_id: game.id,
-      title: `🎮 ${game.name} - ${randomType}`,
-      description: `${randomType} disponible sur ${game.platform}`,
-      platform_url: game.url,
-      user_id: game.user_id,
-    });
+    if (!appDetailsResponse.ok) {
+      throw new Error(`Steam API error: ${appDetailsResponse.status}`);
+    }
+
+    const appDetailsData = await appDetailsResponse.json();
+    const appData = appDetailsData[appId];
+
+    if (!appData?.success) {
+      console.log(`No Steam data found for app ${appId}`);
+      return releases;
+    }
+
+    const gameData = appData.data;
+    
+    // Check for recent updates (last 30 days)
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+    
+    // Get Steam news for the app to check for updates
+    const newsResponse = await fetch(`https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid=${appId}&count=10&maxlength=300&format=json`);
+    
+    if (newsResponse.ok) {
+      const newsData = await newsResponse.json();
+      
+      for (const newsItem of newsData.appnews?.newsitems || []) {
+        const newsDate = new Date(newsItem.date * 1000);
+        
+        if (newsDate >= thirtyDaysAgo && 
+            (newsItem.title.toLowerCase().includes('update') || 
+             newsItem.title.toLowerCase().includes('patch') ||
+             newsItem.title.toLowerCase().includes('hotfix'))) {
+          
+          // Check if we already have this update
+          const supabaseClient = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+          );
+
+          const { data: existing } = await supabaseClient
+            .from('new_releases')
+            .select('id')
+            .eq('source_item_id', game.id)
+            .eq('type', 'game')
+            .eq('user_id', game.user_id)
+            .ilike('title', `%${newsItem.title}%`)
+            .maybeSingle();
+
+          if (!existing) {
+            releases.push({
+              type: 'game' as const,
+              source_item_id: game.id,
+              title: `🎮 ${game.name} - ${newsItem.title}`,
+              description: `Mise à jour détectée le ${newsDate.toLocaleDateString('fr-FR')} sur Steam`,
+              image_url: gameData.header_image,
+              platform_url: newsItem.url || game.url,
+              user_id: game.user_id,
+            });
+          }
+        }
+      }
+    }
+
+  } catch (error) {
+    console.error(`Error checking Steam updates for ${game.name}:`, error);
+  }
+
+  return releases;
+}
+
+async function checkRAWGUpdates(game: Game, apiKey: string) {
+  const releases = [];
+  
+  try {
+    // Search for the game on RAWG
+    const searchResponse = await fetch(`https://api.rawg.io/api/games?key=${apiKey}&search=${encodeURIComponent(game.name)}&page_size=5`);
+    
+    if (!searchResponse.ok) {
+      throw new Error(`RAWG API error: ${searchResponse.status}`);
+    }
+
+    const searchData = await searchResponse.json();
+    const gameMatch = searchData.results?.find((g: any) => 
+      g.name.toLowerCase().includes(game.name.toLowerCase()) ||
+      game.name.toLowerCase().includes(g.name.toLowerCase())
+    );
+
+    if (!gameMatch) {
+      console.log(`No RAWG match found for game: ${game.name}`);
+      return releases;
+    }
+
+    // Get detailed game information
+    const gameDetailsResponse = await fetch(`https://api.rawg.io/api/games/${gameMatch.id}?key=${apiKey}`);
+    
+    if (!gameDetailsResponse.ok) {
+      return releases;
+    }
+
+    const gameDetails = await gameDetailsResponse.json();
+    
+    // Check for recent DLC or additions
+    const additionsResponse = await fetch(`https://api.rawg.io/api/games/${gameMatch.id}/additions?key=${apiKey}`);
+    
+    if (additionsResponse.ok) {
+      const additionsData = await additionsResponse.json();
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+      
+      for (const addition of additionsData.results || []) {
+        const releaseDate = addition.released ? new Date(addition.released) : null;
+        
+        if (releaseDate && releaseDate >= thirtyDaysAgo) {
+          // Check if we already have this DLC/addition
+          const supabaseClient = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+          );
+
+          const { data: existing } = await supabaseClient
+            .from('new_releases')
+            .select('id')
+            .eq('source_item_id', game.id)
+            .eq('type', 'game')
+            .eq('user_id', game.user_id)
+            .ilike('title', `%${addition.name}%`)
+            .maybeSingle();
+
+          if (!existing) {
+            releases.push({
+              type: 'game' as const,
+              source_item_id: game.id,
+              title: `🎮 ${game.name} - ${addition.name}`,
+              description: `Nouveau DLC/Extension sorti le ${releaseDate.toLocaleDateString('fr-FR')}`,
+              image_url: addition.background_image || gameDetails.background_image,
+              platform_url: game.url,
+              user_id: game.user_id,
+            });
+          }
+        }
+      }
+    }
+
+  } catch (error) {
+    console.error(`Error checking RAWG updates for ${game.name}:`, error);
   }
 
   return releases;
