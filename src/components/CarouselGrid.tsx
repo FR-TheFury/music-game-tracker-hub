@@ -12,13 +12,13 @@ import {
 interface CarouselGridProps {
   items: React.ReactNode[];
   className?: string;
-  itemsPerSlide?: number;
+  itemsPerView?: number;
 }
 
 export const CarouselGrid: React.FC<CarouselGridProps> = ({ 
   items, 
   className = '', 
-  itemsPerSlide = 3 
+  itemsPerView = 3 
 }) => {
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
@@ -27,26 +27,21 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
     return null;
   }
 
-  // Grouper les éléments par slides
-  const slides = [];
-  for (let i = 0; i < items.length; i += itemsPerSlide) {
-    slides.push(items.slice(i, i + itemsPerSlide));
-  }
-
   // Effet pour gérer les changements d'éléments
   useEffect(() => {
     if (!api) return;
 
-    // Si le slide actuel n'existe plus après suppression, aller au dernier slide disponible
-    if (current >= slides.length && slides.length > 0) {
-      api.scrollTo(slides.length - 1);
+    // Si l'item actuel n'existe plus après suppression, ajuster la position
+    if (current >= items.length && items.length > 0) {
+      const newPosition = Math.max(0, items.length - itemsPerView);
+      api.scrollTo(newPosition);
     }
 
     // Réinitialiser le carousel pour qu'il recalcule ses positions
     api.reInit();
-  }, [items.length, api, current, slides.length]);
+  }, [items.length, api, current, itemsPerView]);
 
-  // Effet pour suivre le slide actuel
+  // Effet pour suivre l'item actuel
   useEffect(() => {
     if (!api) return;
 
@@ -62,19 +57,31 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
     };
   }, [api]);
 
+  // Calculer le nombre total de positions possibles
+  const totalPositions = Math.max(1, items.length - itemsPerView + 1);
+  const canShowNavigation = items.length > itemsPerView;
+
   return (
     <div className={`relative ${className}`}>
-      <Carousel className="w-full" setApi={setApi}>
-        <CarouselContent>
-          {slides.map((slideItems, slideIndex) => (
-            <CarouselItem key={`slide-${slideIndex}-${slideItems.length}`}>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {slideItems}
-              </div>
+      <Carousel 
+        className="w-full" 
+        setApi={setApi}
+        opts={{
+          align: "start",
+          slidesToScroll: 1,
+        }}
+      >
+        <CarouselContent className="-ml-2 md:-ml-4">
+          {items.map((item, index) => (
+            <CarouselItem 
+              key={index} 
+              className={`pl-2 md:pl-4 basis-full md:basis-1/2 lg:basis-1/3`}
+            >
+              {item}
             </CarouselItem>
           ))}
         </CarouselContent>
-        {slides.length > 1 && (
+        {canShowNavigation && (
           <>
             <CarouselPrevious className="left-0 -translate-x-full" />
             <CarouselNext className="right-0 translate-x-full" />
@@ -82,9 +89,9 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
         )}
       </Carousel>
       
-      {slides.length > 1 && (
+      {canShowNavigation && totalPositions > 1 && (
         <div className="flex justify-center mt-4 space-x-2">
-          {slides.map((_, index) => (
+          {Array.from({ length: totalPositions }, (_, index) => (
             <button
               key={index}
               onClick={() => api?.scrollTo(index)}
