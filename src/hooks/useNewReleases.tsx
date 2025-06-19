@@ -23,14 +23,33 @@ export const useNewReleases = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  const cleanupExpiredReleases = async () => {
+    try {
+      console.log('Triggering automatic cleanup of expired notifications...');
+      const { data, error } = await supabase.functions.invoke('cleanup-expired-notifications');
+
+      if (error) {
+        console.error('Error calling cleanup function:', error);
+      } else {
+        console.log('Cleanup result:', data);
+      }
+    } catch (error) {
+      console.error('Error during cleanup:', error);
+    }
+  };
+
   const fetchReleases = async () => {
     if (!user) return;
 
     try {
+      // Nettoyer automatiquement les notifications expirées avant de récupérer les données
+      await cleanupExpiredReleases();
+
       const { data, error } = await supabase
         .from('new_releases')
         .select('*')
         .eq('user_id', user.id)
+        .gt('expires_at', new Date().toISOString()) // Ne récupérer que les notifications non expirées
         .order('detected_at', { ascending: false });
 
       if (error) throw error;
@@ -88,6 +107,11 @@ export const useNewReleases = () => {
 
   useEffect(() => {
     fetchReleases();
+    
+    // Nettoyer automatiquement toutes les heures
+    const cleanupInterval = setInterval(cleanupExpiredReleases, 60 * 60 * 1000);
+    
+    return () => clearInterval(cleanupInterval);
   }, [user]);
 
   return {
@@ -95,5 +119,6 @@ export const useNewReleases = () => {
     loading,
     removeRelease,
     refetch: fetchReleases,
+    cleanupExpiredReleases,
   };
 };

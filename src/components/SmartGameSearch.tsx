@@ -36,7 +36,7 @@ export const SmartGameSearch: React.FC<SmartGameSearchProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState<'name' | 'url'>('name');
-  const [searchPlatform, setSearchPlatform] = useState<'rawg' | 'steam'>('rawg');
+  const [searchPlatform, setSearchPlatform] = useState<'rawg' | 'steam'>('steam');
   const [enrichingGame, setEnrichingGame] = useState<string | null>(null);
   const { loading, results, searchByUrl, searchGames, detectPlatformFromUrl, enrichGameWithRawg } = useSmartGameSearch();
 
@@ -153,11 +153,11 @@ export const SmartGameSearch: React.FC<SmartGameSearchProps> = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-slate-800 border-slate-600">
-                <SelectItem value="rawg" className="text-white hover:bg-slate-700">
-                  RAWG
-                </SelectItem>
                 <SelectItem value="steam" className="text-white hover:bg-slate-700">
                   Steam
+                </SelectItem>
+                <SelectItem value="rawg" className="text-white hover:bg-slate-700">
+                  RAWG
                 </SelectItem>
               </SelectContent>
             </Select>
