@@ -7,6 +7,7 @@ import { ArrowLeft, ExternalLink, Calendar, Music, Users } from 'lucide-react';
 import { useArtists } from '@/hooks/useArtists';
 import { useSpotify } from '@/hooks/useSpotify';
 import { ArtistNewReleases } from '@/components/ArtistNewReleases';
+import { ArtistSoundCloudReleases } from '@/components/ArtistSoundCloudReleases';
 
 const ArtistDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -74,6 +75,18 @@ const ArtistDetail: React.FC = () => {
 
   const getMainImage = () => {
     return artist?.profileImageUrl || artist?.imageUrl || '/placeholder.svg';
+  };
+
+  // Fonction pour extraire l'URL SoundCloud de l'artiste
+  const getSoundCloudUrl = () => {
+    if (artist?.multipleUrls) {
+      const soundcloudLink = artist.multipleUrls.find((link: any) => 
+        link.platform?.toLowerCase().includes('soundcloud') || 
+        link.url?.toLowerCase().includes('soundcloud')
+      );
+      return soundcloudLink?.url;
+    }
+    return undefined;
   };
 
   if (loading) {
@@ -181,6 +194,11 @@ const ArtistDetail: React.FC = () => {
         <ArtistNewReleases 
           artistId={id!} 
           artistPlatforms={artist.multipleUrls || []} 
+        />
+
+        <ArtistSoundCloudReleases 
+          artistName={artist.name}
+          soundcloudUrl={getSoundCloudUrl()}
         />
 
         {spotifyReleases.length > 0 && (
