@@ -35,15 +35,19 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
   // Calculer le nombre réel d'éléments par vue selon l'écran
   const getActualItemsPerView = () => {
     if (isMobile) return 1;
-    if (window.innerWidth < 768) return 1; // md breakpoint
-    if (window.innerWidth < 1024) return 2; // lg breakpoint
-    return 3;
+    if (typeof window !== 'undefined') {
+      if (window.innerWidth < 768) return 1; // mobile
+      if (window.innerWidth < 1024) return 2; // tablet
+    }
+    return 3; // desktop
   };
 
-  // Calculer le nombre total de pages
+  // Calculer le nombre total de pages basé sur le nombre réel d'items
   const calculateTotalPages = () => {
     const actualItemsPerView = getActualItemsPerView();
-    return Math.ceil(items.length / actualItemsPerView);
+    const pages = Math.ceil(items.length / actualItemsPerView);
+    console.log(`Carousel: ${items.length} items, ${actualItemsPerView} per view, ${pages} pages`);
+    return pages;
   };
 
   // Effet pour gérer les changements d'éléments et repositionner le carousel
@@ -85,15 +89,23 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
     const handleResize = () => {
       const pages = calculateTotalPages();
       setTotalPages(pages);
+      
+      // Ajuster la position actuelle si nécessaire
+      if (api && current >= pages) {
+        const newPosition = Math.max(0, pages - 1);
+        api.scrollTo(newPosition);
+        setCurrent(newPosition);
+      }
     };
 
     window.addEventListener('resize', handleResize);
     handleResize(); // Calcul initial
 
     return () => window.removeEventListener('resize', handleResize);
-  }, [items.length]);
+  }, [items.length, api, current]);
 
-  const canShowNavigation = items.length > getActualItemsPerView();
+  const actualItemsPerView = getActualItemsPerView();
+  const canShowNavigation = items.length > actualItemsPerView;
 
   return (
     <div className={`relative select-none ${className}`}>
@@ -119,7 +131,7 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
         </CarouselContent>
       </Carousel>
       
-      {/* Points de navigation - un point par page basé sur le nombre d'items */}
+      {/* Points de navigation - un point par page calculé correctement */}
       {canShowNavigation && totalPages > 1 && (
         <div className="flex justify-center mt-4 space-x-2 select-none">
           {Array.from({ length: totalPages }, (_, pageIndex) => (
