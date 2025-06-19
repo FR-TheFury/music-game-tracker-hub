@@ -2,6 +2,7 @@
 import React from 'react';
 import { useNewReleases } from '@/hooks/useNewReleases';
 import { NewReleaseCard } from '@/components/NewReleaseCard';
+import { CarouselGrid } from '@/components/CarouselGrid';
 import { Loader2, Bell, Clock, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -97,11 +98,11 @@ export const NewReleasesSection: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {releases.map((release) => (
+        <CarouselGrid 
+          items={releases.map((release) => (
             <NewReleaseCard key={release.id} release={release} />
           ))}
-        </div>
+        />
       )}
     </section>
   );

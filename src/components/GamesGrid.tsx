@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { GameCard } from '@/components/GameCard';
+import { CarouselGrid } from '@/components/CarouselGrid';
 
 interface Game {
   id: string;
@@ -31,15 +32,13 @@ export const GamesGrid: React.FC<GamesGridProps> = ({ games, onDeleteGame }) => 
     );
   }
 
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      {games.map((game) => (
-        <GameCard 
-          key={game.id} 
-          game={game} 
-          onRemove={onDeleteGame} 
-        />
-      ))}
-    </div>
-  );
+  const gameCards = games.map((game) => (
+    <GameCard 
+      key={game.id} 
+      game={game} 
+      onRemove={onDeleteGame} 
+    />
+  ));
+
+  return <CarouselGrid items={gameCards} />;
 };

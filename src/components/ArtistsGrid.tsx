@@ -2,6 +2,7 @@
 import React from 'react';
 import { Artist } from '@/types/artist';
 import { ArtistCard } from '@/components/ArtistCard';
+import { CarouselGrid } from '@/components/CarouselGrid';
 
 interface ArtistsGridProps {
   artists: Artist[];
@@ -20,15 +21,13 @@ export const ArtistsGrid: React.FC<ArtistsGridProps> = ({ artists, onDeleteArtis
     );
   }
 
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      {artists.map((artist) => (
-        <ArtistCard 
-          key={artist.id} 
-          artist={artist} 
-          onRemove={onDeleteArtist} 
-        />
-      ))}
-    </div>
-  );
+  const artistCards = artists.map((artist) => (
+    <ArtistCard 
+      key={artist.id} 
+      artist={artist} 
+      onRemove={onDeleteArtist} 
+    />
+  ));
+
+  return <CarouselGrid items={artistCards} />;
 };
