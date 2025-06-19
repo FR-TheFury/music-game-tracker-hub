@@ -150,12 +150,15 @@ export type Database = {
         Row: {
           created_at: string | null
           discount: string | null
+          expected_release_date: string | null
           id: string
           image_url: string | null
+          last_status_check: string | null
           name: string
           platform: string
           price: string | null
           release_date: string | null
+          release_status: string | null
           updated_at: string | null
           url: string
           user_id: string
@@ -163,12 +166,15 @@ export type Database = {
         Insert: {
           created_at?: string | null
           discount?: string | null
+          expected_release_date?: string | null
           id?: string
           image_url?: string | null
+          last_status_check?: string | null
           name: string
           platform: string
           price?: string | null
           release_date?: string | null
+          release_status?: string | null
           updated_at?: string | null
           url: string
           user_id: string
@@ -176,12 +182,15 @@ export type Database = {
         Update: {
           created_at?: string | null
           discount?: string | null
+          expected_release_date?: string | null
           id?: string
           image_url?: string | null
+          last_status_check?: string | null
           name?: string
           platform?: string
           price?: string | null
           release_date?: string | null
+          release_status?: string | null
           updated_at?: string | null
           url?: string
           user_id?: string

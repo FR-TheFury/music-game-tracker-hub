@@ -13,6 +13,9 @@ interface Game {
   price?: string;
   discount?: string;
   releaseDate?: string;
+  releaseStatus?: string;
+  expectedReleaseDate?: string;
+  lastStatusCheck?: string;
   addedAt: string;
 }
 
@@ -43,6 +46,9 @@ export const useGames = () => {
         price: game.price,
         discount: game.discount,
         releaseDate: game.release_date,
+        releaseStatus: game.release_status,
+        expectedReleaseDate: game.expected_release_date,
+        lastStatusCheck: game.last_status_check,
         addedAt: game.created_at,
       }));
 
@@ -79,6 +85,8 @@ export const useGames = () => {
             price: gameData.price,
             discount: gameData.discount,
             release_date: gameData.releaseDate,
+            release_status: gameData.releaseStatus || 'unknown',
+            expected_release_date: gameData.expectedReleaseDate,
           },
         ])
         .select()
@@ -95,6 +103,9 @@ export const useGames = () => {
         price: data.price,
         discount: data.discount,
         releaseDate: data.release_date,
+        releaseStatus: data.release_status,
+        expectedReleaseDate: data.expected_release_date,
+        lastStatusCheck: data.last_status_check,
         addedAt: data.created_at,
       };
 
