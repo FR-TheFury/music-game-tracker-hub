@@ -9,11 +9,13 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { LogOut, User, Bell } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useProfile } from '@/hooks/useProfile';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export const UserProfile: React.FC = () => {
   const { user, signOut } = useAuth();
   const { userRole } = useUserRole();
   const { profile } = useProfile();
+  const isMobile = useIsMobile();
 
   const getRoleBadgeClass = (role: string | null) => {
     switch (role) {
@@ -27,6 +29,65 @@ export const UserProfile: React.FC = () => {
         return 'border-orange-400 text-orange-400 bg-orange-400/10 hover:bg-orange-400/20';
     }
   };
+
+  // Si on est sur mobile, afficher un bouton de déconnexion direct
+  if (isMobile) {
+    return (
+      <div className="flex items-center gap-2">
+        <Button
+          onClick={() => signOut()}
+          variant="outline"
+          size="sm"
+          className="border-red-500 text-red-500 hover:bg-red-500/10"
+        >
+          <LogOut className="h-4 w-4" />
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={profile?.avatar_url} alt="Profile" />
+                <AvatarFallback className="bg-[#FF6B9D]/20 text-[#FF6B9D]">
+                  {profile?.username?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                </AvatarFallback>
+              </Avatar>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56" align="end" forceMount>
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-none">
+                  {profile?.username || 'Utilisateur'}
+                </p>
+                <p className="text-xs leading-none text-muted-foreground">
+                  {user?.email}
+                </p>
+                <Badge 
+                  variant="outline" 
+                  className={getRoleBadgeClass(userRole)}
+                >
+                  {userRole}
+                </Badge>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link to="/profile" className="flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Profil
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/notifications" className="flex items-center gap-2">
+                <Bell className="h-4 w-4" />
+                Notifications
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    );
+  }
 
   return (
     <DropdownMenu>
