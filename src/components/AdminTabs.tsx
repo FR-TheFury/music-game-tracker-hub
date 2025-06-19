@@ -6,6 +6,7 @@ import { Shield, Users, Bell, Settings, RefreshCw } from 'lucide-react';
 import { PendingValidationsTab } from '@/components/admin/PendingValidationsTab';
 import { UsersManagementTab } from '@/components/admin/UsersManagementTab';
 import { ManualReleaseChecker } from '@/components/ManualReleaseChecker';
+import { GameStatusCleanupButton } from '@/components/GameStatusCleanupButton';
 import { useUserRoleContext } from '@/contexts/UserRoleContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdminUsers } from '@/hooks/useAdminUsers';
@@ -67,7 +68,13 @@ export const AdminTabs: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="releases" className="mt-6">
-            <ManualReleaseChecker />
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold text-white">Gestion des sorties</h3>
+                <GameStatusCleanupButton />
+              </div>
+              <ManualReleaseChecker />
+            </div>
           </TabsContent>
         </Tabs>
       </CardContent>
