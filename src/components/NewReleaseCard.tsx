@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -140,10 +141,9 @@ export const NewReleaseCard: React.FC<NewReleaseCardProps> = ({ release }) => {
         <div className="flex items-center justify-between">
           {release.platformUrl ? (
             <Button
-              variant="outline"
               size="sm"
               asChild
-              className="border-purple-500/30 text-purple-300 hover:bg-purple-500/10 hover:border-purple-400 bg-gradient-to-r from-purple-600/20 to-purple-700/20 shadow-lg hover:shadow-purple-500/20 transition-all duration-300"
+              className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white border border-purple-500 shadow-lg hover:shadow-purple-500/30 hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 font-medium"
             >
               <a href={release.platformUrl} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="h-4 w-4 mr-2" />
