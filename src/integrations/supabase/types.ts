@@ -373,6 +373,34 @@ export type Database = {
           approved_by: string
         }[]
       }
+      get_user_artists: {
+        Args: { target_user_id: string }
+        Returns: {
+          id: string
+          name: string
+          platform: string
+          url: string
+          image_url: string
+          spotify_id: string
+          followers_count: number
+          popularity: number
+          created_at: string
+        }[]
+      }
+      get_user_games: {
+        Args: { target_user_id: string }
+        Returns: {
+          id: string
+          name: string
+          platform: string
+          url: string
+          image_url: string
+          price: string
+          discount: string
+          release_date: string
+          created_at: string
+        }[]
+      }
       get_user_profile_data: {
         Args: { target_user_id: string }
         Returns: {
@@ -398,6 +426,15 @@ export type Database = {
       is_admin: {
         Args: { _user_id: string }
         Returns: boolean
+      }
+      search_users_by_username: {
+        Args: { search_term: string }
+        Returns: {
+          user_id: string
+          username: string
+          role: Database["public"]["Enums"]["user_role"]
+          created_at: string
+        }[]
       }
     }
     Enums: {

@@ -1,156 +1,199 @@
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Music, Gamepad2, Search, Shield } from 'lucide-react';
+import { AddArtistFormWrapper } from '@/components/AddArtistForm';
+import { AddGameFormWrapper } from '@/components/AddGameForm';
+import { ArtistsGrid } from '@/components/ArtistsGrid';
+import { GamesGrid } from '@/components/GamesGrid';
+import { NewReleasesSection } from '@/components/NewReleasesSection';
+import { useArtists } from '@/hooks/useArtists';
+import { useGames } from '@/hooks/useGames';
+import { UserStatus } from '@/components/UserStatus';
+import { useUserRoleContext } from '@/contexts/UserRoleContext';
+import { Button } from '@/components/ui/button';
+import { AdminTabs } from '@/components/AdminTabs';
+import { RoleGuard } from '@/components/RoleGuard';
+import { useNavigate } from 'react-router-dom';
 
-import { useAuth } from "@/hooks/useAuth";
-import { AuthPage } from "@/components/AuthPage";
-import { RoleGuard } from "@/components/RoleGuard";
-import { UserStatus } from "@/components/UserStatus";
-import { useUserRole } from "@/hooks/useUserRole";
-import { Music, Gamepad2, LogOut, Settings, Shield, Bell, User } from 'lucide-react';
-import { Button } from "@/components/ui/button";
-import { AddArtistFormWrapper } from "@/components/AddArtistFormWrapper";
-import { AddGameFormWrapper } from "@/components/AddGameFormWrapper";
-import { ArtistsGrid } from "@/components/ArtistsGrid";
-import { GamesGrid } from "@/components/GamesGrid";
-import { NewReleasesSection } from "@/components/NewReleasesSection";
-import { useNavigate } from "react-router-dom";
+export default function Index() {
+  const { artists, fetchArtists, deleteArtist } = useArtists();
+  const { games, fetchGames, deleteGame } = useGames();
+  const [loading, setLoading] = useState(false);
 
-const Index = () => {
-  const { user, loading, signOut } = useAuth();
-  const { userRole } = useUserRole();
+  const { userRole } = useUserRoleContext();
   const navigate = useNavigate();
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-3d-main">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#FF0751] rose-glow"></div>
-      </div>
-    );
-  }
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        fetchArtists(),
+        fetchGames()
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  if (!user) {
-    return <AuthPage onAuthSuccess={() => {}} />;
-  }
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleDeleteArtist = async (artistId: string) => {
+    try {
+      await deleteArtist(artistId);
+      await fetchArtists();
+    } catch (error) {
+      console.error("Error deleting artist:", error);
+    }
+  };
+
+  const handleDeleteGame = async (gameId: string) => {
+    try {
+      await deleteGame(gameId);
+      await fetchGames();
+    } catch (error) {
+      console.error("Error deleting game:", error);
+    }
+  };
 
   return (
     <RoleGuard>
-      <div className="min-h-screen bg-3d-main">
-        <header className="header-3d">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-[#FF0751] to-slate-900">
+        <header className="bg-gradient-to-r from-[#FF0751]/20 to-slate-800/90 backdrop-blur-sm border-b border-[#FF0751]/30 shadow-lg sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center">
                 <div className="p-2 rounded-full bg-gradient-to-r from-[#FF0751] to-[#FF3971] rose-glow">
                   <Music className="h-6 w-6 text-white" />
                 </div>
-                <div className="p-2 rounded-full bg-gradient-to-r from-[#FF6B9D] to-[#FFB3CD]">
-                  <Gamepad2 className="h-6 w-6 text-white" />
-                </div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF0751] to-[#FF6B9D] bg-clip-text text-transparent">
-                  Mon Dashboard
+                <h1 className="ml-3 text-xl font-bold bg-gradient-to-r from-[#FF0751] to-[#FF6B9D] bg-clip-text text-transparent">
+                  Artist & Game Tracker
                 </h1>
               </div>
               
               <div className="flex items-center gap-4">
-                <UserStatus />
+                {/* Bouton de recherche d'amis pour les viewers */}
+                {userRole === 'viewer' && (
+                  <Button
+                    onClick={() => navigate('/friends')}
+                    variant="outline"
+                    size="sm"
+                    className="border-[#FF0751] text-[#FF0751] hover:bg-[#FF0751]/10 transition-all duration-300"
+                  >
+                    <Search className="h-4 w-4 mr-2" />
+                    Rechercher des amis
+                  </Button>
+                )}
                 
-                {/* Navigation vers les paramètres de notification */}
-                <Button 
-                  onClick={() => navigate('/notifications')}
-                  variant="secondary-3d" 
-                  size="sm"
-                  className="rose-glow transform-none hover:transform-none"
-                >
-                  <div className="p-1 rounded-full bg-gradient-to-r from-[#FF6B9D] to-[#FFB3CD] mr-2">
-                    <Bell className="h-3 w-3 text-white" />
-                  </div>
-                  Notifications
-                </Button>
-
-                {/* Admin Panel Access */}
+                {/* Bouton admin pour les admins */}
                 {userRole === 'admin' && (
                   <Button
                     onClick={() => navigate('/admin')}
-                    variant="primary-3d"
+                    variant="outline"
                     size="sm"
-                    className="rose-glow"
+                    className="border-[#FF0751] text-[#FF0751] hover:bg-[#FF0751]/10 transition-all duration-300"
                   >
                     <Shield className="h-4 w-4 mr-2" />
                     Administration
                   </Button>
                 )}
-
-                {/* Navigation vers le profil utilisateur */}
-                <Button 
-                  onClick={() => navigate('/profile')}
-                  variant="secondary-3d" 
-                  size="sm"
-                >
-                  <User className="h-4 w-4 mr-2" />
-                  Mon Profil
-                </Button>
-
-                <span className="text-gray-300 text-sm">
-                  {user.email}
-                </span>
-                <Button 
-                  onClick={signOut}
-                  variant="ghost-3d" 
-                  size="sm"
-                  className="text-[#FF0751] hover:text-white"
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Déconnexion
-                </Button>
+                
+                <UserStatus />
               </div>
             </div>
           </div>
         </header>
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Section Nouvelles Sorties */}
-          <RoleGuard allowedRoles={['admin', 'editor', 'viewer']}>
+          <div className="space-y-8">
+            {/* Section Nouvelles Sorties */}
             <NewReleasesSection />
-          </RoleGuard>
-          
-          {/* Section Artistes */}
-          <RoleGuard allowedRoles={['admin', 'editor', 'viewer']}>
-            <section className="mb-12">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                  <div className="p-2 rounded-full bg-gradient-to-r from-[#FF0751] to-[#FFB3CD] rose-glow">
-                    <Music className="h-5 w-5 text-white" />
-                  </div>
-                  Mes Artistes
-                </h2>
-                <RoleGuard allowedRoles={['admin', 'editor']}>
-                  <AddArtistFormWrapper />
-                </RoleGuard>
-              </div>
-              
-              <ArtistsGrid />
-            </section>
-          </RoleGuard>
 
-          {/* Section Jeux */}
-          <RoleGuard allowedRoles={['admin', 'editor', 'viewer']}>
-            <section>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                  <div className="p-2 rounded-full bg-gradient-to-r from-[#FF6B9D] to-[#FFB3CD]">
-                    <Gamepad2 className="h-5 w-5 text-white" />
+            {/* Section Admin pour les admins uniquement */}
+            {userRole === 'admin' && <AdminTabs />}
+
+            {/* Message d'information pour les viewers */}
+            {userRole === 'viewer' && (
+              <Card className="bg-slate-800/90 border-slate-700">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3 p-4 bg-blue-500/10 border border-blue-400/20 rounded-lg">
+                    <Search className="h-5 w-5 text-blue-400" />
+                    <div>
+                      <p className="text-white font-medium">Mode Viewer</p>
+                      <p className="text-gray-300 text-sm">
+                        Vous pouvez consulter vos données et rechercher des amis pour voir leurs artistes et jeux favoris.
+                      </p>
+                    </div>
                   </div>
-                  Ma Liste de Souhaits
-                </h2>
-                <RoleGuard allowedRoles={['admin', 'editor']}>
-                  <AddGameFormWrapper />
-                </RoleGuard>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Formulaires d'ajout - cachés pour les viewers */}
+            {userRole !== 'viewer' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <Card className="bg-slate-800/90 border-[#FF0751]/30 shadow-2xl backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-white">
+                      <Music className="h-5 w-5" />
+                      Ajouter un Artiste
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <AddArtistFormWrapper />
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-slate-800/90 border-[#FF0751]/30 shadow-2xl backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-white">
+                      <Gamepad2 className="h-5 w-5" />
+                      Ajouter un Jeu
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <AddGameFormWrapper />
+                  </CardContent>
+                </Card>
               </div>
-              
-              <GamesGrid />
-            </section>
-          </RoleGuard>
+            )}
+
+            {/* Grilles d'affichage */}
+            <div className="space-y-8">
+              <Card className="bg-slate-800/90 border-[#FF0751]/30 shadow-2xl backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-white">
+                    <Music className="h-5 w-5" />
+                    Mes Artistes ({artists.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ArtistsGrid 
+                    artists={artists} 
+                    onDeleteArtist={userRole !== 'viewer' ? handleDeleteArtist : undefined} 
+                  />
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-800/90 border-[#FF0751]/30 shadow-2xl backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-white">
+                    <Gamepad2 className="h-5 w-5" />
+                    Ma Liste de Souhaits ({games.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <GamesGrid 
+                    games={games} 
+                    onDeleteGame={userRole !== 'viewer' ? handleDeleteGame : undefined} 
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </main>
       </div>
     </RoleGuard>
   );
-};
-
-export default Index;
+}
