@@ -1,5 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { Resend } from "npm:resend@2.0.0";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
@@ -19,7 +20,7 @@ interface Release {
 
 interface NotificationRequest {
   release: Release;
-  userEmail: string;
+  userId: string;
   userSettings: any;
 }
 
@@ -29,8 +30,30 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { release, userEmail, userSettings }: NotificationRequest = await req.json();
+    const { release, userId, userSettings }: NotificationRequest = await req.json();
 
+    console.log(`Processing release notification for user: ${userId}, release: ${release.title}`);
+
+    // Créer le client Supabase avec la clé de service pour accéder aux données auth
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+    // Récupérer l'email de l'utilisateur depuis la table auth.users
+    const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId)
+
+    if (userError) {
+      console.error('Error fetching user data:', userError)
+      throw new Error(`Unable to fetch user data: ${userError.message}`)
+    }
+
+    if (!userData?.user?.email) {
+      console.error('No email found for user:', userId)
+      throw new Error('User email not found')
+    }
+
+    const userEmail = userData.user.email
     console.log(`Sending release notification to ${userEmail} for: ${release.title}`);
 
     const typeIcon = release.type === 'artist' ? '🎵' : '🎮';
@@ -91,7 +114,8 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(JSON.stringify({ 
       success: true, 
       emailId: emailResponse.data?.id,
-      message: `Email sent to ${userEmail}` 
+      message: `Email sent to ${userEmail}`,
+      userId: userId
     }), {
       status: 200,
       headers: {
