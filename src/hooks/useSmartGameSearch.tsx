@@ -16,6 +16,8 @@ interface GameSearchResult {
   developer?: string;
   publisher?: string;
   rating?: number;
+  rawgUrl?: string;
+  shopUrl?: string;
 }
 
 export const useSmartGameSearch = () => {
@@ -35,6 +37,31 @@ export const useSmartGameSearch = () => {
     if (lowerUrl.includes('ubisoft.com')) return 'Ubisoft Store';
     if (lowerUrl.includes('battle.net')) return 'Battle.net';
     return 'Autre';
+  };
+
+  const searchRawgForGame = async (gameName: string): Promise<string | null> => {
+    try {
+      console.log('Searching RAWG for game:', gameName);
+      const { data, error } = await supabase.functions.invoke('search-games', {
+        body: { query: gameName, platform: 'rawg', searchType: 'name' }
+      });
+
+      if (error) throw error;
+
+      const rawgResults = data?.results || [];
+      if (rawgResults.length > 0) {
+        // Prendre le premier résultat RAWG (le plus pertinent)
+        const firstResult = rawgResults[0];
+        console.log('Found RAWG game:', firstResult.name, 'URL:', firstResult.url);
+        return firstResult.url;
+      }
+      
+      console.log('No RAWG results found for:', gameName);
+      return null;
+    } catch (error) {
+      console.error('Error searching RAWG:', error);
+      return null;
+    }
   };
 
   const searchGames = async (query: string, platform: 'rawg' | 'steam', searchType: 'name' | 'url'): Promise<GameSearchResult[]> => {
@@ -91,6 +118,16 @@ export const useSmartGameSearch = () => {
     return await searchGames(gameName, platform, 'name');
   };
 
+  const enrichGameWithRawg = async (game: GameSearchResult): Promise<GameSearchResult> => {
+    console.log('Enriching game with RAWG data:', game.name);
+    const rawgUrl = await searchRawgForGame(game.name);
+    
+    return {
+      ...game,
+      rawgUrl: rawgUrl || '',
+    };
+  };
+
   return {
     loading,
     results,
@@ -98,5 +135,6 @@ export const useSmartGameSearch = () => {
     searchByName,
     searchGames,
     detectPlatformFromUrl,
+    enrichGameWithRawg,
   };
 };

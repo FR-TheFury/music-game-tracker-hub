@@ -21,6 +21,8 @@ interface GameSearchResult {
   developer?: string;
   publisher?: string;
   rating?: number;
+  rawgUrl?: string;
+  shopUrl?: string;
 }
 
 interface SmartGameSearchProps {
@@ -35,7 +37,8 @@ export const SmartGameSearch: React.FC<SmartGameSearchProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState<'name' | 'url'>('name');
   const [searchPlatform, setSearchPlatform] = useState<'rawg' | 'steam'>('rawg');
-  const { loading, results, searchByUrl, searchGames, detectPlatformFromUrl } = useSmartGameSearch();
+  const [enrichingGame, setEnrichingGame] = useState<string | null>(null);
+  const { loading, results, searchByUrl, searchGames, detectPlatformFromUrl, enrichGameWithRawg } = useSmartGameSearch();
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -47,6 +50,25 @@ export const SmartGameSearch: React.FC<SmartGameSearchProps> = ({
       }
     } else {
       await searchGames(searchQuery, searchPlatform, 'name');
+    }
+  };
+
+  const handleSelectGame = async (game: GameSearchResult) => {
+    // Si c'est un jeu Steam et qu'il n'a pas de lien RAWG, on enrichit automatiquement
+    if (game.platform === 'Steam' && !game.rawgUrl) {
+      setEnrichingGame(game.name);
+      try {
+        const enrichedGame = await enrichGameWithRawg(game);
+        onSelectGame(enrichedGame);
+      } catch (error) {
+        console.error('Error enriching game with RAWG data:', error);
+        // En cas d'erreur, on sélectionne le jeu sans enrichissement
+        onSelectGame(game);
+      } finally {
+        setEnrichingGame(null);
+      }
+    } else {
+      onSelectGame(game);
     }
   };
 
@@ -182,11 +204,21 @@ export const SmartGameSearch: React.FC<SmartGameSearchProps> = ({
                       </div>
                       <Button
                         size="sm"
-                        onClick={() => onSelectGame(game)}
+                        onClick={() => handleSelectGame(game)}
+                        disabled={enrichingGame === game.name}
                         className="bg-blue-600 hover:bg-blue-700"
                       >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Sélectionner
+                        {enrichingGame === game.name ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            Recherche RAWG...
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-4 w-4 mr-1" />
+                            Sélectionner
+                          </>
+                        )}
                       </Button>
                     </div>
                   </div>

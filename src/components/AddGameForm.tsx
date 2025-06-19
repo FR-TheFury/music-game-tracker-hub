@@ -92,6 +92,7 @@ export const AddGameForm: React.FC<AddGameFormProps> = ({ onSubmit, onCancel }) 
   };
 
   const handleSmartSearchSelect = (game: any) => {
+    console.log('Game selected from smart search:', game);
     setFormData({
       name: game.name,
       platform: game.platform,
@@ -100,8 +101,8 @@ export const AddGameForm: React.FC<AddGameFormProps> = ({ onSubmit, onCancel }) 
       price: game.price || '',
       discount: game.discount || '',
       releaseDate: game.releaseDate || '',
-      rawgUrl: game.url.includes('rawg.io') ? game.url : '',
-      shopUrl: !game.url.includes('rawg.io') ? game.url : '',
+      rawgUrl: game.rawgUrl || '', // Le lien RAWG trouvé automatiquement
+      shopUrl: game.shopUrl || (game.url.includes('store.steampowered.com') ? game.url : ''),
     });
     setShowSmartSearch(false);
   };
