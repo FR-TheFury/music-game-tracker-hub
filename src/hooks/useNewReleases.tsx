@@ -84,16 +84,8 @@ export const useNewReleases = () => {
     try {
       console.log('Removing release with ID:', id);
       
-      // Mettre à jour l'état local IMMÉDIATEMENT pour un feedback instantané
-      const previousReleases = releases;
-      const updatedReleases = releases.filter(release => release.id !== id);
-      
-      console.log('Previous releases count:', previousReleases.length);
-      console.log('Updated releases count:', updatedReleases.length);
-      
-      setReleases(updatedReleases);
-      
-      // Ensuite faire l'appel à la base de données
+      // Faire directement l'appel à la base de données sans modifier l'état local
+      // La carte va se masquer via son état isRemoving
       const { error } = await supabase
         .from('new_releases')
         .delete()
@@ -101,12 +93,13 @@ export const useNewReleases = () => {
 
       if (error) {
         console.error('Error removing release from database:', error);
-        // Si erreur, restaurer l'état précédent
-        setReleases(previousReleases);
         throw error;
       }
       
       console.log('Release successfully removed from database');
+      
+      // Mettre à jour l'état local seulement après suppression réussie
+      setReleases(prevReleases => prevReleases.filter(release => release.id !== id));
       
       toast({
         title: "Notification supprimée",
@@ -119,6 +112,7 @@ export const useNewReleases = () => {
         description: "Impossible de supprimer la notification",
         variant: "destructive",
       });
+      throw error; // Re-throw pour que la carte puisse gérer l'erreur
     }
   };
 
