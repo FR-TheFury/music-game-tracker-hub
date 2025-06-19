@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -41,7 +41,7 @@ export const useSpotify = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const searchArtists = async (query: string): Promise<SpotifyArtist[]> => {
+  const searchArtists = useCallback(async (query: string): Promise<SpotifyArtist[]> => {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('get-spotify-artist-info', {
@@ -65,9 +65,9 @@ export const useSpotify = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
-  const getArtistDetails = async (spotifyId: string): Promise<{ artist: SpotifyArtist; releases: SpotifyRelease[] } | null> => {
+  const getArtistDetails = useCallback(async (spotifyId: string): Promise<{ artist: SpotifyArtist; releases: SpotifyRelease[] } | null> => {
     setLoading(true);
     try {
       console.log('Getting artist details for Spotify ID:', spotifyId);
@@ -94,7 +94,7 @@ export const useSpotify = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   return {
     searchArtists,
