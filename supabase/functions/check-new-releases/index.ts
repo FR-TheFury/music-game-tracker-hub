@@ -27,47 +27,62 @@ interface Game {
   last_status_check?: string;
 }
 
-// Fonction utilitaire pour créer un hash unique pour éviter les doublons
-function createReleaseHash(userId: string, sourceItemId: string, type: string, title: string): string {
-  const hashInput = `${userId}-${sourceItemId}-${type}-${title.replace(/[^\w\s]/gi, '').toLowerCase()}`;
-  return btoa(hashInput).replace(/[+=\/]/g, '');
+// Fonction améliorée pour créer un hash unique
+function createReleaseHash(userId: string, sourceItemId: string, type: string, title: string, releaseDate?: string): string {
+  // Nettoyer le titre de tous les caractères spéciaux et emojis
+  const cleanTitle = title.replace(/[^\w\s]/gi, '').toLowerCase().trim();
+  // Inclure la date de sortie si disponible pour éviter les doublons de releases avec le même nom
+  const dateStr = releaseDate ? new Date(releaseDate).toISOString().split('T')[0] : '';
+  const hashInput = `${userId}-${sourceItemId}-${type}-${cleanTitle}-${dateStr}`;
+  
+  // Utiliser un hash plus robuste
+  const encoder = new TextEncoder();
+  const data = encoder.encode(hashInput);
+  return btoa(String.fromCharCode(...data)).replace(/[+=\/]/g, '').substring(0, 32);
 }
 
-// Fonction utilitaire pour vérifier si un email a déjà été envoyé
-async function hasEmailBeenSent(supabaseClient: any, userId: string, releaseHash: string): Promise<boolean> {
-  const { data, error } = await supabaseClient
-    .from('email_sent_log')
+// Fonction améliorée pour vérifier les duplicatas
+async function isDuplicateRelease(supabaseClient: any, userId: string, sourceItemId: string, type: string, title: string, releaseDate?: string): Promise<boolean> {
+  const releaseHash = createReleaseHash(userId, sourceItemId, type, title, releaseDate);
+  
+  // Vérifier d'abord par hash
+  const { data: hashMatch } = await supabaseClient
+    .from('new_releases')
     .select('id')
-    .eq('user_id', userId)
-    .eq('release_hash', releaseHash)
-    .eq('email_type', 'release_notification')
+    .eq('unique_hash', releaseHash)
     .maybeSingle();
 
-  if (error) {
-    console.error('Error checking email sent log:', error);
-    return false;
+  if (hashMatch) {
+    console.log(`Duplicate found by hash: ${title} (${releaseHash})`);
+    return true;
   }
 
-  return data !== null;
-}
-
-// Fonction utilitaire pour vérifier le rate limiting (max 3 emails par heure)
-async function checkRateLimit(supabaseClient: any, userId: string): Promise<boolean> {
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-  
-  const { data, error } = await supabaseClient
-    .from('email_sent_log')
-    .select('id')
+  // Vérification de sécurité par similarité de titre
+  const { data: similarTitles } = await supabaseClient
+    .from('new_releases')
+    .select('id, title')
     .eq('user_id', userId)
-    .eq('email_type', 'release_notification')
-    .gte('sent_at', oneHourAgo);
+    .eq('source_item_id', sourceItemId)
+    .eq('type', type)
+    .gte('detected_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()); // Dernières 24h
 
-  if (error) {
-    console.error('Error checking rate limit:', error);
-    return false;
+  if (similarTitles && similarTitles.length > 0) {
+    const cleanNewTitle = title.replace(/[^\w\s]/gi, '').toLowerCase().trim();
+    
+    for (const existing of similarTitles) {
+      const cleanExistingTitle = existing.title.replace(/[^\w\s]/gi, '').toLowerCase().trim();
+      
+      // Calculer la similitude (simple comparaison)
+      if (cleanNewTitle === cleanExistingTitle || 
+          cleanNewTitle.includes(cleanExistingTitle) || 
+          cleanExistingTitle.includes(cleanNewTitle)) {
+        console.log(`Duplicate found by similarity: "${title}" vs "${existing.title}"`);
+        return true;
+      }
+    }
   }
 
-  return (data?.length || 0) < 3;
+  return false;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -76,14 +91,14 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    console.log('Starting GLOBAL automated new releases check...');
+    console.log('=== STARTING GLOBAL AUTOMATED RELEASES CHECK ===');
     
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // ÉTAPE 1: Nettoyer les notifications expirées AVANT de chercher de nouvelles sorties
+    // ÉTAPE 1: Nettoyer les notifications expirées
     console.log('Cleaning up expired notifications...');
     const { data: expiredNotifications, error: selectError } = await supabaseClient
       .from('new_releases')
@@ -102,87 +117,95 @@ const handler = async (req: Request): Promise<Response> => {
         console.error('Error deleting expired notifications:', deleteError);
       } else {
         console.log(`Successfully cleaned up ${expiredNotifications.length} expired notifications`);
-        expiredNotifications.forEach(notification => {
-          console.log(`Deleted notification: "${notification.title}" (detected: ${notification.detected_at})`);
-        });
       }
-    } else {
-      console.log('No expired notifications to clean');
     }
 
-    // ÉTAPE 2: Chercher de nouvelles sorties
+    // ÉTAPE 2: Récupérer les données avec limite de fréquence
     const { data: artists, error: artistsError } = await supabaseClient
       .from('artists')
-      .select('*');
+      .select('*')
+      .or(`last_updated.is.null,last_updated.lt.${new Date(Date.now() - 30 * 60 * 1000).toISOString()}`); // Seulement si pas mis à jour dans les 30 dernières minutes
 
     const { data: games, error: gamesError } = await supabaseClient
       .from('games')
-      .select('*');
+      .select('*')
+      .or(`last_status_check.is.null,last_status_check.lt.${new Date(Date.now() - 30 * 60 * 1000).toISOString()}`); // Seulement si pas vérifié dans les 30 dernières minutes
 
     if (artistsError || gamesError) {
       throw new Error(`Failed to fetch data: ${artistsError?.message || gamesError?.message}`);
     }
 
-    console.log(`Found ${artists?.length || 0} artists and ${games?.length || 0} games to check globally`);
+    console.log(`Found ${artists?.length || 0} artists and ${games?.length || 0} games to check`);
 
-    const allNewReleases = [];
+    const uniqueNewReleases = [];
 
-    // Check for new artist releases using Spotify API
+    // ÉTAPE 3: Vérifier les artistes avec contrôle de duplicatas
     for (const artist of artists || []) {
       if (artist.spotify_id) {
         try {
+          console.log(`Checking Spotify releases for ${artist.name}...`);
           const spotifyReleases = await checkSpotifyReleases(artist, supabaseClient);
-          allNewReleases.push(...spotifyReleases);
+          
+          for (const release of spotifyReleases) {
+            const isDuplicate = await isDuplicateRelease(
+              supabaseClient, 
+              release.user_id, 
+              release.source_item_id, 
+              release.type, 
+              release.title
+            );
+            
+            if (!isDuplicate) {
+              uniqueNewReleases.push(release);
+              console.log(`✅ New unique release: ${release.title}`);
+            } else {
+              console.log(`⚠️ Duplicate filtered: ${release.title}`);
+            }
+          }
         } catch (error) {
           console.error(`Error checking Spotify releases for ${artist.name}:`, error);
         }
       }
     }
 
-    // Check for new game releases and status changes
+    // ÉTAPE 4: Vérifier les jeux avec contrôle de duplicatas
     for (const game of games || []) {
       try {
+        console.log(`Checking game releases for ${game.name}...`);
         const gameReleases = await checkGameReleases(game, supabaseClient);
-        allNewReleases.push(...gameReleases);
+        
+        for (const release of gameReleases) {
+          const isDuplicate = await isDuplicateRelease(
+            supabaseClient, 
+            release.user_id, 
+            release.source_item_id, 
+            release.type, 
+            release.title
+          );
+          
+          if (!isDuplicate) {
+            uniqueNewReleases.push(release);
+            console.log(`✅ New unique game release: ${release.title}`);
+          } else {
+            console.log(`⚠️ Duplicate game release filtered: ${release.title}`);
+          }
+        }
       } catch (error) {
         console.error(`Error checking game releases for ${game.name}:`, error);
       }
     }
 
-    console.log(`Found ${allNewReleases.length} potential new releases globally`);
+    console.log(`=== SUMMARY: Found ${uniqueNewReleases.length} unique new releases ===`);
 
-    // ÉTAPE 3: Filtrer les doublons et insérer les nouvelles releases
-    const uniqueReleases = [];
-    const releasesToInsert = [];
+    // ÉTAPE 5: Insérer les nouvelles releases uniques
+    if (uniqueNewReleases.length > 0) {
+      const releasesToInsert = uniqueNewReleases.map(release => ({
+        ...release,
+        unique_hash: createReleaseHash(release.user_id, release.source_item_id, release.type, release.title),
+        detected_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      }));
 
-    for (const release of allNewReleases) {
-      const releaseHash = createReleaseHash(release.user_id, release.source_item_id, release.type, release.title);
-      
-      // Vérifier si cette release existe déjà avec ce hash
-      const { data: existingRelease } = await supabaseClient
-        .from('new_releases')
-        .select('id')
-        .eq('unique_hash', releaseHash)
-        .maybeSingle();
-
-      if (!existingRelease) {
-        const releaseWithHash = {
-          ...release,
-          unique_hash: releaseHash,
-          detected_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-        };
-        
-        releasesToInsert.push(releaseWithHash);
-        uniqueReleases.push(releaseWithHash);
-        console.log(`New unique release detected: ${release.title} (hash: ${releaseHash})`);
-      } else {
-        console.log(`Duplicate release filtered out: ${release.title} (hash: ${releaseHash})`);
-      }
-    }
-
-    // Insérer les nouvelles releases uniques
-    if (releasesToInsert.length > 0) {
       const { error: insertError } = await supabaseClient
         .from('new_releases')
         .insert(releasesToInsert);
@@ -192,43 +215,29 @@ const handler = async (req: Request): Promise<Response> => {
         throw insertError;
       }
 
-      console.log(`Successfully inserted ${releasesToInsert.length} unique new releases globally`);
+      console.log(`✅ Successfully inserted ${releasesToInsert.length} unique new releases`);
 
-      // ÉTAPE 4: Grouper les releases par utilisateur et envoyer UN email par utilisateur
-      const releasesByUser = new Map<string, typeof uniqueReleases>();
+      // ÉTAPE 6: Envoyer les notifications (groupées par utilisateur)
+      const releasesByUser = new Map<string, typeof uniqueNewReleases>();
       
-      for (const release of uniqueReleases) {
+      for (const release of uniqueNewReleases) {
         if (!releasesByUser.has(release.user_id)) {
           releasesByUser.set(release.user_id, []);
         }
         releasesByUser.get(release.user_id)!.push(release);
       }
 
-      console.log(`Processing notifications for ${releasesByUser.size} unique users`);
-
-      // ÉTAPE 5: Envoyer les notifications avec contrôles anti-spam
       for (const [userId, userReleases] of releasesByUser) {
         try {
-          console.log(`Processing notifications for user: ${userId} (${userReleases.length} releases)`);
-          
-          // Vérifier le rate limiting
-          const canSendEmail = await checkRateLimit(supabaseClient, userId);
-          if (!canSendEmail) {
-            console.log(`Rate limit exceeded for user ${userId}, skipping email notification`);
-            continue;
-          }
-
           // Récupérer les paramètres de notification
-          let { data: settings, error: settingsError } = await supabaseClient
+          let { data: settings } = await supabaseClient
             .from('notification_settings')
             .select('*')
             .eq('user_id', userId)
             .maybeSingle();
 
-          if (settingsError && settingsError.code === 'PGRST116') {
-            console.log(`No notification settings found for user ${userId}, creating default settings`);
-            
-            const { data: newSettings, error: createError } = await supabaseClient
+          if (!settings) {
+            const { data: newSettings } = await supabaseClient
               .from('notification_settings')
               .insert({
                 user_id: userId,
@@ -239,77 +248,46 @@ const handler = async (req: Request): Promise<Response> => {
               })
               .select()
               .single();
-
-            if (createError) {
-              console.error('Failed to create default notification settings:', createError);
-              continue;
-            }
-
             settings = newSettings;
-          } else if (settingsError) {
-            console.error('Error fetching notification settings:', settingsError);
-            continue;
           }
 
           if (settings?.email_notifications_enabled && settings?.notification_frequency === 'immediate') {
-            // Filtrer selon les préférences utilisateur
             const filteredReleases = userReleases.filter(release => 
               (release.type === 'artist' && settings.artist_notifications_enabled) ||
               (release.type === 'game' && settings.game_notifications_enabled)
             );
 
             if (filteredReleases.length > 0) {
-              // Créer un hash pour ce groupe de releases
-              const groupHash = createReleaseHash(userId, 'batch', 'digest', 
-                filteredReleases.map(r => r.title).join('|'));
-
-              // Vérifier si ce digest a déjà été envoyé
-              const alreadySent = await hasEmailBeenSent(supabaseClient, userId, groupHash);
+              console.log(`Sending digest email to user ${userId} for ${filteredReleases.length} releases`);
               
-              if (!alreadySent) {
-                console.log(`Sending digest email to user ${userId} for ${filteredReleases.length} releases`);
-                
-                // Envoyer UN seul email digest avec toutes les releases
-                const { error: emailError } = await supabaseClient.functions.invoke('send-release-notification', {
-                  body: { 
-                    releases: filteredReleases, // Passer toutes les releases en une fois
-                    userId: userId,
-                    userSettings: settings,
-                    isDigest: true,
-                    groupHash: groupHash
-                  }
-                });
-
-                if (emailError) {
-                  console.error('Failed to send digest email notification:', emailError);
-                } else {
-                  console.log(`Digest email sent successfully for user ${userId}`);
+              const { error: emailError } = await supabaseClient.functions.invoke('send-release-notification', {
+                body: { 
+                  releases: filteredReleases,
+                  userId: userId,
+                  userSettings: settings,
+                  isDigest: true
                 }
+              });
+
+              if (emailError) {
+                console.error('Failed to send digest email notification:', emailError);
               } else {
-                console.log(`Digest already sent for user ${userId}, skipping`);
+                console.log(`✅ Digest email sent successfully for user ${userId}`);
               }
-            } else {
-              console.log(`No relevant releases for user ${userId} based on preferences`);
             }
-          } else {
-            console.log(`Email notifications disabled or not immediate for user ${userId}`);
           }
-          
         } catch (emailError) {
           console.error(`Failed to process email notifications for user ${userId}:`, emailError);
         }
       }
-    } else {
-      console.log('No new unique releases found to process');
     }
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        newReleasesFound: uniqueReleases.length,
-        duplicatesFiltered: allNewReleases.length - uniqueReleases.length,
+        newReleasesFound: uniqueNewReleases.length,
         cleanedExpiredNotifications: expiredNotifications?.length || 0,
-        message: `Global automated check completed: found ${uniqueReleases.length} new unique releases, filtered ${allNewReleases.length - uniqueReleases.length} duplicates, cleaned ${expiredNotifications?.length || 0} expired notifications`,
+        message: `Global check completed: ${uniqueNewReleases.length} new unique releases found`,
         processedArtists: artists?.length || 0,
         processedGames: games?.length || 0,
         timestamp: new Date().toISOString()
@@ -321,7 +299,7 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
   } catch (error) {
-    console.error('Error in GLOBAL automated check-new-releases function:', error);
+    console.error('Error in global check-new-releases function:', error);
     return new Response(
       JSON.stringify({ 
         error: error.message,
@@ -335,6 +313,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
+// Helper functions
 async function checkSpotifyReleases(artist: Artist, supabaseClient: any) {
   const releases = [];
   
@@ -381,29 +360,23 @@ async function checkSpotifyReleases(artist: Artist, supabaseClient: any) {
       const releaseDate = new Date(album.release_date);
       
       if (releaseDate >= thirtyDaysAgo) {
-        // Créer le hash pour vérifier les doublons
-        const releaseHash = createReleaseHash(artist.user_id, artist.id, 'artist', `${artist.name} - ${album.name}`);
-        
-        // Vérifier si cette release existe déjà
-        const { data: existing } = await supabaseClient
-          .from('new_releases')
-          .select('id')
-          .eq('unique_hash', releaseHash)
-          .maybeSingle();
-
-        if (!existing) {
-          releases.push({
-            type: 'artist' as const,
-            source_item_id: artist.id,
-            title: `🎵 ${artist.name} - ${album.name}`,
-            description: `Nouveau ${album.album_type === 'single' ? 'single' : 'album'} sorti le ${releaseDate.toLocaleDateString('fr-FR')} sur Spotify`,
-            image_url: album.images?.[0]?.url,
-            platform_url: album.external_urls?.spotify,
-            user_id: artist.user_id,
-          });
-        }
+        releases.push({
+          type: 'artist' as const,
+          source_item_id: artist.id,
+          title: `🎵 ${artist.name} - ${album.name}`,
+          description: `Nouveau ${album.album_type === 'single' ? 'single' : 'album'} sorti le ${releaseDate.toLocaleDateString('fr-FR')} sur Spotify`,
+          image_url: album.images?.[0]?.url,
+          platform_url: album.external_urls?.spotify,
+          user_id: artist.user_id,
+        });
       }
     }
+
+    // Mettre à jour le timestamp de dernière vérification
+    await supabaseClient
+      .from('artists')
+      .update({ last_updated: new Date().toISOString() })
+      .eq('id', artist.id);
 
   } catch (error) {
     console.error(`Error checking Spotify for artist ${artist.name}:`, error);
@@ -421,9 +394,8 @@ async function checkGameReleases(game: Game, supabaseClient: any) {
 
     console.log(`Checking game releases for: ${game.name}`);
 
-    // Only check Steam if we have the API key and it's a Steam game
+    // Steam checks
     if (game.platform.toLowerCase().includes('steam') && steamApiKey) {
-      console.log(`Checking Steam API for ${game.name}`);
       const steamAppId = extractSteamAppId(game.url);
       if (steamAppId) {
         try {
@@ -437,9 +409,8 @@ async function checkGameReleases(game: Game, supabaseClient: any) {
       }
     }
 
-    // Only check RAWG if we have the API key
+    // RAWG checks
     if (rawgApiKey) {
-      console.log(`Checking RAWG API for ${game.name}`);
       try {
         const rawgData = await checkRAWGStatus(game, rawgApiKey, supabaseClient);
         if (rawgData.release) {
@@ -450,23 +421,16 @@ async function checkGameReleases(game: Game, supabaseClient: any) {
       }
     }
 
-    // Update game status in database if needed
-    if (releases.length > 0) {
-      const updateData: any = {
-        last_status_check: new Date().toISOString()
-      };
-
-      await supabaseClient
-        .from('games')
-        .update(updateData)
-        .eq('id', game.id);
-    }
+    // Mettre à jour le timestamp de dernière vérification
+    await supabaseClient
+      .from('games')
+      .update({ last_status_check: new Date().toISOString() })
+      .eq('id', game.id);
 
   } catch (error) {
     console.error(`Error checking game releases for ${game.name}:`, error);
   }
 
-  console.log(`Generated ${releases.length} game release(s) for ${game.name}`);
   return releases;
 }
 
@@ -489,14 +453,11 @@ async function checkSteamStatus(game: Game, appId: string, apiKey: string, supab
     const appData = appDetailsData[appId];
 
     if (!appData?.success) {
-      console.log(`No Steam data found for app ${appId}`);
       return { release };
     }
 
     const gameData = appData.data;
     const previousStatus = game.release_status || 'unknown';
-    
-    // Check for release status changes
     const currentStatus = gameData.coming_soon === false ? 'released' : 'coming_soon';
     
     if (previousStatus !== currentStatus && currentStatus === 'released') {
@@ -511,32 +472,20 @@ async function checkSteamStatus(game: Game, appId: string, apiKey: string, supab
       };
     }
 
-    // Check for price changes or promotions
+    // Vérifier les promotions (seulement si pas de release)
     if (gameData.price_overview && !release) {
       const currentDiscount = gameData.price_overview.discount_percent;
       
-      // If there's a significant discount (>= 20%)
       if (currentDiscount >= 20) {
-        const releaseHash = createReleaseHash(game.user_id, game.id, 'game', `${game.name} - Promotion`);
-        
-        const { data: existing } = await supabaseClient
-          .from('new_releases')
-          .select('id')
-          .eq('unique_hash', releaseHash)
-          .maybeSingle();
-
-        if (!existing) {
-          console.log(`Promotion detected for ${game.name}: ${currentDiscount}% off`);
-          release = {
-            type: 'game' as const,
-            source_item_id: game.id,
-            title: `💰 ${game.name} - Promotion`,
-            description: `${game.name} est en promotion à ${currentDiscount}% de réduction ! Prix : ${gameData.price_overview.final_formatted}`,
-            image_url: gameData.header_image,
-            platform_url: game.url,
-            user_id: game.user_id,
-          };
-        }
+        release = {
+          type: 'game' as const,
+          source_item_id: game.id,
+          title: `💰 ${game.name} - Promotion`,
+          description: `${game.name} est en promotion à ${currentDiscount}% de réduction ! Prix : ${gameData.price_overview.final_formatted}`,
+          image_url: gameData.header_image,
+          platform_url: game.url,
+          user_id: game.user_id,
+        };
       }
     }
 
@@ -564,13 +513,10 @@ async function checkRAWGStatus(game: Game, apiKey: string, supabaseClient: any) 
     );
 
     if (!gameMatch) {
-      console.log(`No RAWG match found for game: ${game.name}`);
       return { release };
     }
 
     const previousStatus = game.release_status || 'unknown';
-    
-    // Check for release status changes
     const currentStatus = gameMatch.released && gameMatch.released !== '' ? 'released' : 'coming_soon';
     
     if (previousStatus !== currentStatus && currentStatus === 'released') {
@@ -585,44 +531,6 @@ async function checkRAWGStatus(game: Game, apiKey: string, supabaseClient: any) 
         platform_url: game.url,
         user_id: game.user_id,
       };
-    }
-
-    // Check for recent DLC or additions if no release
-    if (!release) {
-      const additionsResponse = await fetch(`https://api.rawg.io/api/games/${gameMatch.id}/additions?key=${apiKey}`);
-      
-      if (additionsResponse.ok) {
-        const additionsData = await additionsResponse.json();
-        const recentAddition = additionsData.results?.find((addition: any) => {
-          if (!addition.released) return false;
-          const releaseDate = new Date(addition.released);
-          const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-          return releaseDate >= thirtyDaysAgo;
-        });
-
-        if (recentAddition) {
-          const releaseHash = createReleaseHash(game.user_id, game.id, 'game', `${game.name} - ${recentAddition.name}`);
-          
-          const { data: existing } = await supabaseClient
-            .from('new_releases')
-            .select('id')
-            .eq('unique_hash', releaseHash)
-            .maybeSingle();
-
-          if (!existing) {
-            console.log(`Recent DLC found for ${game.name}: ${recentAddition.name}`);
-            release = {
-              type: 'game' as const,
-              source_item_id: game.id,
-              title: `🎮 ${game.name} - ${recentAddition.name}`,
-              description: `Nouveau contenu disponible: ${recentAddition.name}`,
-              image_url: recentAddition.background_image || gameMatch.background_image,
-              platform_url: game.url,
-              user_id: game.user_id,
-            };
-          }
-        }
-      }
     }
 
   } catch (error) {
