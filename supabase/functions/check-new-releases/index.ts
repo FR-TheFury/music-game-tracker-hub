@@ -31,7 +31,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    console.log('Starting new releases check...');
+    console.log('Starting automated new releases check...');
     
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -67,7 +67,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Check for new game releases (simplified - could integrate with Steam API)
+    // Check for new game releases (simulé)
     for (const game of games || []) {
       try {
         const gameReleases = await checkGameReleases(game);
@@ -91,22 +91,39 @@ const handler = async (req: Request): Promise<Response> => {
 
       console.log(`Successfully inserted ${newReleases.length} new releases`);
 
-      // Send email notifications for users with immediate notifications enabled
+      // Send email notifications for users with notifications enabled
       for (const release of newReleases) {
         try {
+          // Get user's notification settings
           const { data: settings } = await supabaseClient
             .from('notification_settings')
             .select('*')
             .eq('user_id', release.user_id)
             .single();
 
-          if (settings?.email_notifications_enabled && settings?.notification_frequency === 'immediate') {
-            await supabaseClient.functions.invoke('send-release-notification', {
-              body: { release, userSettings: settings }
+          // Get user's email from auth.users
+          const { data: { user }, error: userError } = await supabaseClient.auth.admin.getUserById(release.user_id);
+          
+          if (user && settings?.email_notifications_enabled && settings?.notification_frequency === 'immediate') {
+            console.log(`Sending email notification to ${user.email} for release: ${release.title}`);
+            
+            // Call the email sending function
+            const { error: emailError } = await supabaseClient.functions.invoke('send-release-notification', {
+              body: { 
+                release, 
+                userEmail: user.email,
+                userSettings: settings 
+              }
             });
+
+            if (emailError) {
+              console.error('Failed to send email notification:', emailError);
+            } else {
+              console.log(`Email sent successfully to ${user.email}`);
+            }
           }
         } catch (emailError) {
-          console.error('Failed to send email notification:', emailError);
+          console.error('Failed to process email notification:', emailError);
         }
       }
     }
@@ -115,9 +132,10 @@ const handler = async (req: Request): Promise<Response> => {
       JSON.stringify({ 
         success: true, 
         newReleasesFound: newReleases.length,
-        message: `Checked releases, found ${newReleases.length} new releases`,
+        message: `Automated check completed: found ${newReleases.length} new releases`,
         processedArtists: artists?.length || 0,
-        processedGames: games?.length || 0
+        processedGames: games?.length || 0,
+        timestamp: new Date().toISOString()
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -126,9 +144,12 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
   } catch (error) {
-    console.error('Error in check-new-releases function:', error);
+    console.error('Error in automated check-new-releases function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        timestamp: new Date().toISOString()
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
@@ -199,7 +220,7 @@ async function checkSpotifyReleases(artist: Artist) {
           .eq('type', 'artist')
           .eq('user_id', artist.user_id)
           .ilike('title', `%${album.name}%`)
-          .single();
+          .maybeSingle();
 
         if (!existing) {
           releases.push({
@@ -225,9 +246,9 @@ async function checkSpotifyReleases(artist: Artist) {
 async function checkGameReleases(game: Game) {
   const releases = [];
   
-  // Simuler des mises à jour de jeux (5% de chance)
+  // Simuler des mises à jour de jeux (2% de chance pour éviter le spam)
   // Dans un vrai système, on intégrerait Steam API, Epic Games API, etc.
-  if (Math.random() < 0.05) {
+  if (Math.random() < 0.02) {
     const updateTypes = ['Mise à jour majeure', 'DLC', 'Patch', 'Extension'];
     const randomType = updateTypes[Math.floor(Math.random() * updateTypes.length)];
     
