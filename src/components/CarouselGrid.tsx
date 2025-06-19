@@ -100,15 +100,6 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
 
   const canShowNavigation = items.length > getActualItemsPerView();
 
-  // Fonction pour naviguer vers un élément spécifique
-  const goToItem = (itemIndex: number) => {
-    if (!api) return;
-    
-    const actualItemsPerView = getActualItemsPerView();
-    const slideIndex = Math.floor(itemIndex / actualItemsPerView);
-    api.scrollTo(slideIndex);
-  };
-
   return (
     <div className={`relative select-none ${className}`}>
       <Carousel 
@@ -133,27 +124,21 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
         </CarouselContent>
       </Carousel>
       
-      {/* Points de navigation - un point par élément */}
-      {canShowNavigation && items.length > 1 && (
+      {/* Points de navigation - un point par page */}
+      {canShowNavigation && slidesCount > 1 && (
         <div className="flex justify-center mt-4 space-x-2 select-none">
-          {items.map((_, index) => {
-            const actualItemsPerView = getActualItemsPerView();
-            const slideIndex = Math.floor(index / actualItemsPerView);
-            const isActive = slideIndex === current;
-            
-            return (
-              <button
-                key={index}
-                onClick={() => goToItem(index)}
-                className={`w-2 h-2 rounded-full transition-all duration-200 select-none ${
-                  isActive
-                    ? 'bg-gray-300 opacity-100' 
-                    : 'bg-gray-400 opacity-50 hover:opacity-70'
-                }`}
-                style={{ userSelect: 'none' }}
-              />
-            );
-          })}
+          {Array.from({ length: slidesCount }, (_, pageIndex) => (
+            <button
+              key={pageIndex}
+              onClick={() => api?.scrollTo(pageIndex)}
+              className={`w-2 h-2 rounded-full transition-all duration-200 select-none ${
+                pageIndex === current
+                  ? 'bg-gray-300 opacity-100' 
+                  : 'bg-gray-400 opacity-50 hover:opacity-70'
+              }`}
+              style={{ userSelect: 'none' }}
+            />
+          ))}
         </div>
       )}
     </div>
