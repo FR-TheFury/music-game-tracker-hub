@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface SoundCloudArtist {
@@ -51,7 +50,7 @@ export const useSoundCloud = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const makeRequest = async (requestBody: any): Promise<any> => {
+  const makeRequest = useCallback(async (requestBody: any): Promise<any> => {
     try {
       console.log('SoundCloud request:', requestBody);
       
@@ -74,9 +73,9 @@ export const useSoundCloud = () => {
       console.error('SoundCloud request failed:', error);
       throw error;
     }
-  };
+  }, []);
 
-  const searchArtists = async (query: string): Promise<SoundCloudArtist[]> => {
+  const searchArtists = useCallback(async (query: string): Promise<SoundCloudArtist[]> => {
     if (!query.trim()) return [];
     
     setLoading(true);
@@ -99,15 +98,13 @@ export const useSoundCloud = () => {
       const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
       setError(errorMessage);
       
-      // Retourner un tableau vide plutôt que de lancer l'erreur
-      // pour permettre à l'application de continuer à fonctionner
       return [];
     } finally {
       setLoading(false);
     }
-  };
+  }, [makeRequest]);
 
-  const getArtistInfo = async (artistUrl: string): Promise<SoundCloudArtist | null> => {
+  const getArtistInfo = useCallback(async (artistUrl: string): Promise<SoundCloudArtist | null> => {
     if (!artistUrl) return null;
     
     setLoading(true);
@@ -133,9 +130,9 @@ export const useSoundCloud = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [makeRequest]);
 
-  const getArtistTracks = async (artistUrl: string, limit: number = 10): Promise<SoundCloudTrack[]> => {
+  const getArtistTracks = useCallback(async (artistUrl: string, limit: number = 10): Promise<SoundCloudTrack[]> => {
     if (!artistUrl) return [];
     
     setLoading(true);
@@ -162,9 +159,9 @@ export const useSoundCloud = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [makeRequest]);
 
-  const getArtistReleases = async (artistQuery: string, artistUrl?: string, limit: number = 10): Promise<SoundCloudRelease[]> => {
+  const getArtistReleases = useCallback(async (artistQuery: string, artistUrl?: string, limit: number = 10): Promise<SoundCloudRelease[]> => {
     setLoading(true);
     setError(null);
     
@@ -190,9 +187,9 @@ export const useSoundCloud = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [makeRequest]);
 
-  const getPlaybackStats = async (artistQuery: string, artistUrl?: string): Promise<SoundCloudStats | null> => {
+  const getPlaybackStats = useCallback(async (artistQuery: string, artistUrl?: string): Promise<SoundCloudStats | null> => {
     setLoading(true);
     setError(null);
     
@@ -223,7 +220,7 @@ export const useSoundCloud = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [makeRequest]);
 
   return {
     searchArtists,

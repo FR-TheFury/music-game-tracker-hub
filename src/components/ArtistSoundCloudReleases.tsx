@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +29,9 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
   const [isServiceAvailable, setIsServiceAvailable] = useState(true);
   const { getArtistReleases, loading, error } = useSoundCloud();
 
+  // Mémoriser la clé de cache pour éviter les appels répétés
+  const cacheKey = useMemo(() => `${artistName}-${soundcloudUrl || ''}`, [artistName, soundcloudUrl]);
+
   useEffect(() => {
     const fetchReleases = async () => {
       if (!artistName) return;
@@ -42,6 +44,7 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
         if (soundcloudReleases.length === 0) {
           console.log('Aucune sortie SoundCloud trouvée pour', artistName);
           setIsServiceAvailable(true);
+          setReleases([]);
           return;
         }
         
@@ -66,7 +69,7 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
     };
 
     fetchReleases();
-  }, [artistName, soundcloudUrl, getArtistReleases]);
+  }, [cacheKey, getArtistReleases]); // Utiliser cacheKey au lieu de artistName et soundcloudUrl séparément
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('fr-FR', {
