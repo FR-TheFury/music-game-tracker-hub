@@ -16,18 +16,19 @@ const ArtistDetail: React.FC = () => {
   const { getArtistDetails } = useSpotify();
   
   const [artist, setArtist] = useState<any>(null);
-  const [releases, setReleases] = useState<any[]>([]);
   const [spotifyReleases, setSpotifyReleases] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     const loadArtistData = async () => {
       if (!id) {
         setLoading(false);
+        setNotFound(true);
         return;
       }
 
-      // Attendre que les artistes soient chargés
+      // Si les artistes sont encore en cours de chargement, attendre
       if (artistsLoading) {
         return;
       }
@@ -39,17 +40,21 @@ const ArtistDetail: React.FC = () => {
       console.log('Found artist:', foundArtist);
       
       if (!foundArtist) {
-        console.log('Artist not found in list, waiting...');
+        console.log('Artist not found in list');
         setLoading(false);
+        setNotFound(true);
         return;
       }
       
       setArtist(foundArtist);
+      setNotFound(false);
 
+      // Charger les données Spotify si disponibles
       if (foundArtist.spotifyId) {
         try {
+          console.log('Loading Spotify data for:', foundArtist.spotifyId);
           const spotifyData = await getArtistDetails(foundArtist.spotifyId);
-          if (spotifyData) {
+          if (spotifyData?.releases) {
             const oneMonthAgo = new Date();
             oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
             
@@ -59,6 +64,7 @@ const ArtistDetail: React.FC = () => {
               return releaseDate > oneMonthAgo;
             });
             
+            console.log('Recent Spotify releases:', recentSpotifyReleases);
             setSpotifyReleases(recentSpotifyReleases);
           }
         } catch (error) {
@@ -70,7 +76,7 @@ const ArtistDetail: React.FC = () => {
     };
 
     loadArtistData();
-  }, [id, artists, artistsLoading]);
+  }, [id, artists, artistsLoading, getArtistDetails]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('fr-FR', {
@@ -105,7 +111,8 @@ const ArtistDetail: React.FC = () => {
     return undefined;
   };
 
-  if (loading || artistsLoading) {
+  // Affichage du loading pendant que les artistes se chargent
+  if (artistsLoading || (loading && !notFound)) {
     return (
       <div className="min-h-screen bg-3d-main flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary rose-glow"></div>
@@ -113,11 +120,13 @@ const ArtistDetail: React.FC = () => {
     );
   }
 
-  if (!artist && !artistsLoading) {
+  // Affichage "non trouvé" seulement si vraiment pas trouvé
+  if (notFound || (!artist && !artistsLoading && !loading)) {
     return (
       <div className="min-h-screen bg-3d-main flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-white mb-4">Artiste non trouvé</h1>
+          <p className="text-gray-400 mb-6">L'artiste demandé n'existe pas ou vous n'y avez pas accès.</p>
           <Button onClick={() => navigate('/')} variant="primary-3d">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Retour au dashboard

@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Music, ExternalLink, Calendar, Play, Heart, Wifi, WifiOff, AlertTriangle, Clock } from 'lucide-react';
+import { Music, ExternalLink, Calendar, Play, Heart, Wifi, WifiOff, AlertTriangle, Clock, RefreshCw } from 'lucide-react';
 import { useSoundCloud } from '@/hooks/useSoundCloud';
 
 interface SoundCloudRelease {
@@ -30,84 +29,102 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
   const [isServiceAvailable, setIsServiceAvailable] = useState(true);
   const [hasSearched, setHasSearched] = useState(false);
   const [errorType, setErrorType] = useState<'none' | 'rate_limit' | 'config' | 'api' | 'no_results' | 'no_soundcloud'>('none');
+  const [retryCount, setRetryCount] = useState(0);
   const { getArtistReleases, loading, error } = useSoundCloud();
 
-  const cacheKey = useMemo(() => `${artistName}-${soundcloudUrl || ''}`, [artistName, soundcloudUrl]);
+  const fetchReleases = async (isRetry = false) => {
+    if (!artistName) return;
 
-  useEffect(() => {
-    const fetchReleases = async () => {
-      if (!artistName) return;
+    // Vérifier si l'artiste a SoundCloud configuré
+    if (!soundcloudUrl) {
+      console.log('❌ Pas d\'URL SoundCloud configurée pour', artistName);
+      setHasSearched(true);
+      setErrorType('no_soundcloud');
+      setIsServiceAvailable(true);
+      setReleases([]);
+      return;
+    }
 
-      // Vérifier si l'artiste a SoundCloud configuré
-      if (!soundcloudUrl) {
-        console.log('❌ Pas d\'URL SoundCloud configurée pour', artistName);
-        setHasSearched(true);
-        setErrorType('no_soundcloud');
+    try {
+      setHasSearched(false);
+      setErrorType('none');
+      setIsServiceAvailable(true);
+      
+      console.log('🔍 Recherche sorties SoundCloud pour:', artistName, soundcloudUrl);
+      
+      // Ajouter un délai si c'est un retry pour éviter le rate limiting
+      if (isRetry && retryCount > 0) {
+        await new Promise(resolve => setTimeout(resolve, retryCount * 2000));
+      }
+      
+      const soundcloudReleases = await getArtistReleases(artistName, soundcloudUrl, 50);
+      setHasSearched(true);
+      
+      console.log('📊 Résultats bruts SoundCloud:', soundcloudReleases);
+      
+      if (!soundcloudReleases || soundcloudReleases.length === 0) {
+        console.log('❌ Aucune sortie SoundCloud trouvée pour', artistName);
         setIsServiceAvailable(true);
         setReleases([]);
+        setErrorType('no_results');
         return;
       }
-
-      try {
-        setHasSearched(false);
-        setErrorType('none');
-        console.log('🔍 Recherche sorties SoundCloud pour:', artistName, soundcloudUrl);
+      
+      // Filtrer pour les sorties du dernier mois
+      const oneMonthAgo = new Date();
+      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+      
+      console.log('📅 Filtrage à partir du:', oneMonthAgo.toISOString());
+      
+      const recentReleases = soundcloudReleases.filter(release => {
+        const releaseDate = new Date(release.created_at);
+        const isRecent = releaseDate > oneMonthAgo;
         
-        const soundcloudReleases = await getArtistReleases(artistName, soundcloudUrl, 20);
-        setHasSearched(true);
-        
-        console.log('📊 Résultats bruts SoundCloud:', soundcloudReleases);
-        
-        if (!soundcloudReleases || soundcloudReleases.length === 0) {
-          console.log('❌ Aucune sortie SoundCloud trouvée pour', artistName);
-          setIsServiceAvailable(true);
-          setReleases([]);
-          setErrorType('no_results');
-          return;
+        if (!isRecent) {
+          console.log(`⏰ Sortie trop ancienne: ${release.title} (${releaseDate.toISOString()})`);
         }
         
-        const oneMonthAgo = new Date();
-        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-        
-        console.log('📅 Filtrage à partir du:', oneMonthAgo.toISOString());
-        
-        const recentReleases = soundcloudReleases.filter(release => {
-          const releaseDate = new Date(release.created_at);
-          const isRecent = releaseDate > oneMonthAgo;
-          
-          if (!isRecent) {
-            console.log(`⏰ Sortie trop ancienne: ${release.title} (${releaseDate.toISOString()})`);
-          }
-          
-          return isRecent;
-        });
-        
-        console.log(`✅ ${recentReleases.length} sorties récentes trouvées sur ${soundcloudReleases.length} total`);
-        setReleases(recentReleases);
-        setIsServiceAvailable(true);
-        setErrorType(recentReleases.length === 0 ? 'no_results' : 'none');
-        
-      } catch (fetchError) {
-        console.error('❌ Erreur lors de la récupération des sorties SoundCloud:', fetchError);
-        setHasSearched(true);
-        setReleases([]);
-        
-        const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
-        if (errorMessage.includes('rate_limit_exceeded') || errorMessage.includes('429')) {
-          setErrorType('rate_limit');
-          setIsServiceAvailable(false);
-        } else if (errorMessage.includes('OAuth') || errorMessage.includes('token') || errorMessage.includes('client')) {
-          setErrorType('config');
-          setIsServiceAvailable(false);
-        } else {
-          setErrorType('api');
-          setIsServiceAvailable(false);
-        }
+        return isRecent;
+      });
+      
+      console.log(`✅ ${recentReleases.length} sorties récentes trouvées sur ${soundcloudReleases.length} total`);
+      
+      // Trier par date de creation (plus récent en premier)
+      const sortedReleases = recentReleases.sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      
+      setReleases(sortedReleases);
+      setErrorType(sortedReleases.length === 0 ? 'no_results' : 'none');
+      setRetryCount(0); // Reset retry count on success
+      
+    } catch (fetchError) {
+      console.error('❌ Erreur lors de la récupération des sorties SoundCloud:', fetchError);
+      setHasSearched(true);
+      setReleases([]);
+      
+      const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
+      if (errorMessage.includes('rate_limit_exceeded') || errorMessage.includes('429')) {
+        setErrorType('rate_limit');
+        setIsServiceAvailable(false);
+      } else if (errorMessage.includes('OAuth') || errorMessage.includes('token') || errorMessage.includes('client')) {
+        setErrorType('config');
+        setIsServiceAvailable(false);
+      } else {
+        setErrorType('api');
+        setIsServiceAvailable(false);
       }
-    };
+    }
+  };
 
+  useEffect(() => {
     fetchReleases();
-  }, [cacheKey, getArtistReleases]);
+  }, [artistName, soundcloudUrl]);
+
+  const handleRetry = () => {
+    setRetryCount(prev => prev + 1);
+    fetchReleases(true);
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('fr-FR', {
@@ -163,7 +180,7 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
     );
   }
 
-  // Gestion des différents types d'erreurs
+  // Gestion des différents types d'erreurs avec option de retry
   if (!isServiceAvailable || error) {
     let errorIcon = WifiOff;
     let errorTitle = "SoundCloud temporairement indisponible";
@@ -172,7 +189,7 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
     if (errorType === 'rate_limit') {
       errorIcon = AlertTriangle;
       errorTitle = "Limite de taux SoundCloud atteinte";
-      errorDescription = "Trop de requêtes ont été effectuées. Veuillez patienter quelques minutes avant de réessayer.";
+      errorDescription = `Trop de requêtes effectuées. ${retryCount > 0 ? `Tentative ${retryCount}/3` : 'Cliquez pour réessayer.'}`;
     } else if (errorType === 'config') {
       errorIcon = WifiOff;
       errorTitle = "Configuration SoundCloud requise";
@@ -188,12 +205,25 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
     return (
       <Card className="card-3d mb-8 border-orange-400/20">
         <CardContent className="p-6">
-          <div className="flex items-center gap-3 text-orange-400">
-            <IconComponent className="h-5 w-5" />
-            <div>
-              <p className="font-medium">{errorTitle}</p>
-              <p className="text-sm text-gray-400">{errorDescription}</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 text-orange-400">
+              <IconComponent className="h-5 w-5" />
+              <div>
+                <p className="font-medium">{errorTitle}</p>
+                <p className="text-sm text-gray-400">{errorDescription}</p>
+              </div>
             </div>
+            {(errorType === 'rate_limit' || errorType === 'api') && retryCount < 3 && (
+              <Button 
+                onClick={handleRetry}
+                variant="outline"
+                size="sm"
+                className="border-orange-400/30 text-orange-300 hover:bg-orange-400/10"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Réessayer
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -205,17 +235,28 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
     return (
       <Card className="card-3d mb-8 border-orange-400/20">
         <CardContent className="p-6">
-          <div className="flex items-center gap-3 text-orange-400">
-            <Clock className="h-5 w-5" />
-            <div>
-              <p className="font-medium">Aucune sortie récente</p>
-              <p className="text-sm text-gray-400">
-                Aucune sortie SoundCloud du dernier mois trouvée pour {artistName}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                L'artiste pourrait avoir des sorties plus anciennes
-              </p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 text-orange-400">
+              <Clock className="h-5 w-5" />
+              <div>
+                <p className="font-medium">Aucune sortie récente sur SoundCloud</p>
+                <p className="text-sm text-gray-400">
+                  Aucune sortie du dernier mois trouvée pour {artistName}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  L'artiste pourrait avoir des sorties plus anciennes
+                </p>
+              </div>
             </div>
+            <Button 
+              onClick={() => fetchReleases()}
+              variant="outline"
+              size="sm"
+              className="border-orange-400/30 text-orange-300 hover:bg-orange-400/10"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Actualiser
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -232,8 +273,18 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
           <Badge variant="outline" className="border-orange-400/50 text-orange-400 bg-orange-400/10">
             {releases.length}
           </Badge>
-          <div className="ml-auto" title="Service connecté">
-            <Wifi className="h-4 w-4 text-green-400" />
+          <div className="ml-auto flex items-center gap-2">
+            <div title="Service connecté">
+              <Wifi className="h-4 w-4 text-green-400" />
+            </div>
+            <Button 
+              onClick={() => fetchReleases()}
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-gray-400 hover:text-white"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
           </div>
         </CardTitle>
       </CardHeader>
