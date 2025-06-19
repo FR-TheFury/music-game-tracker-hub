@@ -6,19 +6,15 @@ import { Badge } from '@/components/ui/badge';
 import { Music, ExternalLink, Calendar, Play, Heart } from 'lucide-react';
 import { useSoundCloud } from '@/hooks/useSoundCloud';
 
-interface SoundCloudTrack {
+interface SoundCloudRelease {
   id: number;
   title: string;
-  description: string;
   created_at: string;
   permalink_url: string;
   artwork_url: string;
   playback_count: number;
   likes_count: number;
-  user: {
-    username: string;
-    permalink_url: string;
-  };
+  release_date: string;
 }
 
 interface ArtistSoundCloudReleasesProps {
@@ -30,7 +26,7 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
   artistName, 
   soundcloudUrl 
 }) => {
-  const [releases, setReleases] = useState<SoundCloudTrack[]>([]);
+  const [releases, setReleases] = useState<SoundCloudRelease[]>([]);
   const { getArtistReleases, loading } = useSoundCloud();
 
   useEffect(() => {
@@ -136,12 +132,6 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
                   )}
                 </div>
               </div>
-              
-              {release.description && (
-                <p className="text-sm text-gray-400 mb-3 line-clamp-2" title={release.description}>
-                  {release.description}
-                </p>
-              )}
 
               <div className="flex items-center gap-4 text-xs text-gray-400 mb-3">
                 {release.playback_count > 0 && (
