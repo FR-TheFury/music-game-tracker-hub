@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface GameSearchResult {
   name: string;
@@ -36,94 +37,33 @@ export const useSmartGameSearch = () => {
     return 'Autre';
   };
 
-  const extractSteamAppId = (url: string): string | null => {
-    const match = url.match(/\/app\/(\d+)/);
-    return match ? match[1] : null;
-  };
-
-  const searchByUrl = async (url: string): Promise<GameSearchResult | null> => {
+  const searchGames = async (query: string, platform: 'rawg' | 'steam', searchType: 'name' | 'url'): Promise<GameSearchResult[]> => {
     setLoading(true);
     try {
-      const platform = detectPlatformFromUrl(url);
-      
-      if (platform === 'Steam') {
-        const appId = extractSteamAppId(url);
-        if (appId) {
-          // Utiliser l'API Steam Store (publique)
-          const response = await fetch(`https://store.steampowered.com/api/appdetails?appids=${appId}`);
-          const data = await response.json();
-          
-          if (data[appId]?.success && data[appId]?.data) {
-            const gameData = data[appId].data;
-            return {
-              name: gameData.name,
-              platform: 'Steam',
-              url: url,
-              imageUrl: gameData.header_image,
-              price: gameData.price_overview ? `${gameData.price_overview.final_formatted}` : 'Gratuit',
-              discount: gameData.price_overview?.discount_percent > 0 ? `${gameData.price_overview.discount_percent}%` : undefined,
-              releaseDate: gameData.release_date?.date,
-              description: gameData.short_description,
-              genres: gameData.genres?.map((g: any) => g.description),
-              developer: gameData.developers?.[0],
-              publisher: gameData.publishers?.[0],
-            };
-          }
-        }
-      }
-      
-      // Pour les autres plateformes, retourner les informations de base
-      return {
-        name: '',
-        platform: platform,
-        url: url,
-      };
-      
-    } catch (error) {
-      console.error('Error searching game by URL:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de récupérer les informations du jeu",
-        variant: "destructive",
+      const { data, error } = await supabase.functions.invoke('search-games', {
+        body: { query, platform, searchType }
       });
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const searchByName = async (gameName: string): Promise<GameSearchResult[]> => {
-    setLoading(true);
-    try {
-      // Utiliser l'API RAWG pour la recherche par nom
-      const response = await fetch(
-        `https://api.rawg.io/api/games?key=YOUR_RAWG_API_KEY&search=${encodeURIComponent(gameName)}&page_size=5`
-      );
+      if (error) throw error;
+
+      const searchResults = data?.results || [];
+      setResults(searchResults);
       
-      if (!response.ok) {
-        throw new Error('Failed to search games');
+      if (searchResults.length === 0) {
+        toast({
+          title: "Aucun résultat",
+          description: "Aucun jeu trouvé pour cette recherche",
+        });
       }
       
-      const data = await response.json();
-      const searchResults: GameSearchResult[] = data.results?.map((game: any) => ({
-        name: game.name,
-        platform: 'Multiplateforme',
-        url: `https://rawg.io/games/${game.slug}`,
-        imageUrl: game.background_image,
-        releaseDate: game.released,
-        description: game.description_raw?.substring(0, 150) + '...',
-        genres: game.genres?.map((g: any) => g.name),
-        rating: game.rating,
-      })) || [];
-      
-      setResults(searchResults);
       return searchResults;
       
     } catch (error) {
-      console.error('Error searching games by name:', error);
+      console.error('Error searching games:', error);
       toast({
-        title: "Information",
-        description: "La recherche par nom nécessite une clé API RAWG",
+        title: "Erreur",
+        description: "Impossible de rechercher les jeux",
+        variant: "destructive",
       });
       return [];
     } finally {
@@ -131,11 +71,32 @@ export const useSmartGameSearch = () => {
     }
   };
 
+  const searchByUrl = async (url: string): Promise<GameSearchResult | null> => {
+    const platform = detectPlatformFromUrl(url);
+    
+    if (platform === 'Steam') {
+      const results = await searchGames(url, 'steam', 'url');
+      return results[0] || null;
+    }
+    
+    // Pour les autres plateformes, retourner les informations de base
+    return {
+      name: '',
+      platform: platform,
+      url: url,
+    };
+  };
+
+  const searchByName = async (gameName: string, platform: 'rawg' = 'rawg'): Promise<GameSearchResult[]> => {
+    return await searchGames(gameName, platform, 'name');
+  };
+
   return {
     loading,
     results,
     searchByUrl,
     searchByName,
+    searchGames,
     detectPlatformFromUrl,
   };
 };

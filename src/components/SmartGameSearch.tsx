@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, ExternalLink, Loader2, Plus, Link, Gamepad2 } from 'lucide-react';
 import { useSmartGameSearch } from '@/hooks/useSmartGameSearch';
 
@@ -33,7 +34,8 @@ export const SmartGameSearch: React.FC<SmartGameSearchProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState<'name' | 'url'>('name');
-  const { loading, results, searchByUrl, searchByName, detectPlatformFromUrl } = useSmartGameSearch();
+  const [searchPlatform, setSearchPlatform] = useState<'rawg' | 'steam'>('rawg');
+  const { loading, results, searchByUrl, searchGames, detectPlatformFromUrl } = useSmartGameSearch();
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -44,7 +46,7 @@ export const SmartGameSearch: React.FC<SmartGameSearchProps> = ({
         onSelectGame(result);
       }
     } else {
-      await searchByName(searchQuery);
+      await searchGames(searchQuery, searchPlatform, 'name');
     }
   };
 
@@ -58,7 +60,13 @@ export const SmartGameSearch: React.FC<SmartGameSearchProps> = ({
   };
 
   useEffect(() => {
-    setSearchType(isUrl(searchQuery) ? 'url' : 'name');
+    const newSearchType = isUrl(searchQuery) ? 'url' : 'name';
+    setSearchType(newSearchType);
+    
+    // Auto-détecter Steam pour les URLs Steam
+    if (newSearchType === 'url' && searchQuery.includes('store.steampowered.com')) {
+      setSearchPlatform('steam');
+    }
   }, [searchQuery]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -106,14 +114,31 @@ export const SmartGameSearch: React.FC<SmartGameSearchProps> = ({
           </Button>
         </div>
 
-        <div className="flex items-center gap-2 text-sm text-gray-400">
+        <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="outline" className={`border-blue-400 text-blue-400 ${searchType === 'url' ? 'bg-blue-400/10' : ''}`}>
             {searchType === 'url' ? 'URL détectée' : 'Recherche par nom'}
           </Badge>
+          
           {searchType === 'url' && searchQuery && (
             <Badge variant="outline" className="border-green-400 text-green-400">
               {detectPlatformFromUrl(searchQuery)}
             </Badge>
+          )}
+
+          {searchType === 'name' && (
+            <Select value={searchPlatform} onValueChange={(value: 'rawg' | 'steam') => setSearchPlatform(value)}>
+              <SelectTrigger className="w-32 bg-slate-700/50 border-slate-600 text-white text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-800 border-slate-600">
+                <SelectItem value="rawg" className="text-white hover:bg-slate-700">
+                  RAWG
+                </SelectItem>
+                <SelectItem value="steam" className="text-white hover:bg-slate-700">
+                  Steam
+                </SelectItem>
+              </SelectContent>
+            </Select>
           )}
         </div>
 
