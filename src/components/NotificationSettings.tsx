@@ -39,9 +39,9 @@ export const NotificationSettings: React.FC = () => {
           <div className="flex items-center space-x-2">
             <Switch
               id="email-notifications"
-              checked={settings.emailNotificationsEnabled}
+              checked={settings.email_notifications_enabled}
               onCheckedChange={(checked) =>
-                updateSettings({ emailNotificationsEnabled: checked })
+                updateSettings({ email_notifications_enabled: checked })
               }
               className="data-[state=checked]:bg-[#FF0751]"
             />
@@ -53,13 +53,13 @@ export const NotificationSettings: React.FC = () => {
             </Label>
           </div>
           
-          {settings.emailNotificationsEnabled && (
+          {settings.email_notifications_enabled && (
             <div className="ml-6 space-y-2">
               <Label className="text-sm text-gray-300">Fréquence</Label>
               <Select
-                value={settings.notificationFrequency}
+                value={settings.notification_frequency}
                 onValueChange={(value: 'immediate' | 'daily' | 'disabled') =>
-                  updateSettings({ notificationFrequency: value })
+                  updateSettings({ notification_frequency: value })
                 }
               >
                 <SelectTrigger className="w-48 bg-slate-700/50 border-[#FF0751]/30 text-white hover:border-[#FF0751]/50 transition-colors">
@@ -88,9 +88,9 @@ export const NotificationSettings: React.FC = () => {
             <div className="flex items-center space-x-2">
               <Switch
                 id="artist-notifications"
-                checked={settings.artistNotificationsEnabled}
+                checked={settings.artist_notifications_enabled}
                 onCheckedChange={(checked) =>
-                  updateSettings({ artistNotificationsEnabled: checked })
+                  updateSettings({ artist_notifications_enabled: checked })
                 }
                 className="data-[state=checked]:bg-[#FF0751]"
               />
@@ -105,9 +105,9 @@ export const NotificationSettings: React.FC = () => {
             <div className="flex items-center space-x-2">
               <Switch
                 id="game-notifications"
-                checked={settings.gameNotificationsEnabled}
+                checked={settings.game_notifications_enabled}
                 onCheckedChange={(checked) =>
-                  updateSettings({ gameNotificationsEnabled: checked })
+                  updateSettings({ game_notifications_enabled: checked })
                 }
                 className="data-[state=checked]:bg-[#FF6B9D]"
               />

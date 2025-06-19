@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -5,11 +6,11 @@ import { useToast } from '@/hooks/use-toast';
 
 interface NotificationSettings {
   id?: string;
-  userId: string;
-  emailNotificationsEnabled: boolean;
-  notificationFrequency: 'immediate' | 'daily' | 'disabled';
-  artistNotificationsEnabled: boolean;
-  gameNotificationsEnabled: boolean;
+  user_id: string;
+  email_notifications_enabled: boolean;
+  notification_frequency: 'immediate' | 'daily' | 'disabled';
+  artist_notifications_enabled: boolean;
+  game_notifications_enabled: boolean;
 }
 
 export const useNotificationSettings = () => {
@@ -33,21 +34,21 @@ export const useNotificationSettings = () => {
       if (data) {
         setSettings({
           id: data.id,
-          userId: data.user_id,
-          emailNotificationsEnabled: data.email_notifications_enabled,
-          notificationFrequency: data.notification_frequency as 'immediate' | 'daily' | 'disabled',
-          artistNotificationsEnabled: data.artist_notifications_enabled,
-          gameNotificationsEnabled: data.game_notifications_enabled,
+          user_id: data.user_id,
+          email_notifications_enabled: data.email_notifications_enabled,
+          notification_frequency: data.notification_frequency as 'immediate' | 'daily' | 'disabled',
+          artist_notifications_enabled: data.artist_notifications_enabled,
+          game_notifications_enabled: data.game_notifications_enabled,
         });
       } else {
         // Create default settings if none exist
         console.log('Creating default notification settings for user:', user.id);
         const defaultSettings: Omit<NotificationSettings, 'id'> = {
-          userId: user.id,
-          emailNotificationsEnabled: true,
-          notificationFrequency: 'immediate',
-          artistNotificationsEnabled: true,
-          gameNotificationsEnabled: true,
+          user_id: user.id,
+          email_notifications_enabled: true,
+          notification_frequency: 'immediate',
+          artist_notifications_enabled: true,
+          game_notifications_enabled: true,
         };
         await updateSettings(defaultSettings);
       }
@@ -69,10 +70,10 @@ export const useNotificationSettings = () => {
     try {
       const settingsData = {
         user_id: user.id,
-        email_notifications_enabled: newSettings.emailNotificationsEnabled ?? true,
-        notification_frequency: newSettings.notificationFrequency ?? 'immediate',
-        artist_notifications_enabled: newSettings.artistNotificationsEnabled ?? true,
-        game_notifications_enabled: newSettings.gameNotificationsEnabled ?? true,
+        email_notifications_enabled: newSettings.email_notifications_enabled ?? settings?.email_notifications_enabled ?? true,
+        notification_frequency: newSettings.notification_frequency ?? settings?.notification_frequency ?? 'immediate',
+        artist_notifications_enabled: newSettings.artist_notifications_enabled ?? settings?.artist_notifications_enabled ?? true,
+        game_notifications_enabled: newSettings.game_notifications_enabled ?? settings?.game_notifications_enabled ?? true,
       };
 
       const { data, error } = await supabase
@@ -85,11 +86,11 @@ export const useNotificationSettings = () => {
 
       setSettings({
         id: data.id,
-        userId: data.user_id,
-        emailNotificationsEnabled: data.email_notifications_enabled,
-        notificationFrequency: data.notification_frequency as 'immediate' | 'daily' | 'disabled',
-        artistNotificationsEnabled: data.artist_notifications_enabled,
-        gameNotificationsEnabled: data.game_notifications_enabled,
+        user_id: data.user_id,
+        email_notifications_enabled: data.email_notifications_enabled,
+        notification_frequency: data.notification_frequency as 'immediate' | 'daily' | 'disabled',
+        artist_notifications_enabled: data.artist_notifications_enabled,
+        game_notifications_enabled: data.game_notifications_enabled,
       });
 
       toast({
