@@ -42,7 +42,7 @@ export default function FriendsSearch() {
   };
 
   return (
-    <RoleGuard allowedRoles={['viewer']}>
+    <RoleGuard allowedRoles={['admin', 'editor', 'viewer']}>
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-[#FF0751] to-slate-900">
         <header className="bg-gradient-to-r from-[#FF0751]/20 to-slate-800/90 backdrop-blur-sm border-b border-[#FF0751]/30 shadow-lg">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

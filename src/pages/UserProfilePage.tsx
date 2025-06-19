@@ -10,7 +10,7 @@ const UserProfilePage: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <RoleGuard>
+    <RoleGuard allowedRoles={['admin', 'editor', 'viewer']}>
       <div className="min-h-screen bg-3d-main">
         <header className="header-3d">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Music, Gamepad2, Search, Shield } from 'lucide-react';
-import { AddArtistFormWrapper } from '@/components/AddArtistFormWrapper';
-import { AddGameFormWrapper } from '@/components/AddGameFormWrapper';
+import { AddArtistForm } from '@/components/AddArtistForm';
+import { AddGameForm } from '@/components/AddGameForm';
 import { ArtistsGrid } from '@/components/ArtistsGrid';
 import { GamesGrid } from '@/components/GamesGrid';
 import { NewReleasesSection } from '@/components/NewReleasesSection';
@@ -55,18 +55,16 @@ export default function Index() {
               </div>
               
               <div className="flex items-center gap-4">
-                {/* Bouton de recherche d'amis pour les viewers */}
-                {userRole === 'viewer' && (
-                  <Button
-                    onClick={() => navigate('/friends')}
-                    variant="outline"
-                    size="sm"
-                    className="border-[#FF0751] text-[#FF0751] hover:bg-[#FF0751]/10 transition-all duration-300"
-                  >
-                    <Search className="h-4 w-4 mr-2" />
-                    Rechercher des amis
-                  </Button>
-                )}
+                {/* Bouton de recherche d'amis pour tous les rôles */}
+                <Button
+                  onClick={() => navigate('/friends')}
+                  variant="outline"
+                  size="sm"
+                  className="border-[#FF0751] text-[#FF0751] hover:bg-[#FF0751]/10 transition-all duration-300"
+                >
+                  <Search className="h-4 w-4 mr-2" />
+                  Rechercher des amis
+                </Button>
                 
                 {/* Bouton admin pour les admins */}
                 {userRole === 'admin' && (
@@ -123,7 +121,7 @@ export default function Index() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <AddArtistFormWrapper />
+                    <AddArtistForm />
                   </CardContent>
                 </Card>
 
@@ -135,7 +133,7 @@ export default function Index() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <AddGameFormWrapper />
+                    <AddGameForm />
                   </CardContent>
                 </Card>
               </div>
