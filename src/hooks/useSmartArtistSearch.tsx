@@ -70,17 +70,17 @@ export const useSmartArtistSearch = () => {
       });
       
       if (error || !data) {
-        return { url: null, verified: false };
+        return { url: null, verified: false, followers: 0 };
       }
       
       return { 
         url: data.url, 
         verified: data.verified || false,
-        followers: data.subscriberCount
+        followers: data.subscriberCount || 0
       };
     } catch (error) {
       console.error('YouTube verification error:', error);
-      return { url: null, verified: false };
+      return { url: null, verified: false, followers: 0 };
     }
   };
 
@@ -188,7 +188,7 @@ export const useSmartArtistSearch = () => {
           const generatedUrls = generatePlatformUrls(baseArtist.name || baseArtist.username);
           
           // Vérification YouTube seulement si activée et de manière limitée
-          let youtubeVerification = { url: null, verified: false, followers: undefined };
+          let youtubeVerification = { url: null, verified: false, followers: 0 };
           if (enabledPlatforms.youtube && index === 0) { // Seulement pour le premier résultat
             try {
               youtubeVerification = await verifyYouTubeUrl(baseArtist.name || baseArtist.username);
