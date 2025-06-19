@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Gamepad2, X, Plus } from 'lucide-react';
+import { SmartGameSearch } from './SmartGameSearch';
 
 interface Game {
   name: string;
@@ -23,6 +24,7 @@ interface AddGameFormProps {
 }
 
 export const AddGameForm: React.FC<AddGameFormProps> = ({ onSubmit, onCancel }) => {
+  const [showSmartSearch, setShowSmartSearch] = useState(true);
   const [formData, setFormData] = useState<Game>({
     name: '',
     platform: '',
@@ -75,6 +77,39 @@ export const AddGameForm: React.FC<AddGameFormProps> = ({ onSubmit, onCancel }) 
     }));
   };
 
+  const handleSmartSearchSelect = (game: any) => {
+    setFormData({
+      name: game.name,
+      platform: game.platform,
+      url: game.url,
+      imageUrl: game.imageUrl || '',
+      price: game.price || '',
+      discount: game.discount || '',
+      releaseDate: game.releaseDate || '',
+    });
+    setShowSmartSearch(false);
+  };
+
+  if (showSmartSearch) {
+    return (
+      <div className="space-y-4">
+        <SmartGameSearch 
+          onSelectGame={handleSmartSearchSelect}
+          className="mb-4"
+        />
+        <div className="flex justify-center">
+          <Button
+            onClick={() => setShowSmartSearch(false)}
+            variant="outline"
+            className="border-slate-600 text-gray-300 hover:bg-slate-700/50"
+          >
+            Saisie manuelle
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Card className="bg-slate-800/70 border-blue-500/30 backdrop-blur-sm">
       <CardHeader>
@@ -84,6 +119,16 @@ export const AddGameForm: React.FC<AddGameFormProps> = ({ onSubmit, onCancel }) 
         </CardTitle>
       </CardHeader>
       <CardContent>
+        <div className="mb-4">
+          <Button
+            onClick={() => setShowSmartSearch(true)}
+            variant="outline"
+            className="border-blue-500 text-blue-400 hover:bg-blue-500/10"
+          >
+            Retour à la recherche intelligente
+          </Button>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -138,6 +183,20 @@ export const AddGameForm: React.FC<AddGameFormProps> = ({ onSubmit, onCancel }) 
             <p className="text-xs text-gray-500">
               Collez le lien du jeu depuis votre plateforme de jeux préférée
             </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="imageUrl" className="text-gray-300">
+              Image du jeu (optionnel)
+            </Label>
+            <Input
+              id="imageUrl"
+              type="url"
+              value={formData.imageUrl}
+              onChange={(e) => setFormData(prev => ({ ...prev, imageUrl: e.target.value }))}
+              placeholder="https://..."
+              className="bg-slate-700/50 border-slate-600 text-white placeholder:text-gray-400"
+            />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
