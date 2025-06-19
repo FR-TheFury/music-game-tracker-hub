@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -50,7 +51,7 @@ export const useSoundCloud = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const makeRequest = useCallback(async (requestBody: any): Promise<any> => {
+  const makeRequest = useCallback(async (requestBody: any, retryCount = 0): Promise<any> => {
     try {
       console.log('SoundCloud request:', requestBody);
       
@@ -60,11 +61,27 @@ export const useSoundCloud = () => {
 
       if (error) {
         console.error('SoundCloud Edge Function error:', error);
+        
+        // Gestion spéciale du rate limiting avec retry
+        if (error.message?.includes('rate_limit_exceeded') && retryCount < 2) {
+          console.log(`Rate limit exceeded, retrying in ${(retryCount + 1) * 2} seconds...`);
+          await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 2000));
+          return makeRequest(requestBody, retryCount + 1);
+        }
+        
         throw new Error(error.message || 'Erreur de connexion SoundCloud');
       }
 
       if (data?.error) {
         console.error('SoundCloud API error:', data.error);
+        
+        // Gestion spéciale du rate limiting
+        if (data.error.includes('rate_limit_exceeded') && retryCount < 2) {
+          console.log(`API rate limit exceeded, retrying in ${(retryCount + 1) * 2} seconds...`);
+          await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 2000));
+          return makeRequest(requestBody, retryCount + 1);
+        }
+        
         throw new Error(data.message || data.error);
       }
 

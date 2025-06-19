@@ -19,9 +19,11 @@ interface Release {
 }
 
 interface NotificationRequest {
-  release: Release;
+  releases?: Release[];
+  release?: Release;
   userId: string;
   userSettings: any;
+  isDigest?: boolean;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -30,9 +32,21 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { release, userId, userSettings }: NotificationRequest = await req.json();
+    const requestData: NotificationRequest = await req.json();
+    const { releases, release, userId, userSettings, isDigest } = requestData;
 
-    console.log(`Processing release notification for user: ${userId}, release: ${release.title}`);
+    console.log(`Processing notification for user: ${userId}`);
+
+    // Gérer les deux formats : single release ou digest
+    const releasesToProcess = releases || (release ? [release] : []);
+    
+    if (releasesToProcess.length === 0) {
+      console.log('No releases to process');
+      return new Response(JSON.stringify({ success: false, message: 'No releases provided' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     // Créer le client Supabase avec la clé de service pour accéder aux données auth
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -54,16 +68,57 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const userEmail = userData.user.email
-    console.log(`Sending release notification to ${userEmail} for: ${release.title}`);
+    console.log(`Sending notification to ${userEmail} for ${releasesToProcess.length} releases`);
 
-    const typeIcon = release.type === 'artist' ? '🎵' : '🎮';
-    const typeLabel = release.type === 'artist' ? 'Nouvel Album/Single' : 'Nouveau Jeu/Mise à jour';
+    // Construire le contenu de l'email
+    let emailSubject: string;
+    let emailContent: string;
 
-    const emailResponse = await resend.emails.send({
-      from: "Artist & Game Tracker <notifications@resend.dev>",
-      to: [userEmail],
-      subject: `${typeIcon} ${release.title}`,
-      html: `
+    if (isDigest && releasesToProcess.length > 1) {
+      // Email digest pour plusieurs sorties
+      emailSubject = `🎵 ${releasesToProcess.length} nouvelles sorties détectées !`;
+      
+      const releasesList = releasesToProcess.map(rel => {
+        const typeIcon = rel.type === 'artist' ? '🎵' : '🎮';
+        return `
+          <div style="margin: 20px 0; padding: 15px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #FF0751;">
+            <h3 style="margin: 0 0 10px 0; color: #1e293b;">${typeIcon} ${rel.title}</h3>
+            ${rel.description ? `<p style="color: #475569; margin: 5px 0;">${rel.description}</p>` : ''}
+            ${rel.platform_url ? `<a href="${rel.platform_url}" style="color: #FF0751; text-decoration: none;">🔗 Voir sur la plateforme</a>` : ''}
+          </div>
+        `;
+      }).join('');
+
+      emailContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc;">
+          <div style="background: linear-gradient(135deg, #FF0751 0%, #FF3971 100%); padding: 30px; border-radius: 12px 12px 0 0;">
+            <h1 style="color: white; margin: 0; text-align: center; font-size: 24px;">
+              🎵 Nouvelles Sorties Détectées !
+            </h1>
+            <p style="color: white; text-align: center; margin: 10px 0 0 0; opacity: 0.9;">
+              ${releasesToProcess.length} nouvelles sorties vous attendent
+            </p>
+          </div>
+          
+          <div style="padding: 30px; background: white; border-radius: 0 0 12px 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            ${releasesList}
+            
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center; color: #64748b; font-size: 14px;">
+              <p style="margin: 5px 0;">✨ Cette notification a été générée automatiquement</p>
+              <p style="margin: 5px 0;">📧 Elle sera supprimée dans 7 jours</p>
+              <p style="margin: 5px 0;">⚙️ Modifiez vos préférences dans votre profil</p>
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      // Email pour une seule sortie
+      const singleRelease = releasesToProcess[0];
+      const typeIcon = singleRelease.type === 'artist' ? '🎵' : '🎮';
+      const typeLabel = singleRelease.type === 'artist' ? 'Nouvel Album/Single' : 'Nouveau Jeu/Mise à jour';
+
+      emailSubject = `${typeIcon} ${singleRelease.title}`;
+      emailContent = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc;">
           <div style="background: linear-gradient(135deg, #FF0751 0%, #FF3971 100%); padding: 30px; border-radius: 12px 12px 0 0;">
             <h1 style="color: white; margin: 0; text-align: center; font-size: 24px;">
@@ -73,17 +128,17 @@ const handler = async (req: Request): Promise<Response> => {
           
           <div style="padding: 30px; background: white; border-radius: 0 0 12px 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             <div style="text-align: center; margin-bottom: 20px;">
-              ${release.image_url ? `<img src="${release.image_url}" alt="Cover" style="max-width: 200px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">` : ''}
+              ${singleRelease.image_url ? `<img src="${singleRelease.image_url}" alt="Cover" style="max-width: 200px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">` : ''}
             </div>
             
-            <h2 style="color: #1e293b; margin: 20px 0 10px 0; text-align: center;">${release.title}</h2>
+            <h2 style="color: #1e293b; margin: 20px 0 10px 0; text-align: center;">${singleRelease.title}</h2>
             <p style="color: #FF0751; font-weight: 600; margin: 10px 0; text-align: center; background: #FF0751/10; padding: 8px 16px; border-radius: 6px; display: inline-block; width: 100%; box-sizing: border-box;">${typeLabel}</p>
             
-            ${release.description ? `<p style="color: #475569; line-height: 1.6; text-align: center; margin: 15px 0;">${release.description}</p>` : ''}
+            ${singleRelease.description ? `<p style="color: #475569; line-height: 1.6; text-align: center; margin: 15px 0;">${singleRelease.description}</p>` : ''}
             
-            ${release.platform_url ? `
+            ${singleRelease.platform_url ? `
               <div style="text-align: center; margin-top: 25px;">
-                <a href="${release.platform_url}" 
+                <a href="${singleRelease.platform_url}" 
                    style="background: linear-gradient(135deg, #FF0751 0%, #FF3971 100%); 
                           color: white; 
                           padding: 12px 30px; 
@@ -106,16 +161,24 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
           </div>
         </div>
-      `,
+      `;
+    }
+
+    const emailResponse = await resend.emails.send({
+      from: "Artist & Game Tracker <notifications@resend.dev>",
+      to: [userEmail],
+      subject: emailSubject,
+      html: emailContent,
     });
 
-    console.log("Release notification email sent successfully:", emailResponse);
+    console.log("Notification email sent successfully:", emailResponse);
 
     return new Response(JSON.stringify({ 
       success: true, 
       emailId: emailResponse.data?.id,
       message: `Email sent to ${userEmail}`,
-      userId: userId
+      userId: userId,
+      releasesCount: releasesToProcess.length
     }), {
       status: 200,
       headers: {

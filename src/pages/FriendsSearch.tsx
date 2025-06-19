@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RoleGuard } from '@/components/RoleGuard';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useUserSearch } from '@/hooks/useUserSearch';
-import { Search, User, ArrowLeft } from 'lucide-react';
+import { Search, User, ArrowLeft, Users, RefreshCw, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ReadOnlyArtistsGrid } from '@/components/ReadOnlyArtistsGrid';
 import { ReadOnlyGamesGrid } from '@/components/ReadOnlyGamesGrid';
@@ -19,17 +19,27 @@ export default function FriendsSearch() {
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const { 
     searchResults, 
+    suggestedUsers,
     userArtists, 
     userGames, 
     loading, 
-    loadingUserData, 
-    searchUsers, 
+    loadingUserData,
+    loadingSuggestions,
+    searchUsers,
+    loadSuggestedUsers,
     getUserData 
   } = useUserSearch();
 
+  // Charger les suggestions au montage du composant
+  useEffect(() => {
+    loadSuggestedUsers();
+  }, []);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    searchUsers(searchTerm);
+    if (searchTerm.trim()) {
+      searchUsers(searchTerm);
+    }
   };
 
   const handleUserSelect = async (user: any) => {
@@ -45,6 +55,50 @@ export default function FriendsSearch() {
   const getUserInitials = (username: string) => {
     return username.split(' ').map(name => name.charAt(0)).join('').toUpperCase().slice(0, 2);
   };
+
+  const getRoleBadgeColor = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return 'border-[#FF0751] text-[#FF0751] bg-[#FF0751]/10';
+      case 'editor':
+        return 'border-green-400 text-green-400 bg-green-400/10';
+      case 'viewer':
+        return 'border-blue-400 text-blue-400 bg-blue-400/10';
+      default:
+        return 'border-gray-400 text-gray-400 bg-gray-400/10';
+    }
+  };
+
+  const UserCard = ({ user, onClick }: { user: any, onClick: () => void }) => (
+    <div 
+      className="flex items-center justify-between p-4 bg-slate-700/50 border border-[#FF0751]/20 rounded-lg hover:bg-slate-700/70 hover:border-[#FF0751]/40 transition-all duration-300 cursor-pointer"
+      onClick={onClick}
+    >
+      <div className="flex items-center gap-3">
+        <Avatar className="h-12 w-12">
+          <AvatarImage 
+            src={user.avatar_url || undefined} 
+            alt={user.username}
+          />
+          <AvatarFallback className="bg-blue-500/20 text-blue-400 text-sm font-medium">
+            {getUserInitials(user.username)}
+          </AvatarFallback>
+        </Avatar>
+        <div>
+          <p className="font-medium text-white">{user.username}</p>
+          <p className="text-xs text-gray-400">
+            Membre depuis {new Date(user.created_at).toLocaleDateString()}
+          </p>
+        </div>
+      </div>
+      <Badge 
+        variant="outline" 
+        className={getRoleBadgeColor(user.role)}
+      >
+        {user.role}
+      </Badge>
+    </div>
+  );
 
   return (
     <RoleGuard allowedRoles={['admin', 'editor', 'viewer']}>
@@ -75,8 +129,8 @@ export default function FriendsSearch() {
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {!selectedUser ? (
-            // Interface de recherche
             <div className="space-y-6">
+              {/* Interface de recherche */}
               <Card className="bg-slate-800/90 border-[#FF0751]/30 shadow-2xl backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle className="text-white flex items-center gap-2">
@@ -103,50 +157,70 @@ export default function FriendsSearch() {
                 </CardContent>
               </Card>
 
-              {/* Résultats de recherche avec vraies photos de profil */}
+              {/* Suggestions d'utilisateurs */}
+              <Card className="bg-slate-800/90 border-[#FF0751]/30 shadow-2xl backdrop-blur-sm">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-white flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-yellow-400" />
+                      Utilisateurs suggérés
+                    </CardTitle>
+                    <Button
+                      onClick={loadSuggestedUsers}
+                      variant="ghost"
+                      size="sm"
+                      disabled={loadingSuggestions}
+                      className="text-gray-400 hover:text-white"
+                    >
+                      {loadingSuggestions ? (
+                        <LoadingSpinner size="sm" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {loadingSuggestions ? (
+                    <div className="text-center py-8">
+                      <LoadingSpinner size="lg" className="mx-auto mb-4" />
+                      <p className="text-gray-400">Chargement des suggestions...</p>
+                    </div>
+                  ) : suggestedUsers.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {suggestedUsers.map((user) => (
+                        <UserCard 
+                          key={user.user_id} 
+                          user={user} 
+                          onClick={() => handleUserSelect(user)} 
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-400">Aucun utilisateur suggéré pour le moment</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Résultats de recherche */}
               {searchResults.length > 0 && (
                 <Card className="bg-slate-800/90 border-[#FF0751]/30 shadow-2xl backdrop-blur-sm">
                   <CardHeader>
-                    <CardTitle className="text-white">Résultats de recherche</CardTitle>
+                    <CardTitle className="text-white">
+                      Résultats de recherche ({searchResults.length})
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       {searchResults.map((user) => (
-                        <div 
-                          key={user.user_id}
-                          className="flex items-center justify-between p-4 bg-slate-700/50 border border-[#FF0751]/20 rounded-lg hover:bg-slate-700/70 hover:border-[#FF0751]/40 transition-all duration-300 cursor-pointer"
-                          onClick={() => handleUserSelect(user)}
-                        >
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-12 w-12">
-                              <AvatarImage 
-                                src={user.avatar_url || undefined} 
-                                alt={user.username}
-                              />
-                              <AvatarFallback className="bg-blue-500/20 text-blue-400 text-sm font-medium">
-                                {getUserInitials(user.username)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium text-white">{user.username}</p>
-                              <p className="text-xs text-gray-400">
-                                Membre depuis {new Date(user.created_at).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-                          <Badge 
-                            variant="outline" 
-                            className={
-                              user.role === 'admin' 
-                                ? 'border-[#FF0751] text-[#FF0751] bg-[#FF0751]/10' 
-                                : user.role === 'editor' 
-                                ? 'border-green-400 text-green-400 bg-green-400/10' 
-                                : 'border-blue-400 text-blue-400 bg-blue-400/10'
-                            }
-                          >
-                            {user.role}
-                          </Badge>
-                        </div>
+                        <UserCard 
+                          key={user.user_id} 
+                          user={user} 
+                          onClick={() => handleUserSelect(user)} 
+                        />
                       ))}
                     </div>
                   </CardContent>
@@ -154,7 +228,7 @@ export default function FriendsSearch() {
               )}
             </div>
           ) : (
-            // Interface d'affichage des données utilisateur avec vraie photo de profil
+            // Interface d'affichage des données utilisateur
             <div className="space-y-6">
               <Card className="bg-slate-800/90 border-[#FF0751]/30 shadow-2xl backdrop-blur-sm">
                 <CardHeader>
@@ -197,13 +271,7 @@ export default function FriendsSearch() {
                       <div className="flex items-center gap-2">
                         <Badge 
                           variant="outline" 
-                          className={
-                            selectedUser.role === 'admin' 
-                              ? 'border-[#FF0751] text-[#FF0751] bg-[#FF0751]/10' 
-                              : selectedUser.role === 'editor' 
-                              ? 'border-green-400 text-green-400 bg-green-400/10' 
-                              : 'border-blue-400 text-blue-400 bg-blue-400/10'
-                          }
+                          className={getRoleBadgeColor(selectedUser.role)}
                         >
                           {selectedUser.role}
                         </Badge>

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Music, ExternalLink, Calendar, Play, Heart, Wifi, WifiOff } from 'lucide-react';
+import { Music, ExternalLink, Calendar, Play, Heart, Wifi, WifiOff, AlertTriangle } from 'lucide-react';
 import { useSoundCloud } from '@/hooks/useSoundCloud';
 
 interface SoundCloudRelease {
@@ -29,9 +29,9 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
   const [releases, setReleases] = useState<SoundCloudRelease[]>([]);
   const [isServiceAvailable, setIsServiceAvailable] = useState(true);
   const [hasSearched, setHasSearched] = useState(false);
+  const [errorType, setErrorType] = useState<'none' | 'rate_limit' | 'config' | 'api' | 'no_results'>('none');
   const { getArtistReleases, loading, error } = useSoundCloud();
 
-  // Mémoriser la clé de cache pour éviter les appels répétés
   const cacheKey = useMemo(() => `${artistName}-${soundcloudUrl || ''}`, [artistName, soundcloudUrl]);
 
   useEffect(() => {
@@ -40,6 +40,7 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
 
       try {
         setHasSearched(false);
+        setErrorType('none');
         console.log('🔍 Recherche sorties SoundCloud pour:', artistName, soundcloudUrl);
         
         const soundcloudReleases = await getArtistReleases(artistName, soundcloudUrl, 20);
@@ -51,10 +52,10 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
           console.log('❌ Aucune sortie SoundCloud trouvée pour', artistName);
           setIsServiceAvailable(true);
           setReleases([]);
+          setErrorType('no_results');
           return;
         }
         
-        // Filtrer les sorties du dernier mois avec debug
         const oneMonthAgo = new Date();
         oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
         
@@ -74,12 +75,25 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
         console.log(`✅ ${recentReleases.length} sorties récentes trouvées sur ${soundcloudReleases.length} total`);
         setReleases(recentReleases);
         setIsServiceAvailable(true);
+        setErrorType(recentReleases.length === 0 ? 'no_results' : 'none');
         
       } catch (fetchError) {
         console.error('❌ Erreur lors de la récupération des sorties SoundCloud:', fetchError);
-        setIsServiceAvailable(false);
-        setReleases([]);
         setHasSearched(true);
+        setReleases([]);
+        
+        // Déterminer le type d'erreur
+        const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
+        if (errorMessage.includes('rate_limit_exceeded') || errorMessage.includes('429')) {
+          setErrorType('rate_limit');
+          setIsServiceAvailable(false);
+        } else if (errorMessage.includes('OAuth') || errorMessage.includes('token') || errorMessage.includes('client')) {
+          setErrorType('config');
+          setIsServiceAvailable(false);
+        } else {
+          setErrorType('api');
+          setIsServiceAvailable(false);
+        }
       }
     };
 
@@ -121,21 +135,36 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
     );
   }
 
-  // Si le service n'est pas disponible ou erreur OAuth
+  // Gestion des différents types d'erreurs
   if (!isServiceAvailable || error) {
+    let errorIcon = WifiOff;
+    let errorTitle = "SoundCloud temporairement indisponible";
+    let errorDescription = "Le service SoundCloud est en maintenance. Réessayez plus tard.";
+
+    if (errorType === 'rate_limit') {
+      errorIcon = AlertTriangle;
+      errorTitle = "Limite de taux SoundCloud atteinte";
+      errorDescription = "Trop de requêtes ont été effectuées. Veuillez patienter quelques minutes avant de réessayer.";
+    } else if (errorType === 'config') {
+      errorIcon = WifiOff;
+      errorTitle = "Configuration SoundCloud requise";
+      errorDescription = "Configuration OAuth SoundCloud manquante. Contactez l'administrateur.";
+    } else if (errorType === 'api') {
+      errorIcon = AlertTriangle;
+      errorTitle = "Erreur API SoundCloud";
+      errorDescription = error || "Une erreur est survenue lors de la communication avec SoundCloud.";
+    }
+
+    const IconComponent = errorIcon;
+
     return (
       <Card className="card-3d mb-8 border-orange-400/20">
         <CardContent className="p-6">
           <div className="flex items-center gap-3 text-orange-400">
-            <WifiOff className="h-5 w-5" />
+            <IconComponent className="h-5 w-5" />
             <div>
-              <p className="font-medium">SoundCloud temporairement indisponible</p>
-              <p className="text-sm text-gray-400">
-                {error?.includes('OAuth') || error?.includes('token') 
-                  ? 'Configuration OAuth SoundCloud requise. Contactez l\'administrateur.'
-                  : error || 'Le service SoundCloud est en maintenance. Réessayez plus tard.'
-                }
-              </p>
+              <p className="font-medium">{errorTitle}</p>
+              <p className="text-sm text-gray-400">{errorDescription}</p>
             </div>
           </div>
         </CardContent>
@@ -143,8 +172,8 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
     );
   }
 
-  // Si pas de sorties récentes mais recherche effectuée
-  if (hasSearched && releases.length === 0) {
+  // Si pas de sorties récentes mais recherche effectuée avec succès
+  if (hasSearched && releases.length === 0 && errorType === 'no_results') {
     return (
       <Card className="card-3d mb-8 border-orange-400/20">
         <CardContent className="p-6">

@@ -38,10 +38,12 @@ export interface UserGame {
 
 export const useUserSearch = () => {
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
+  const [suggestedUsers, setSuggestedUsers] = useState<UserSearchResult[]>([]);
   const [userArtists, setUserArtists] = useState<UserArtist[]>([]);
   const [userGames, setUserGames] = useState<UserGame[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingUserData, setLoadingUserData] = useState(false);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const { toast } = useToast();
 
   const searchUsers = async (searchTerm: string) => {
@@ -52,50 +54,59 @@ export const useUserSearch = () => {
 
     setLoading(true);
     try {
-      // Première requête : chercher les profils qui correspondent au terme de recherche
+      // Recherche plus flexible avec ilike pour correspondance partielle
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('id, username, avatar_url')
-        .ilike('username', `%${searchTerm}%`)
+        .or(`username.ilike.%${searchTerm}%,id.ilike.%${searchTerm}%`)
         .limit(20);
 
       if (profilesError) throw profilesError;
 
       if (!profilesData || profilesData.length === 0) {
         setSearchResults([]);
+        toast({
+          title: "Aucun résultat",
+          description: `Aucun utilisateur trouvé pour "${searchTerm}". Vérifiez l'orthographe ou essayez un autre terme.`,
+        });
         return;
       }
 
       // Extraire les user_ids des profils trouvés
       const userIds = profilesData.map(profile => profile.id);
 
-      // Deuxième requête : récupérer les rôles pour ces utilisateurs
+      // Récupérer les rôles pour ces utilisateurs (plus flexible)
       const { data: userRolesData, error: userRolesError } = await supabase
         .from('user_roles')
         .select('user_id, role, created_at')
         .in('user_id', userIds)
-        .in('role', ['admin', 'editor', 'viewer'])
-        .not('approved_at', 'is', null);
+        .in('role', ['admin', 'editor', 'viewer']);
 
       if (userRolesError) throw userRolesError;
 
-      // Combiner les données
+      // Combiner les données - inclure tous les utilisateurs même sans rôle approuvé
       const formattedResults = profilesData
         .map(profile => {
           const userRole = userRolesData?.find(ur => ur.user_id === profile.id);
-          if (!userRole) return null; // Exclure les utilisateurs sans rôle approuvé
           
           return {
             user_id: profile.id,
             username: profile.username || 'Utilisateur',
-            role: userRole.role,
-            created_at: userRole.created_at,
+            role: userRole?.role || 'pending',
+            created_at: userRole?.created_at || new Date().toISOString(),
             avatar_url: profile.avatar_url
           };
         })
-        .filter(Boolean) as UserSearchResult[];
+        .filter(user => user.role !== 'pending') as UserSearchResult[]; // Filtrer seulement les pending
 
       setSearchResults(formattedResults);
+      
+      if (formattedResults.length === 0) {
+        toast({
+          title: "Aucun utilisateur approuvé",
+          description: `Des utilisateurs correspondent à votre recherche mais n'ont pas encore été approuvés par un administrateur.`,
+        });
+      }
     } catch (error) {
       console.error('Error searching users:', error);
       toast({
@@ -105,6 +116,58 @@ export const useUserSearch = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadSuggestedUsers = async () => {
+    setLoadingSuggestions(true);
+    try {
+      // Récupérer les utilisateurs récents avec des rôles approuvés
+      const { data: userRolesData, error: userRolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role, created_at')
+        .in('role', ['admin', 'editor', 'viewer'])
+        .not('approved_at', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(12);
+
+      if (userRolesError) throw userRolesError;
+
+      if (!userRolesData || userRolesData.length === 0) {
+        setSuggestedUsers([]);
+        return;
+      }
+
+      // Récupérer les profils correspondants
+      const userIds = userRolesData.map(ur => ur.user_id);
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url')
+        .in('id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Combiner les données
+      const suggestions = userRolesData
+        .map(userRole => {
+          const profile = profilesData?.find(p => p.id === userRole.user_id);
+          if (!profile) return null;
+          
+          return {
+            user_id: userRole.user_id,
+            username: profile.username || 'Utilisateur',
+            role: userRole.role,
+            created_at: userRole.created_at,
+            avatar_url: profile.avatar_url
+          };
+        })
+        .filter(Boolean) as UserSearchResult[];
+
+      setSuggestedUsers(suggestions);
+    } catch (error) {
+      console.error('Error loading suggested users:', error);
+    } finally {
+      setLoadingSuggestions(false);
     }
   };
 
@@ -143,11 +206,14 @@ export const useUserSearch = () => {
 
   return {
     searchResults,
+    suggestedUsers,
     userArtists,
     userGames,
     loading,
     loadingUserData,
+    loadingSuggestions,
     searchUsers,
+    loadSuggestedUsers,
     getUserData,
   };
 };

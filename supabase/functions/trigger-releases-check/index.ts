@@ -13,27 +13,30 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    console.log('=== MANUAL TRIGGER RELEASES CHECK STARTED ===');
+    
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    console.log('Triggering manual releases check...');
-
-    // Call the check-new-releases function
-    const { data, error } = await supabaseClient.functions.invoke('check-new-releases');
+    // Appeler directement la fonction check-new-releases
+    console.log('Calling check-new-releases function...');
+    const { data: result, error } = await supabaseClient.functions.invoke('check-new-releases');
 
     if (error) {
+      console.error('Error calling check-new-releases:', error);
       throw error;
     }
 
-    console.log('Releases check completed:', data);
+    console.log('check-new-releases result:', result);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Releases check triggered successfully',
-        result: data
+        result: result,
+        message: `Manual check completed successfully`,
+        timestamp: new Date().toISOString()
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -42,9 +45,12 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
   } catch (error) {
-    console.error('Error triggering releases check:', error);
+    console.error('Error in trigger-releases-check function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        timestamp: new Date().toISOString()
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
