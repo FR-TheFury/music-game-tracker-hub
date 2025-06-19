@@ -45,24 +45,28 @@ export const ReadOnlyArtistsGrid: React.FC<ReadOnlyArtistsGridProps> = ({ artist
           className="bg-slate-700/50 border border-[#FF0751]/20 rounded-lg p-4 hover:bg-slate-700/70 hover:border-[#FF0751]/40 transition-all duration-300 hover:shadow-lg hover:scale-105"
         >
           <div className="flex items-start gap-3">
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 relative">
               {artist.image_url ? (
                 <img
                   src={artist.image_url}
                   alt={artist.name}
                   className="w-16 h-16 rounded-lg object-cover shadow-md"
                   onError={(e) => {
+                    console.log('Image failed to load for artist:', artist.name, 'URL:', artist.image_url);
                     const target = e.currentTarget;
-                    target.style.display = 'none';
-                    const fallback = target.nextElementSibling as HTMLElement;
-                    if (fallback) {
-                      fallback.style.display = 'flex';
+                    const container = target.parentElement;
+                    if (container) {
+                      target.style.display = 'none';
+                      const fallback = container.querySelector('.fallback-icon') as HTMLElement;
+                      if (fallback) {
+                        fallback.style.display = 'flex';
+                      }
                     }
                   }}
                 />
               ) : null}
               <div 
-                className={`w-16 h-16 rounded-lg bg-gradient-to-r ${getPlatformColor(artist.platform)} items-center justify-center shadow-md ${artist.image_url ? 'hidden' : 'flex'}`}
+                className={`fallback-icon w-16 h-16 rounded-lg bg-gradient-to-r ${getPlatformColor(artist.platform)} items-center justify-center shadow-md absolute top-0 left-0`}
                 style={{ display: artist.image_url ? 'none' : 'flex' }}
               >
                 <Music className="h-8 w-8 text-white" />
