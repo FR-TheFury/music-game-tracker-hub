@@ -105,6 +105,16 @@ serve(async (req) => {
                     price = 'Prix non disponible'
                   }
                   
+                  // Générer automatiquement un lien RAWG basé sur le nom du jeu
+                  const rawgSlug = gameData.name.toLowerCase()
+                    .replace(/[^a-z0-9\s-]/g, '') // Supprimer les caractères spéciaux
+                    .replace(/\s+/g, '-') // Remplacer les espaces par des tirets
+                    .replace(/-+/g, '-') // Éviter les tirets multiples
+                    .replace(/^-|-$/g, '') // Supprimer les tirets en début/fin
+                  
+                  const rawgUrl = `https://rawg.io/games/${rawgSlug}`
+                  console.log('Generated RAWG URL for', gameData.name, ':', rawgUrl)
+                  
                   return {
                     name: gameData.name,
                     platform: 'Steam',
@@ -117,6 +127,8 @@ serve(async (req) => {
                     genres: gameData.genres?.map((g: any) => g.description),
                     developer: gameData.developers?.[0],
                     publisher: gameData.publishers?.[0],
+                    rawgUrl: rawgUrl, // Lien RAWG généré automatiquement
+                    shopUrl: `https://store.steampowered.com/app/${appId}`, // Lien boutique Steam
                   }
                 }
               }
@@ -185,6 +197,16 @@ serve(async (req) => {
                 price = 'Prix non disponible'
               }
               
+              // Générer automatiquement un lien RAWG basé sur le nom du jeu
+              const rawgSlug = gameData.name.toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '') // Supprimer les caractères spéciaux
+                .replace(/\s+/g, '-') // Remplacer les espaces par des tirets
+                .replace(/-+/g, '-') // Éviter les tirets multiples
+                .replace(/^-|-$/g, '') // Supprimer les tirets en début/fin
+              
+              const rawgUrl = `https://rawg.io/games/${rawgSlug}`
+              console.log('Generated RAWG URL for', gameData.name, ':', rawgUrl)
+              
               results = [{
                 name: gameData.name,
                 platform: 'Steam',
@@ -197,6 +219,8 @@ serve(async (req) => {
                 genres: gameData.genres?.map((g: any) => g.description),
                 developer: gameData.developers?.[0],
                 publisher: gameData.publishers?.[0],
+                rawgUrl: rawgUrl, // Lien RAWG généré automatiquement
+                shopUrl: query, // Lien boutique Steam original
               }]
               console.log('Steam game processed successfully')
             } else {
