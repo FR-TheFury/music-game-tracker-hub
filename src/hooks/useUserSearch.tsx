@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -54,12 +53,16 @@ export const useUserSearch = () => {
 
     setLoading(true);
     try {
+      console.log('Searching for term:', searchTerm);
+      
       // Recherche flexible dans les profils - TOUS les utilisateurs peuvent chercher
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('id, username, avatar_url, created_at')
-        .or(`username.ilike.%${searchTerm}%,id::text.ilike.%${searchTerm}%`)
+        .or(`username.ilike.%${searchTerm}%,id.eq.${searchTerm}`)
         .limit(20);
+
+      console.log('Profiles search result:', profilesData, 'Error:', profilesError);
 
       if (profilesError) throw profilesError;
 
@@ -79,6 +82,8 @@ export const useUserSearch = () => {
         .select('user_id, role, created_at')
         .in('user_id', userIds);
 
+      console.log('User roles result:', userRolesData, 'Error:', userRolesError);
+
       if (userRolesError) throw userRolesError;
 
       // Combiner les données - INCLURE TOUS les utilisateurs
@@ -95,6 +100,7 @@ export const useUserSearch = () => {
           };
         }) as UserSearchResult[];
 
+      console.log('Final formatted results:', formattedResults);
       setSearchResults(formattedResults);
       
     } catch (error) {
