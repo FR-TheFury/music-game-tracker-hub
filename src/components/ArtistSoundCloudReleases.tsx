@@ -150,7 +150,9 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
           <Badge variant="outline" className="border-orange-400/50 text-orange-400 bg-orange-400/10">
             {releases.length}
           </Badge>
-          <Wifi className="h-4 w-4 text-green-400 ml-auto" title="Service connecté" />
+          <div className="ml-auto" title="Service connecté">
+            <Wifi className="h-4 w-4 text-green-400" />
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="p-6">

@@ -263,15 +263,17 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
                       key={platform}
                       className={`${getPlatformColor(platform, isVerified)} text-white text-xs flex items-center gap-1`}
                     >
-                      {status.available ? (
-                        isVerified ? (
-                          <CheckCircle className="h-3 w-3" />
+                      <div title={status.error || (isVerified ? 'Vérifié' : 'Service indisponible')}>
+                        {status.available ? (
+                          isVerified ? (
+                            <CheckCircle className="h-3 w-3" />
+                          ) : (
+                            <Wifi className="h-3 w-3" />
+                          )
                         ) : (
-                          <Wifi className="h-3 w-3" />
-                        )
-                      ) : (
-                        <WifiOff className="h-3 w-3" title={status.error || 'Service indisponible'} />
-                      )}
+                          <WifiOff className="h-3 w-3" />
+                        )}
+                      </div>
                       {platform === 'youtubeMusic' ? 'YT Music' : 
                        platform === 'amazonMusic' ? 'Amazon' :
                        platform.charAt(0).toUpperCase() + platform.slice(1)}
