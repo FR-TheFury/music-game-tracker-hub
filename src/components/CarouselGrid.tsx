@@ -31,15 +31,15 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
   useEffect(() => {
     if (!api) return;
 
-    // Si l'item actuel n'existe plus après suppression, ajuster la position
-    if (current >= items.length && items.length > 0) {
-      const newPosition = Math.max(0, items.length - itemsPerView);
-      api.scrollTo(newPosition);
+    // Toujours revenir à la position 0 quand on supprime un élément
+    if (current > 0) {
+      api.scrollTo(0);
+      setCurrent(0);
     }
 
     // Réinitialiser le carousel pour qu'il recalcule ses positions
     api.reInit();
-  }, [items.length, api, current, itemsPerView]);
+  }, [items.length, api]);
 
   // Effet pour suivre l'item actuel
   useEffect(() => {
