@@ -30,8 +30,11 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
   };
 
   const selectArtist = (artist: any) => {
+    // Ensure platformUrls exists and has valid data
+    const platformUrls = artist.platformUrls || {};
+    
     // Créer les URLs multiples pour le formulaire principal
-    const multipleUrls = Object.entries(artist.platformUrls)
+    const multipleUrls = Object.entries(platformUrls)
       .filter(([_, url]) => url)
       .map(([platform, url]) => ({
         platform: platform.charAt(0).toUpperCase() + platform.slice(1),
@@ -41,7 +44,7 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
     const artistData = {
       name: artist.name,
       platform: 'Spotify',
-      url: artist.platformUrls.spotify,
+      url: platformUrls.spotify || '',
       spotifyId: artist.spotifyId,
       genres: artist.genres,
       popularity: artist.popularity,
@@ -137,9 +140,9 @@ export const SmartArtistSearch: React.FC<SmartArtistSearchProps> = ({
               
               {/* Plateformes disponibles */}
               <div className="flex flex-wrap gap-1 mt-2">
-                {Object.entries(artist.platformUrls).map(([platform, url]) => {
+                {artist.platformUrls && Object.entries(artist.platformUrls).map(([platform, url]) => {
                   if (!url) return null;
-                  const isVerified = artist.verified[platform as keyof typeof artist.verified];
+                  const isVerified = artist.verified && artist.verified[platform as keyof typeof artist.verified];
                   
                   return (
                     <Badge
