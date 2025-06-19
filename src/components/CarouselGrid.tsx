@@ -42,67 +42,87 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
     return 3; // desktop
   };
 
-  // Calculer le nombre total de pages basé sur le nombre réel d'items
+  // Calculer le nombre total de pages basé sur le comportement réel d'Embla
   const calculateTotalPages = () => {
-    const actualItemsPerView = getActualItemsPerView();
-    const pages = Math.ceil(items.length / actualItemsPerView);
-    console.log(`Carousel: ${items.length} items, ${actualItemsPerView} per view, ${pages} pages`);
+    if (!api) return 0;
+    
+    // Utiliser directement la méthode d'Embla pour obtenir le nombre de slides
+    const scrollSnaps = api.scrollSnapList();
+    const pages = scrollSnaps.length;
+    
+    console.log(`Carousel: ${items.length} items, ${getActualItemsPerView()} per view, ${pages} pages (via Embla)`);
     return pages;
   };
 
-  // Effet pour gérer les changements d'éléments et repositionner le carousel
-  useEffect(() => {
-    if (!api) return;
-
-    const pages = calculateTotalPages();
-    setTotalPages(pages);
-
-    // Si la position actuelle dépasse le nombre total de pages possibles
-    if (current >= pages) {
-      const newPosition = Math.max(0, pages - 1);
-      api.scrollTo(newPosition);
-      setCurrent(newPosition);
-    } else {
-      // Réinitialiser le carousel pour qu'il recalcule ses positions
-      api.reInit();
-    }
-  }, [items.length, api, current]);
-
-  // Effet pour suivre l'item actuel
+  // Effet pour suivre l'item actuel et calculer les pages
   useEffect(() => {
     if (!api) return;
 
     const onSelect = () => {
       setCurrent(api.selectedScrollSnap());
+      
+      // Recalculer les pages à chaque sélection
+      const pages = calculateTotalPages();
+      setTotalPages(pages);
     };
 
     api.on('select', onSelect);
+    api.on('reInit', onSelect);
     onSelect(); // Initialiser
 
     return () => {
       api?.off('select', onSelect);
+      api?.off('reInit', onSelect);
     };
   }, [api]);
 
-  // Mettre à jour le nombre de pages lors du redimensionnement
+  // Effet pour gérer les changements d'éléments
   useEffect(() => {
-    const handleResize = () => {
+    if (!api) return;
+
+    // Réinitialiser le carousel pour qu'il recalcule ses positions
+    api.reInit();
+    
+    // Recalculer les pages après réinitialisation
+    setTimeout(() => {
       const pages = calculateTotalPages();
       setTotalPages(pages);
       
-      // Ajuster la position actuelle si nécessaire
-      if (api && current >= pages) {
+      // Si la position actuelle dépasse le nombre total de pages possibles
+      if (current >= pages) {
         const newPosition = Math.max(0, pages - 1);
         api.scrollTo(newPosition);
         setCurrent(newPosition);
       }
+    }, 0);
+  }, [items.length]);
+
+  // Mettre à jour lors du redimensionnement
+  useEffect(() => {
+    const handleResize = () => {
+      if (!api) return;
+      
+      // Réinitialiser le carousel
+      api.reInit();
+      
+      // Recalculer les pages après réinitialisation
+      setTimeout(() => {
+        const pages = calculateTotalPages();
+        setTotalPages(pages);
+        
+        // Ajuster la position actuelle si nécessaire
+        if (current >= pages) {
+          const newPosition = Math.max(0, pages - 1);
+          api.scrollTo(newPosition);
+          setCurrent(newPosition);
+        }
+      }, 0);
     };
 
     window.addEventListener('resize', handleResize);
-    handleResize(); // Calcul initial
 
     return () => window.removeEventListener('resize', handleResize);
-  }, [items.length, api, current]);
+  }, [api, current]);
 
   const actualItemsPerView = getActualItemsPerView();
   const canShowNavigation = items.length > actualItemsPerView;
@@ -131,7 +151,7 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
         </CarouselContent>
       </Carousel>
       
-      {/* Points de navigation - un point par page calculé correctement */}
+      {/* Points de navigation - basés sur les snap points d'Embla */}
       {canShowNavigation && totalPages > 1 && (
         <div className="flex justify-center mt-4 space-x-2 select-none">
           {Array.from({ length: totalPages }, (_, pageIndex) => (
