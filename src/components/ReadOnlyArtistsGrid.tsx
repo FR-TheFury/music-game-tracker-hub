@@ -52,12 +52,19 @@ export const ReadOnlyArtistsGrid: React.FC<ReadOnlyArtistsGridProps> = ({ artist
                   alt={artist.name}
                   className="w-16 h-16 rounded-lg object-cover shadow-md"
                   onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                    const target = e.currentTarget;
+                    target.style.display = 'none';
+                    const fallback = target.nextElementSibling as HTMLElement;
+                    if (fallback) {
+                      fallback.style.display = 'flex';
+                    }
                   }}
                 />
               ) : null}
-              <div className={`w-16 h-16 rounded-lg bg-gradient-to-r ${getPlatformColor(artist.platform)} flex items-center justify-center shadow-md ${artist.image_url ? 'hidden' : ''}`}>
+              <div 
+                className={`w-16 h-16 rounded-lg bg-gradient-to-r ${getPlatformColor(artist.platform)} items-center justify-center shadow-md ${artist.image_url ? 'hidden' : 'flex'}`}
+                style={{ display: artist.image_url ? 'none' : 'flex' }}
+              >
                 <Music className="h-8 w-8 text-white" />
               </div>
             </div>
