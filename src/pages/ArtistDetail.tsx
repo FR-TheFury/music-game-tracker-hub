@@ -12,7 +12,7 @@ import { ArtistSoundCloudReleases } from '@/components/ArtistSoundCloudReleases'
 const ArtistDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { artists, getArtistReleases } = useArtists();
+  const { artists, loading: artistsLoading } = useArtists();
   const { getArtistDetails } = useSpotify();
   
   const [artist, setArtist] = useState<any>(null);
@@ -22,18 +22,32 @@ const ArtistDetail: React.FC = () => {
 
   useEffect(() => {
     const loadArtistData = async () => {
-      if (!id) return;
+      if (!id) {
+        setLoading(false);
+        return;
+      }
+
+      // Attendre que les artistes soient chargés
+      if (artistsLoading) {
+        return;
+      }
 
       console.log('Loading artist data for ID:', id);
+      console.log('Available artists:', artists.length);
+      
       const foundArtist = artists.find(a => a.id === id);
       console.log('Found artist:', foundArtist);
+      
+      if (!foundArtist) {
+        console.log('Artist not found in list, waiting...');
+        setLoading(false);
+        return;
+      }
+      
       setArtist(foundArtist);
 
-      if (foundArtist) {
-        const dbReleases = await getArtistReleases(id);
-        setReleases(dbReleases);
-
-        if (foundArtist.spotifyId) {
+      if (foundArtist.spotifyId) {
+        try {
           const spotifyData = await getArtistDetails(foundArtist.spotifyId);
           if (spotifyData) {
             const oneMonthAgo = new Date();
@@ -47,6 +61,8 @@ const ArtistDetail: React.FC = () => {
             
             setSpotifyReleases(recentSpotifyReleases);
           }
+        } catch (error) {
+          console.error('Error loading Spotify data:', error);
         }
       }
 
@@ -54,7 +70,7 @@ const ArtistDetail: React.FC = () => {
     };
 
     loadArtistData();
-  }, [id, artists]);
+  }, [id, artists, artistsLoading]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('fr-FR', {
@@ -89,7 +105,7 @@ const ArtistDetail: React.FC = () => {
     return undefined;
   };
 
-  if (loading) {
+  if (loading || artistsLoading) {
     return (
       <div className="min-h-screen bg-3d-main flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary rose-glow"></div>
@@ -97,7 +113,7 @@ const ArtistDetail: React.FC = () => {
     );
   }
 
-  if (!artist) {
+  if (!artist && !artistsLoading) {
     return (
       <div className="min-h-screen bg-3d-main flex items-center justify-center">
         <div className="text-center">

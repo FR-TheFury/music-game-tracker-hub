@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Music, ExternalLink, Calendar, Play, Heart, Wifi, WifiOff, AlertTriangle } from 'lucide-react';
+import { Music, ExternalLink, Calendar, Play, Heart, Wifi, WifiOff, AlertTriangle, Clock } from 'lucide-react';
 import { useSoundCloud } from '@/hooks/useSoundCloud';
 
 interface SoundCloudRelease {
@@ -29,7 +29,7 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
   const [releases, setReleases] = useState<SoundCloudRelease[]>([]);
   const [isServiceAvailable, setIsServiceAvailable] = useState(true);
   const [hasSearched, setHasSearched] = useState(false);
-  const [errorType, setErrorType] = useState<'none' | 'rate_limit' | 'config' | 'api' | 'no_results'>('none');
+  const [errorType, setErrorType] = useState<'none' | 'rate_limit' | 'config' | 'api' | 'no_results' | 'no_soundcloud'>('none');
   const { getArtistReleases, loading, error } = useSoundCloud();
 
   const cacheKey = useMemo(() => `${artistName}-${soundcloudUrl || ''}`, [artistName, soundcloudUrl]);
@@ -37,6 +37,16 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
   useEffect(() => {
     const fetchReleases = async () => {
       if (!artistName) return;
+
+      // Vérifier si l'artiste a SoundCloud configuré
+      if (!soundcloudUrl) {
+        console.log('❌ Pas d\'URL SoundCloud configurée pour', artistName);
+        setHasSearched(true);
+        setErrorType('no_soundcloud');
+        setIsServiceAvailable(true);
+        setReleases([]);
+        return;
+      }
 
       try {
         setHasSearched(false);
@@ -82,7 +92,6 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
         setHasSearched(true);
         setReleases([]);
         
-        // Déterminer le type d'erreur
         const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
         if (errorMessage.includes('rate_limit_exceeded') || errorMessage.includes('429')) {
           setErrorType('rate_limit');
@@ -135,6 +144,25 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
     );
   }
 
+  // Pas de SoundCloud configuré
+  if (errorType === 'no_soundcloud') {
+    return (
+      <Card className="card-3d mb-8 border-gray-600/20">
+        <CardContent className="p-6">
+          <div className="flex items-center gap-3 text-gray-400">
+            <WifiOff className="h-5 w-5" />
+            <div>
+              <p className="font-medium">SoundCloud non configuré</p>
+              <p className="text-sm text-gray-500">
+                Aucun profil SoundCloud trouvé pour {artistName}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   // Gestion des différents types d'erreurs
   if (!isServiceAvailable || error) {
     let errorIcon = WifiOff;
@@ -178,14 +206,14 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
       <Card className="card-3d mb-8 border-orange-400/20">
         <CardContent className="p-6">
           <div className="flex items-center gap-3 text-orange-400">
-            <Wifi className="h-5 w-5" />
+            <Clock className="h-5 w-5" />
             <div>
-              <p className="font-medium">SoundCloud connecté</p>
+              <p className="font-medium">Aucune sortie récente</p>
               <p className="text-sm text-gray-400">
-                Aucune sortie récente du dernier mois trouvée pour {artistName}
+                Aucune sortie SoundCloud du dernier mois trouvée pour {artistName}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                L'artiste pourrait avoir des sorties plus anciennes ou être présent sous un autre nom
+                L'artiste pourrait avoir des sorties plus anciennes
               </p>
             </div>
           </div>
@@ -194,6 +222,7 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
     );
   }
 
+  // Affichage des sorties trouvées
   return (
     <Card className="card-3d mb-8">
       <CardHeader className="header-3d">
