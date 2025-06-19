@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 
@@ -121,30 +120,36 @@ const handler = async (req: Request): Promise<Response> => {
 
       console.log(`Successfully inserted ${newReleases.length} new releases globally`);
 
-      // Send email notifications for users with notifications enabled
-      const processedUsers = new Set();
+      // CORRECTION: Grouper les releases par utilisateur pour éviter les doublons d'emails
+      const releasesByUser = new Map<string, typeof newReleases>();
       
       for (const release of newReleases) {
+        if (!releasesByUser.has(release.user_id)) {
+          releasesByUser.set(release.user_id, []);
+        }
+        releasesByUser.get(release.user_id)!.push(release);
+      }
+
+      console.log(`Processing notifications for ${releasesByUser.size} unique users`);
+
+      // Send email notifications for users with notifications enabled
+      for (const [userId, userReleases] of releasesByUser) {
         try {
-          if (processedUsers.has(release.user_id)) {
-            continue;
-          }
-          
-          console.log(`Processing notifications for user: ${release.user_id}`);
+          console.log(`Processing notifications for user: ${userId} (${userReleases.length} releases)`);
           
           let { data: settings, error: settingsError } = await supabaseClient
             .from('notification_settings')
             .select('*')
-            .eq('user_id', release.user_id)
+            .eq('user_id', userId)
             .maybeSingle();
 
           if (settingsError && settingsError.code === 'PGRST116') {
-            console.log(`No notification settings found for user ${release.user_id}, creating default settings`);
+            console.log(`No notification settings found for user ${userId}, creating default settings`);
             
             const { data: newSettings, error: createError } = await supabaseClient
               .from('notification_settings')
               .insert({
-                user_id: release.user_id,
+                user_id: userId,
                 email_notifications_enabled: true,
                 notification_frequency: 'immediate',
                 artist_notifications_enabled: true,
@@ -158,7 +163,7 @@ const handler = async (req: Request): Promise<Response> => {
               continue;
             }
 
-            console.log(`Created default notification settings for user ${release.user_id}:`, newSettings);
+            console.log(`Created default notification settings for user ${userId}:`, newSettings);
             settings = newSettings;
           } else if (settingsError) {
             console.error('Error fetching notification settings:', settingsError);
@@ -166,41 +171,65 @@ const handler = async (req: Request): Promise<Response> => {
           }
 
           if (settings?.email_notifications_enabled && settings?.notification_frequency === 'immediate') {
-            const userReleases = newReleases.filter(r => r.user_id === release.user_id);
-            
-            for (const userRelease of userReleases) {
-              const shouldSendNotification = 
-                (userRelease.type === 'artist' && settings.artist_notifications_enabled) ||
-                (userRelease.type === 'game' && settings.game_notifications_enabled);
+            // Filter releases based on user's notification preferences
+            const filteredReleases = userReleases.filter(release => 
+              (release.type === 'artist' && settings.artist_notifications_enabled) ||
+              (release.type === 'game' && settings.game_notifications_enabled)
+            );
 
-              if (shouldSendNotification) {
-                console.log(`Sending email notification to user ${release.user_id} for release: ${userRelease.title}`);
-                
+            console.log(`User ${userId} has ${filteredReleases.length} relevant releases for notification`);
+
+            // Send ONE email per release type per user
+            const artistReleases = filteredReleases.filter(r => r.type === 'artist');
+            const gameReleases = filteredReleases.filter(r => r.type === 'game');
+
+            // Send artist notifications
+            if (artistReleases.length > 0) {
+              console.log(`Sending artist notification email to user ${userId} for ${artistReleases.length} releases`);
+              
+              for (const release of artistReleases) {
                 const { error: emailError } = await supabaseClient.functions.invoke('send-release-notification', {
                   body: { 
-                    release: userRelease, 
-                    userId: release.user_id,
+                    release: release, 
+                    userId: userId,
                     userSettings: settings 
                   }
                 });
 
                 if (emailError) {
-                  console.error('Failed to send email notification:', emailError);
+                  console.error('Failed to send artist email notification:', emailError);
                 } else {
-                  console.log(`Email notification request sent successfully for user ${release.user_id}`);
+                  console.log(`Artist email notification sent successfully for user ${userId}, release: ${release.title}`);
                 }
-              } else {
-                console.log(`Notifications disabled for ${userRelease.type} for user ${release.user_id}`);
+              }
+            }
+
+            // Send game notifications
+            if (gameReleases.length > 0) {
+              console.log(`Sending game notification email to user ${userId} for ${gameReleases.length} releases`);
+              
+              for (const release of gameReleases) {
+                const { error: emailError } = await supabaseClient.functions.invoke('send-release-notification', {
+                  body: { 
+                    release: release, 
+                    userId: userId,
+                    userSettings: settings 
+                  }
+                });
+
+                if (emailError) {
+                  console.error('Failed to send game email notification:', emailError);
+                } else {
+                  console.log(`Game email notification sent successfully for user ${userId}, release: ${release.title}`);
+                }
               }
             }
           } else {
-            console.log(`Email notifications disabled or not immediate for user ${release.user_id}`);
+            console.log(`Email notifications disabled or not immediate for user ${userId}`);
           }
           
-          processedUsers.add(release.user_id);
-          
         } catch (emailError) {
-          console.error('Failed to process email notification:', emailError);
+          console.error(`Failed to process email notifications for user ${userId}:`, emailError);
         }
       }
     }
