@@ -97,29 +97,69 @@ const handler = async (req: Request): Promise<Response> => {
       for (const release of newReleases) {
         try {
           // Get user's notification settings
-          const { data: settings } = await supabaseClient
+          let { data: settings, error: settingsError } = await supabaseClient
             .from('notification_settings')
             .select('*')
             .eq('user_id', release.user_id)
             .single();
 
-          if (settings?.email_notifications_enabled && settings?.notification_frequency === 'immediate') {
-            console.log(`Sending email notification to user ${release.user_id} for release: ${release.title}`);
+          // Si l'utilisateur n'a pas de paramètres, créer des paramètres par défaut
+          if (settingsError || !settings) {
+            console.log(`Creating default notification settings for user ${release.user_id}`);
             
-            // Call the email sending function with userId instead of userEmail
-            const { error: emailError } = await supabaseClient.functions.invoke('send-release-notification', {
-              body: { 
-                release, 
-                userId: release.user_id,
-                userSettings: settings 
-              }
-            });
+            const { error: createError } = await supabaseClient
+              .from('notification_settings')
+              .insert({
+                user_id: release.user_id,
+                email_notifications_enabled: true,
+                notification_frequency: 'immediate',
+                artist_notifications_enabled: true,
+                game_notifications_enabled: true,
+              });
 
-            if (emailError) {
-              console.error('Failed to send email notification:', emailError);
-            } else {
-              console.log(`Email notification request sent for user ${release.user_id}`);
+            if (createError) {
+              console.error('Failed to create default notification settings:', createError);
+              continue; // Passer au prochain release
             }
+
+            // Récupérer les nouveaux paramètres créés
+            const { data: newSettings } = await supabaseClient
+              .from('notification_settings')
+              .select('*')
+              .eq('user_id', release.user_id)
+              .single();
+
+            settings = newSettings;
+          }
+
+          if (settings?.email_notifications_enabled && settings?.notification_frequency === 'immediate') {
+            // Vérifier si les notifications sont activées pour ce type
+            const shouldSendNotification = 
+              (release.type === 'artist' && settings.artist_notifications_enabled) ||
+              (release.type === 'game' && settings.game_notifications_enabled);
+
+            if (shouldSendNotification) {
+              console.log(`Sending email notification to user ${release.user_id} for release: ${release.title}`);
+              
+              // Call the email sending function with userId instead of userEmail
+              const { error: emailError } = await supabaseClient.functions.invoke('send-release-notification', {
+                body: { 
+                  release, 
+                  userId: release.user_id,
+                  userSettings: settings 
+                }
+              });
+
+              if (emailError) {
+                console.error('Failed to send email notification:', emailError);
+              } else {
+                console.log(`Email notification request sent for user ${release.user_id}`);
+              }
+            } else {
+              console.log(`Notifications disabled for ${release.type} for user ${release.user_id}`);
+            }
+          } else {
+            console.log(`Email notifications disabled or not immediate for user ${release.user_id}`);
           }
         } catch (emailError) {
           console.error('Failed to process email notification:', emailError);

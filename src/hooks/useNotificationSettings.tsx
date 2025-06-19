@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -42,6 +41,7 @@ export const useNotificationSettings = () => {
         });
       } else {
         // Create default settings if none exist
+        console.log('Creating default notification settings for user:', user.id);
         const defaultSettings: Omit<NotificationSettings, 'id'> = {
           userId: user.id,
           emailNotificationsEnabled: true,
