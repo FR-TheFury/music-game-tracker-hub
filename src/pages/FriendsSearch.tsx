@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useUserSearch } from '@/hooks/useUserSearch';
 import { Search, User, ArrowLeft } from 'lucide-react';
@@ -39,6 +40,15 @@ export default function FriendsSearch() {
   const handleBackToSearch = () => {
     setSelectedUser(null);
     setSearchTerm('');
+  };
+
+  const getUserInitials = (username: string) => {
+    return username.split(' ').map(name => name.charAt(0)).join('').toUpperCase().slice(0, 2);
+  };
+
+  const getUserAvatarUrl = (userId: string) => {
+    // Generate a consistent avatar URL based on user ID
+    return `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`;
   };
 
   return (
@@ -98,7 +108,7 @@ export default function FriendsSearch() {
                 </CardContent>
               </Card>
 
-              {/* Résultats de recherche */}
+              {/* Résultats de recherche avec avatars */}
               {searchResults.length > 0 && (
                 <Card className="bg-slate-800/90 border-[#FF0751]/30 shadow-2xl backdrop-blur-sm">
                   <CardHeader>
@@ -113,9 +123,15 @@ export default function FriendsSearch() {
                           onClick={() => handleUserSelect(user)}
                         >
                           <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-full bg-blue-500/20">
-                              <User className="h-4 w-4 text-blue-400" />
-                            </div>
+                            <Avatar className="h-12 w-12">
+                              <AvatarImage 
+                                src={getUserAvatarUrl(user.user_id)} 
+                                alt={user.username}
+                              />
+                              <AvatarFallback className="bg-blue-500/20 text-blue-400 text-sm font-medium">
+                                {getUserInitials(user.username)}
+                              </AvatarFallback>
+                            </Avatar>
                             <div>
                               <p className="font-medium text-white">{user.username}</p>
                               <p className="text-xs text-gray-400">
@@ -143,13 +159,21 @@ export default function FriendsSearch() {
               )}
             </div>
           ) : (
-            // Interface d'affichage des données utilisateur
+            // Interface d'affichage des données utilisateur avec avatar
             <div className="space-y-6">
               <Card className="bg-slate-800/90 border-[#FF0751]/30 shadow-2xl backdrop-blur-sm">
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-white flex items-center gap-2">
-                      <User className="h-5 w-5" />
+                    <CardTitle className="text-white flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage 
+                          src={getUserAvatarUrl(selectedUser.user_id)} 
+                          alt={selectedUser.username}
+                        />
+                        <AvatarFallback className="bg-blue-500/20 text-blue-400 text-xs">
+                          {getUserInitials(selectedUser.username)}
+                        </AvatarFallback>
+                      </Avatar>
                       Profil de {selectedUser.username}
                     </CardTitle>
                     <Button
@@ -163,10 +187,16 @@ export default function FriendsSearch() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center gap-3">
-                    <div className="p-3 rounded-full bg-blue-500/20">
-                      <User className="h-6 w-6 text-blue-400" />
-                    </div>
+                  <div className="flex items-center gap-4">
+                    <Avatar className="h-16 w-16">
+                      <AvatarImage 
+                        src={getUserAvatarUrl(selectedUser.user_id)} 
+                        alt={selectedUser.username}
+                      />
+                      <AvatarFallback className="bg-blue-500/20 text-blue-400 text-lg">
+                        {getUserInitials(selectedUser.username)}
+                      </AvatarFallback>
+                    </Avatar>
                     <div>
                       <p className="text-lg font-medium text-white">{selectedUser.username}</p>
                       <div className="flex items-center gap-2">
