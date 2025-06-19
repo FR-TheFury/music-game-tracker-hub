@@ -146,6 +146,33 @@ export type Database = {
         }
         Relationships: []
       }
+      email_sent_log: {
+        Row: {
+          email_type: string
+          id: string
+          release_hash: string
+          release_title: string | null
+          sent_at: string
+          user_id: string
+        }
+        Insert: {
+          email_type?: string
+          id?: string
+          release_hash: string
+          release_title?: string | null
+          sent_at?: string
+          user_id: string
+        }
+        Update: {
+          email_type?: string
+          id?: string
+          release_hash?: string
+          release_title?: string | null
+          sent_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       games: {
         Row: {
           created_at: string | null
@@ -214,6 +241,7 @@ export type Database = {
           source_item_id: string
           title: string
           type: Database["public"]["Enums"]["notification_type"]
+          unique_hash: string | null
           user_id: string
         }
         Insert: {
@@ -226,6 +254,7 @@ export type Database = {
           source_item_id: string
           title: string
           type: Database["public"]["Enums"]["notification_type"]
+          unique_hash?: string | null
           user_id: string
         }
         Update: {
@@ -238,6 +267,7 @@ export type Database = {
           source_item_id?: string
           title?: string
           type?: Database["public"]["Enums"]["notification_type"]
+          unique_hash?: string | null
           user_id?: string
         }
         Relationships: []
@@ -373,6 +403,10 @@ export type Database = {
         Returns: undefined
       }
       cleanup_expired_releases: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      cleanup_old_email_logs: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
