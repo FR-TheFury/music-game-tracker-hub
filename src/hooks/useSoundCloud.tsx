@@ -61,24 +61,16 @@ export const useSoundCloud = () => {
 
       if (error) {
         console.error('SoundCloud Edge Function error:', error);
-        
-        // Gestion spéciale du rate limiting avec retry
-        if (error.message?.includes('rate_limit_exceeded') && retryCount < 2) {
-          console.log(`Rate limit exceeded, retrying in ${(retryCount + 1) * 2} seconds...`);
-          await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 2000));
-          return makeRequest(requestBody, retryCount + 1);
-        }
-        
-        throw new Error(error.message || 'Erreur de connexion SoundCloud');
+        throw new Error(error.message || 'SoundCloud connection error');
       }
 
       if (data?.error) {
         console.error('SoundCloud API error:', data.error);
         
-        // Gestion spéciale du rate limiting
-        if (data.error.includes('rate_limit_exceeded') && retryCount < 2) {
-          console.log(`API rate limit exceeded, retrying in ${(retryCount + 1) * 2} seconds...`);
-          await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 2000));
+        if (data.error === 'rate_limit_exceeded' && retryCount < 2) {
+          const waitTime = (retryCount + 1) * 60000; // 1-2 minutes
+          console.log(`Rate limit hit, retrying in ${waitTime/1000} seconds...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
           return makeRequest(requestBody, retryCount + 1);
         }
         
@@ -99,7 +91,7 @@ export const useSoundCloud = () => {
     setError(null);
     
     try {
-      console.log('Recherche d\'artistes SoundCloud pour:', query);
+      console.log('Searching SoundCloud artists for:', query);
       
       const data = await makeRequest({
         query,
@@ -107,14 +99,13 @@ export const useSoundCloud = () => {
       });
 
       const artists = data?.artists || [];
-      console.log(`Recherche SoundCloud trouvé ${artists.length} artistes`);
+      console.log(`SoundCloud search found ${artists.length} artists`);
       
       return artists;
     } catch (error) {
-      console.error('Erreur recherche artistes SoundCloud:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      console.error('SoundCloud artists search error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setError(errorMessage);
-      
       return [];
     } finally {
       setLoading(false);
@@ -128,7 +119,7 @@ export const useSoundCloud = () => {
     setError(null);
     
     try {
-      console.log('Récupération infos artiste SoundCloud:', artistUrl);
+      console.log('Getting SoundCloud artist info:', artistUrl);
       
       const data = await makeRequest({
         artistUrl,
@@ -136,12 +127,12 @@ export const useSoundCloud = () => {
       });
 
       const artist = data?.artist || null;
-      console.log('Infos artiste SoundCloud récupérées:', artist?.username);
+      console.log('SoundCloud artist info retrieved:', artist?.username);
       
       return artist;
     } catch (error) {
-      console.error('Erreur infos artiste SoundCloud:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      console.error('SoundCloud artist info error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setError(errorMessage);
       return null;
     } finally {
@@ -156,7 +147,7 @@ export const useSoundCloud = () => {
     setError(null);
     
     try {
-      console.log('Récupération tracks SoundCloud:', artistUrl);
+      console.log('Getting SoundCloud tracks:', artistUrl);
       
       const data = await makeRequest({
         artistUrl,
@@ -165,12 +156,12 @@ export const useSoundCloud = () => {
       });
 
       const tracks = data?.tracks || [];
-      console.log(`Récupéré ${tracks.length} tracks SoundCloud`);
+      console.log(`Retrieved ${tracks.length} SoundCloud tracks`);
       
       return tracks;
     } catch (error) {
-      console.error('Erreur tracks SoundCloud:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      console.error('SoundCloud tracks error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setError(errorMessage);
       return [];
     } finally {
@@ -183,7 +174,7 @@ export const useSoundCloud = () => {
     setError(null);
     
     try {
-      console.log('Récupération sorties SoundCloud pour:', artistQuery, artistUrl);
+      console.log('Getting SoundCloud releases for:', artistQuery, artistUrl);
       
       const data = await makeRequest({
         query: artistQuery,
@@ -193,12 +184,12 @@ export const useSoundCloud = () => {
       });
 
       const releases = data?.releases || [];
-      console.log(`SoundCloud getArtistReleases retourné ${releases.length} sorties`);
+      console.log(`SoundCloud getArtistReleases returned ${releases.length} releases`);
       
       return releases;
     } catch (error) {
-      console.error('Erreur sorties SoundCloud:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      console.error('SoundCloud releases error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setError(errorMessage);
       return [];
     } finally {
@@ -211,7 +202,7 @@ export const useSoundCloud = () => {
     setError(null);
     
     try {
-      console.log('Récupération stats SoundCloud pour:', artistQuery, artistUrl);
+      console.log('Getting SoundCloud stats for:', artistQuery, artistUrl);
       
       const data = await makeRequest({
         query: artistQuery,
@@ -226,12 +217,12 @@ export const useSoundCloud = () => {
         tracks: data?.tracks || []
       };
       
-      console.log('Stats SoundCloud récupérées:', stats);
+      console.log('SoundCloud stats retrieved:', stats);
       
       return stats;
     } catch (error) {
-      console.error('Erreur stats SoundCloud:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      console.error('SoundCloud stats error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setError(errorMessage);
       return null;
     } finally {

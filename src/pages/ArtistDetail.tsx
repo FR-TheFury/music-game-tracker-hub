@@ -18,49 +18,49 @@ const ArtistDetail: React.FC = () => {
   
   const [artist, setArtist] = useState<any>(null);
   const [spotifyReleases, setSpotifyReleases] = useState<any[]>([]);
+  const [spotifyLoading, setSpotifyLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
-  // Effet pour charger les données de base de l'artiste
+  // Charger les données de base de l'artiste
   useEffect(() => {
-    if (!id) {
-      setLoading(false);
-      setNotFound(true);
-      return;
-    }
-
-    if (artistsLoading) {
+    if (!id || artistsLoading) {
       return;
     }
 
     console.log('Loading artist data for ID:', id);
-    console.log('Available artists:', artists.length);
-    
     const foundArtist = artists.find(a => a.id === id);
-    console.log('Found artist:', foundArtist);
     
     if (!foundArtist) {
-      console.log('Artist not found in list');
-      setLoading(false);
+      console.log('Artist not found');
       setNotFound(true);
+      setLoading(false);
       return;
     }
     
+    console.log('Artist found:', foundArtist);
     setArtist(foundArtist);
     setNotFound(false);
     setLoading(false);
   }, [id, artists, artistsLoading]);
 
-  // Effet séparé pour charger les données Spotify
+  // Charger les données Spotify de manière indépendante
   useEffect(() => {
     if (!artist?.spotifyId) {
       return;
     }
 
+    let isMounted = true;
+
     const loadSpotifyData = async () => {
       try {
+        setSpotifyLoading(true);
         console.log('Loading Spotify data for:', artist.spotifyId);
+        
         const spotifyData = await getArtistDetails(artist.spotifyId);
+        
+        if (!isMounted) return;
+        
         if (spotifyData?.releases) {
           const oneMonthAgo = new Date();
           oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
@@ -76,11 +76,20 @@ const ArtistDetail: React.FC = () => {
         }
       } catch (error) {
         console.error('Error loading Spotify data:', error);
+        // Ne pas bloquer l'affichage si Spotify échoue
+      } finally {
+        if (isMounted) {
+          setSpotifyLoading(false);
+        }
       }
     };
 
     loadSpotifyData();
-  }, [artist?.spotifyId]); // Seulement l'ID Spotify comme dépendance
+
+    return () => {
+      isMounted = false;
+    };
+  }, [artist?.spotifyId, getArtistDetails]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('fr-FR', {
@@ -103,7 +112,6 @@ const ArtistDetail: React.FC = () => {
     return artist?.profileImageUrl || artist?.imageUrl || '/placeholder.svg';
   };
 
-  // Fonction pour extraire l'URL SoundCloud de l'artiste
   const getSoundCloudUrl = () => {
     if (artist?.multipleUrls) {
       const soundcloudLink = artist.multipleUrls.find((link: any) => 
@@ -115,8 +123,7 @@ const ArtistDetail: React.FC = () => {
     return undefined;
   };
 
-  // Affichage du loading pendant que les artistes se chargent
-  if (artistsLoading || loading) {
+  if (loading || artistsLoading) {
     return (
       <div className="min-h-screen bg-3d-main flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary rose-glow"></div>
@@ -124,7 +131,6 @@ const ArtistDetail: React.FC = () => {
     );
   }
 
-  // Affichage "non trouvé" seulement si vraiment pas trouvé
   if (notFound || !artist) {
     return (
       <div className="min-h-screen bg-3d-main flex items-center justify-center">
@@ -236,6 +242,9 @@ const ArtistDetail: React.FC = () => {
               <CardTitle className="flex items-center gap-2 text-white">
                 <Music className="h-5 w-5 text-green-400" />
                 Sorties Spotify récentes
+                {spotifyLoading && (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-400"></div>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
