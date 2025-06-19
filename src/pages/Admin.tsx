@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,11 +12,15 @@ import { UsersManagementTab } from '@/components/admin/UsersManagementTab';
 import { ManualReleaseChecker } from '@/components/ManualReleaseChecker';
 import { GameStatusCleanupButton } from '@/components/GameStatusCleanupButton';
 import { useAdminUsers } from '@/hooks/useAdminUsers';
+import { AutonomousSystemMonitor } from '@/components/AutonomousSystemMonitor';
+import { useAutonomousSystem } from '@/hooks/useAutonomousSystem';
+import { Button } from '@/components/ui/button';
 
 const Admin = () => {
   const { userRole, pendingValidations, approveUser, rejectUser, loading } = useUserRoleContext();
   const { user } = useAuth();
   const { allUsers, loadingUsers, fetchAllUsers, updateUserRole } = useAdminUsers(userRole);
+  const { testAutonomousSystem, setupAutonomousSystem, isTestingSystem } = useAutonomousSystem();
 
   if (loading) {
     return (
@@ -52,7 +55,7 @@ const Admin = () => {
             </CardHeader>
             <CardContent className="p-6">
               <Tabs defaultValue="requests" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 bg-slate-700/50 border border-[#FF0751]/30">
+                <TabsList className="grid w-full grid-cols-4 bg-slate-700/50 border border-[#FF0751]/30">
                   <TabsTrigger 
                     value="requests" 
                     className="flex items-center gap-2 text-gray-300 data-[state=active]:text-white data-[state=active]:bg-[#FF0751]/20 data-[state=active]:shadow-lg transition-all duration-300"
@@ -73,6 +76,13 @@ const Admin = () => {
                   >
                     <RefreshCw className="h-4 w-4" />
                     Vérification des sorties
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="system" 
+                    className="flex items-center gap-2 text-gray-300 data-[state=active]:text-white data-[state=active]:bg-[#FF0751]/20 data-[state=active]:shadow-lg transition-all duration-300"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Système autonome
                   </TabsTrigger>
                 </TabsList>
 
@@ -101,6 +111,52 @@ const Admin = () => {
                       <GameStatusCleanupButton />
                     </div>
                     <ManualReleaseChecker />
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="system" className="mt-6">
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-semibold text-white">Surveillance du Système Autonome</h3>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={setupAutonomousSystem}
+                          className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                        >
+                          <Settings className="h-4 w-4 mr-2" />
+                          Configurer le Système
+                        </Button>
+                        <Button
+                          onClick={testAutonomousSystem}
+                          disabled={isTestingSystem}
+                          className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600"
+                        >
+                          {isTestingSystem ? (
+                            <>
+                              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                              Test en cours...
+                            </>
+                          ) : (
+                            <>
+                              <RefreshCw className="h-4 w-4 mr-2" />
+                              Tester le Système
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <AutonomousSystemMonitor />
+                    
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <ManualReleaseChecker />
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <h4 className="text-md font-semibold text-white">Nettoyage des données</h4>
+                          <GameStatusCleanupButton />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </TabsContent>
               </Tabs>
