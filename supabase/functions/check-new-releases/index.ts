@@ -69,7 +69,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Check for new game releases and status changes
+    // Check for new game releases and status changes - ONLY REAL API DATA
     for (const game of games || []) {
       try {
         const gameReleases = await checkGameReleases(game, supabaseClient);
@@ -81,7 +81,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Found ${newReleases.length} new releases to process globally`);
 
-    // Insert new releases
+    // insert new releases and email notifications
     if (newReleases.length > 0) {
       const { error: insertError } = await supabaseClient
         .from('new_releases')
@@ -306,12 +306,11 @@ async function checkGameReleases(game: Game, supabaseClient: any) {
 
     console.log(`Checking game releases for: ${game.name}`);
 
-    // Enhanced game checking logic
-    if (game.platform.toLowerCase().includes('steam') && game.url.includes('store.steampowered.com')) {
-      console.log(`Checking Steam status for ${game.name}`);
-      
+    // Only check Steam if we have the API key and it's a Steam game
+    if (game.platform.toLowerCase().includes('steam') && steamApiKey) {
+      console.log(`Checking Steam API for ${game.name}`);
       const steamAppId = extractSteamAppId(game.url);
-      if (steamAppId && steamApiKey) {
+      if (steamAppId) {
         try {
           const steamData = await checkSteamStatus(game, steamAppId, steamApiKey);
           if (steamData.statusChanged || steamData.newReleaseDetected) {
@@ -325,33 +324,14 @@ async function checkGameReleases(game: Game, supabaseClient: any) {
           releases.push(...steamUpdates);
         } catch (steamError) {
           console.error(`Steam API error for ${game.name}:`, steamError);
-          
-          // Generate a fallback notification to ensure games are being tracked
-          const { data: existing } = await supabaseClient
-            .from('new_releases')
-            .select('id')
-            .eq('source_item_id', game.id)
-            .eq('type', 'game')
-            .eq('user_id', game.user_id)
-            .gte('detected_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-            .maybeSingle();
-
-          if (!existing) {
-            releases.push({
-              type: 'game' as const,
-              source_item_id: game.id,
-              title: `🎮 ${game.name} - Vérification Steam`,
-              description: `Vérification effectuée pour ${game.name} sur Steam`,
-              platform_url: game.url,
-              user_id: game.user_id,
-            });
-          }
+          // NO FALLBACK - just skip this game
         }
       }
     }
 
-    // Use RAWG API for general game information and updates
+    // Only check RAWG if we have the API key
     if (rawgApiKey) {
+      console.log(`Checking RAWG API for ${game.name}`);
       try {
         const rawgData = await checkRAWGStatus(game, rawgApiKey);
         if (rawgData.statusChanged || rawgData.newReleaseDetected) {
@@ -365,6 +345,7 @@ async function checkGameReleases(game: Game, supabaseClient: any) {
         releases.push(...rawgUpdates);
       } catch (rawgError) {
         console.error(`RAWG API error for ${game.name}:`, rawgError);
+        // NO FALLBACK - just skip this game
       }
     }
 
