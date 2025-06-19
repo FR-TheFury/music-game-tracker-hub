@@ -13,28 +13,17 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    let requestBody;
-    const bodyText = await req.text();
+    let requestBody = {};
     
-    if (!bodyText || bodyText.trim() === '') {
-      console.log('Empty request body received');
-      requestBody = {};
-    } else {
-      try {
+    // Parse request body safely
+    try {
+      const bodyText = await req.text();
+      if (bodyText && bodyText.trim() !== '') {
         requestBody = JSON.parse(bodyText);
-      } catch (parseError) {
-        console.error('JSON parse error:', parseError);
-        return new Response(
-          JSON.stringify({ 
-            error: 'Invalid JSON in request body',
-            success: false 
-          }),
-          {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 400,
-          }
-        );
       }
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      requestBody = {};
     }
 
     const { artistId, userId, forceCheck = false } = requestBody;
@@ -47,6 +36,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     let artists = [];
     
+    // Récupérer les artistes selon les paramètres
     if (artistId) {
       const { data: artist, error: artistError } = await supabaseClient
         .from('artists')
@@ -80,11 +70,11 @@ const handler = async (req: Request): Promise<Response> => {
       }
       artists = userArtists || [];
     } else {
-      // Si aucun paramètre spécifique, récupérer tous les artistes
+      // Récupérer tous les artistes avec limite
       const { data: allArtists, error: allArtistsError } = await supabaseClient
         .from('artists')
         .select('*')
-        .limit(50); // Limiter pour éviter les timeouts
+        .limit(20); // Réduire la limite pour éviter les timeouts
 
       if (allArtistsError) {
         console.error('Error fetching all artists:', allArtistsError);
@@ -110,16 +100,18 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     let totalNewReleases = 0;
+    const processedArtists = [];
 
     for (const artist of artists) {
       try {
         console.log(`Processing: ${artist.name} (${artist.platform})`);
         let newReleases = [];
 
-        // Vérification Spotify
+        // Vérification Spotify avec gestion d'erreur robuste
         if (artist.spotify_id) {
           try {
             console.log('Checking Spotify for:', artist.name);
+            
             const { data: spotifyData, error: spotifyError } = await supabaseClient.functions.invoke('get-spotify-artist-info', {
               body: {
                 query: artist.spotify_id,
@@ -127,22 +119,26 @@ const handler = async (req: Request): Promise<Response> => {
               }
             });
 
-            if (!spotifyError && spotifyData?.releases) {
-              const oneWeekAgo = new Date();
-              oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+            if (!spotifyError && spotifyData?.releases && Array.isArray(spotifyData.releases)) {
+              const twoWeeksAgo = new Date();
+              twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
 
-              const recentReleases = spotifyData.releases.filter((release: any) => {
+              const recentReleases = spotifyData.releases.filter((release) => {
                 if (!release.release_date) return false;
                 const releaseDate = new Date(release.release_date);
-                return releaseDate > oneWeekAgo;
+                return releaseDate > twoWeeksAgo;
               });
 
+              console.log(`Found ${recentReleases.length} recent Spotify releases for ${artist.name}`);
+
               for (const release of recentReleases) {
+                const uniqueHash = `spotify_${artist.id}_${release.id}`;
+                
+                // Vérifier si la sortie existe déjà
                 const { data: existing } = await supabaseClient
                   .from('new_releases')
                   .select('id')
-                  .eq('source_item_id', artist.id)
-                  .eq('platform_url', release.external_urls?.spotify)
+                  .eq('unique_hash', uniqueHash)
                   .maybeSingle();
 
                 if (!existing) {
@@ -150,55 +146,64 @@ const handler = async (req: Request): Promise<Response> => {
                     type: 'artist',
                     source_item_id: artist.id,
                     title: release.name,
-                    description: `Nouvelle sortie ${release.album_type}: ${release.name}`,
-                    image_url: release.images?.[0]?.url,
-                    platform_url: release.external_urls?.spotify,
+                    description: `Nouvelle sortie ${release.album_type || 'single'}: ${release.name}`,
+                    image_url: release.images?.[0]?.url || null,
+                    platform_url: release.external_urls?.spotify || null,
                     detected_at: new Date().toISOString(),
-                    expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                    expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
                     user_id: artist.user_id,
-                    unique_hash: `spotify_${artist.id}_${release.id}`
+                    unique_hash: uniqueHash
                   });
-                  console.log(`New Spotify release: ${release.name}`);
+                  console.log(`New Spotify release detected: ${release.name}`);
                 }
               }
             }
           } catch (spotifyError) {
             console.error(`Spotify error for ${artist.name}:`, spotifyError);
+            // Continue malgré l'erreur
           }
         }
 
-        // Vérification SoundCloud (avec gestion robuste du rate limiting)
-        const soundcloudUrl = artist.multiple_urls?.find((url: any) => 
+        // Vérification SoundCloud avec gestion robuste
+        const soundcloudUrl = artist.multiple_urls?.find((url) => 
           url.platform?.toLowerCase().includes('soundcloud')
         )?.url;
 
         if (soundcloudUrl) {
           try {
             console.log('Checking SoundCloud for:', artist.name);
+            
+            // Délai pour éviter le rate limiting
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
             const { data: soundcloudData, error: soundcloudError } = await supabaseClient.functions.invoke('get-soundcloud-info', {
               body: {
                 query: artist.name,
                 artistUrl: soundcloudUrl,
                 type: 'artist-releases',
-                limit: 10
+                limit: 5
               }
             });
 
-            if (!soundcloudError && soundcloudData?.releases) {
-              const oneWeekAgo = new Date();
-              oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+            if (!soundcloudError && soundcloudData?.releases && Array.isArray(soundcloudData.releases)) {
+              const twoWeeksAgo = new Date();
+              twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
 
-              const recentReleases = soundcloudData.releases.filter((release: any) => {
+              const recentReleases = soundcloudData.releases.filter((release) => {
+                if (!release.created_at) return false;
                 const releaseDate = new Date(release.created_at);
-                return releaseDate > oneWeekAgo;
+                return releaseDate > twoWeeksAgo;
               });
 
+              console.log(`Found ${recentReleases.length} recent SoundCloud releases for ${artist.name}`);
+
               for (const release of recentReleases) {
+                const uniqueHash = `soundcloud_${artist.id}_${release.id}`;
+                
                 const { data: existing } = await supabaseClient
                   .from('new_releases')
                   .select('id')
-                  .eq('source_item_id', artist.id)
-                  .eq('platform_url', release.permalink_url)
+                  .eq('unique_hash', uniqueHash)
                   .maybeSingle();
 
                 if (!existing) {
@@ -207,23 +212,24 @@ const handler = async (req: Request): Promise<Response> => {
                     source_item_id: artist.id,
                     title: release.title,
                     description: `Nouvelle sortie SoundCloud: ${release.title}`,
-                    image_url: release.artwork_url,
-                    platform_url: release.permalink_url,
+                    image_url: release.artwork_url || null,
+                    platform_url: release.permalink_url || null,
                     detected_at: new Date().toISOString(),
-                    expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                    expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
                     user_id: artist.user_id,
-                    unique_hash: `soundcloud_${artist.id}_${release.id}`
+                    unique_hash: uniqueHash
                   });
-                  console.log(`New SoundCloud release: ${release.title}`);
+                  console.log(`New SoundCloud release detected: ${release.title}`);
                 }
               }
             }
           } catch (soundcloudError) {
             console.error(`SoundCloud error for ${artist.name}:`, soundcloudError);
-            // Continue même en cas d'erreur SoundCloud
+            // Continue malgré l'erreur
           }
         }
 
+        // Insérer les nouvelles sorties si trouvées
         if (newReleases.length > 0) {
           const { error: insertError } = await supabaseClient
             .from('new_releases')
@@ -235,32 +241,27 @@ const handler = async (req: Request): Promise<Response> => {
             totalNewReleases += newReleases.length;
             console.log(`Inserted ${newReleases.length} new releases for ${artist.name}`);
 
-            // Envoi des notifications
-            for (const release of newReleases) {
-              try {
-                await supabaseClient.functions.invoke('send-release-notification', {
-                  body: {
-                    userId: artist.user_id,
-                    release: {
-                      type: release.type,
-                      title: release.title,
-                      description: release.description,
-                      image_url: release.image_url,
-                      platform_url: release.platform_url
-                    },
-                    userSettings: {}
-                  }
-                });
-              } catch (notifError) {
-                console.error('Notification error:', notifError);
-                // Continue même si la notification échoue
-              }
+            // Envoyer les notifications par email
+            try {
+              await supabaseClient.functions.invoke('send-release-notification', {
+                body: {
+                  userId: artist.user_id,
+                  releases: newReleases,
+                  userSettings: {},
+                  isDigest: newReleases.length > 1
+                }
+              });
+              console.log(`Notification sent for ${artist.name}`);
+            } catch (notifError) {
+              console.error('Notification error:', notifError);
             }
           }
         }
 
-        // Délai pour éviter le rate limiting
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        processedArtists.push(artist.name);
+        
+        // Délai entre chaque artiste pour éviter le rate limiting
+        await new Promise(resolve => setTimeout(resolve, 1500));
         
       } catch (artistError) {
         console.error(`Error processing ${artist.name}:`, artistError);
@@ -268,14 +269,15 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    console.log(`=== COMPLETED: ${totalNewReleases} new releases found ===`);
+    console.log(`=== COMPLETED: ${totalNewReleases} new releases found for ${processedArtists.length} artists ===`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         newReleases: totalNewReleases,
-        processedArtists: artists.length,
-        message: `Processed ${artists.length} artists, found ${totalNewReleases} new releases`
+        processedArtists: processedArtists.length,
+        artistsProcessed: processedArtists,
+        message: `Processed ${processedArtists.length} artists, found ${totalNewReleases} new releases`
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

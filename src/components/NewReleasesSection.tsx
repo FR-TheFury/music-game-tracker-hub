@@ -29,30 +29,53 @@ export const NewReleasesSection: React.FC = () => {
 
     setChecking(true);
     try {
-      console.log('Starting user-specific releases check...');
+      console.log('Starting manual releases check...');
       
+      // Vérifier les sorties pour cet utilisateur spécifiquement
       const { data, error } = await supabase.functions.invoke('check-user-releases', {
-        headers: {
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+        body: { 
+          userId: user.id,
+          forceCheck: true 
         }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Manual check error:', error);
+        throw error;
+      }
+      
+      console.log('Manual check result:', data);
+      
+      // Vérifier aussi les jeux de l'utilisateur
+      const { data: gameData, error: gameError } = await supabase.functions.invoke('check-game-updates', {
+        body: { 
+          userId: user.id,
+          forceCheck: true 
+        }
+      });
+      
+      if (gameError) {
+        console.error('Game check error:', gameError);
+      }
+      
+      const totalNewReleases = (data?.newReleases || 0) + (gameData?.newUpdates || 0);
       
       toast({
         title: "Vérification terminée",
-        description: `${data?.newReleasesFound || 0} nouvelles sorties détectées pour vos suivis`,
+        description: `${totalNewReleases} nouvelles notifications détectées`,
+        duration: 4000,
       });
       
+      // Actualiser les données après un délai
       setTimeout(() => {
         refetch();
-      }, 1000);
+      }, 1500);
       
     } catch (error) {
-      console.error('Error checking user releases:', error);
+      console.error('Error during manual check:', error);
       toast({
         title: "Erreur",
-        description: "Impossible de vérifier vos sorties",
+        description: "Impossible de vérifier les nouvelles sorties",
         variant: "destructive",
       });
     } finally {
@@ -64,6 +87,7 @@ export const NewReleasesSection: React.FC = () => {
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="h-6 w-6 animate-spin text-purple-400" />
+        <span className="ml-2 text-gray-400">Chargement des notifications...</span>
       </div>
     );
   }
@@ -79,7 +103,7 @@ export const NewReleasesSection: React.FC = () => {
             <span className="text-xs text-[#FF0751] font-medium">Expire dans 7 jours</span>
           </div>
           
-          {/* Bouton simplifié pour mobile avec style 3D violet */}
+          {/* Bouton simplifié pour mobile */}
           {isMobile && (
             <Button
               onClick={handleManualCheck}
@@ -97,7 +121,7 @@ export const NewReleasesSection: React.FC = () => {
           )}
         </div>
         
-        {/* Bouton complet pour desktop avec style 3D violet */}
+        {/* Bouton complet pour desktop */}
         {!isMobile && (
           <Button
             onClick={handleManualCheck}
@@ -129,10 +153,28 @@ export const NewReleasesSection: React.FC = () => {
           </p>
           <div className="text-xs text-gray-600 space-y-1">
             <p>💡 Le système vérifie automatiquement :</p>
-            <p>• Les nouveaux albums/singles sur Spotify</p>
-            <p>• Les mises à jour de jeux</p>
+            <p>• Les nouveaux albums/singles sur Spotify et SoundCloud</p>
+            <p>• Les mises à jour et changements de statut des jeux</p>
             <p>• Et envoie des notifications par email si configuré</p>
           </div>
+          
+          <Button
+            onClick={handleManualCheck}
+            disabled={checking}
+            className="mt-4 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+          >
+            {checking ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Vérification en cours...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Vérifier maintenant
+              </>
+            )}
+          </Button>
         </div>
       ) : (
         <CarouselGrid 

@@ -20,88 +20,56 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // 1. Récupérer tous les artistes avec leurs utilisateurs
-    console.log('Fetching all artists...');
-    const { data: artists, error: artistsError } = await supabaseClient
-      .from('artists')
-      .select(`
-        id,
-        name,
-        platform,
-        url,
-        spotify_id,
-        user_id,
-        multiple_urls,
-        profile_image_url
-      `);
+    let totalNewReleases = 0;
+    let totalProcessed = 0;
 
-    if (artistsError) {
-      console.error('Error fetching artists:', artistsError);
-      throw artistsError;
-    }
+    // 1. Vérifier les sorties d'artistes
+    console.log('Checking artist releases...');
+    try {
+      const { data: artistResult, error: artistError } = await supabaseClient.functions.invoke('check-user-releases', {
+        body: { forceCheck: true }
+      });
 
-    console.log(`Found ${artists?.length || 0} artists to check`);
-
-    if (!artists || artists.length === 0) {
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: 'No artists to check',
-          processed: 0 
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        }
-      );
-    }
-
-    let processedCount = 0;
-    let newReleasesCount = 0;
-
-    // 2. Vérifier chaque artiste
-    for (const artist of artists) {
-      try {
-        console.log(`Checking releases for artist: ${artist.name} (${artist.platform})`);
-        
-        // Appeler la fonction check-user-releases pour cet artiste spécifique
-        const { data: result, error: checkError } = await supabaseClient.functions.invoke('check-user-releases', {
-          body: { 
-            artistId: artist.id,
-            userId: artist.user_id,
-            forceCheck: true
-          }
-        });
-
-        if (checkError) {
-          console.error(`Error checking releases for ${artist.name}:`, checkError);
-          continue;
-        }
-
-        if (result?.newReleases > 0) {
-          newReleasesCount += result.newReleases;
-          console.log(`Found ${result.newReleases} new releases for ${artist.name}`);
-        }
-
-        processedCount++;
-        
-        // Petit délai pour éviter de surcharger les APIs
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-      } catch (error) {
-        console.error(`Error processing artist ${artist.name}:`, error);
-        continue;
+      if (!artistError && artistResult) {
+        totalNewReleases += artistResult.newReleases || 0;
+        totalProcessed += artistResult.processedArtists || 0;
+        console.log(`Artist check completed: ${artistResult.newReleases || 0} new releases, ${artistResult.processedArtists || 0} processed`);
+      } else {
+        console.error('Artist check error:', artistError);
       }
+    } catch (artistCheckError) {
+      console.error('Artist check failed:', artistCheckError);
     }
 
-    console.log(`=== CHECK COMPLETED: ${processedCount} artists processed, ${newReleasesCount} new releases found ===`);
+    // Délai entre les vérifications pour éviter la surcharge
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // 2. Vérifier les mises à jour de jeux
+    console.log('Checking game updates...');
+    try {
+      const { data: gameResult, error: gameError } = await supabaseClient.functions.invoke('check-game-updates', {
+        body: { forceCheck: true }
+      });
+
+      if (!gameError && gameResult) {
+        totalNewReleases += gameResult.newUpdates || 0;
+        totalProcessed += gameResult.processedGames || 0;
+        console.log(`Game check completed: ${gameResult.newUpdates || 0} new updates, ${gameResult.processedGames || 0} processed`);
+      } else {
+        console.error('Game check error:', gameError);
+      }
+    } catch (gameCheckError) {
+      console.error('Game check failed:', gameCheckError);
+    }
+
+    console.log(`=== CHECK COMPLETED: ${totalProcessed} items processed, ${totalNewReleases} new notifications created ===`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        processed: processedCount,
-        newReleases: newReleasesCount,
-        message: `Processed ${processedCount} artists, found ${newReleasesCount} new releases`
+        processed: totalProcessed,
+        newReleases: totalNewReleases,
+        message: `Global check completed: ${totalProcessed} items processed, ${totalNewReleases} new notifications`
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
