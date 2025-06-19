@@ -45,7 +45,7 @@ export const ReadOnlyArtistsGrid: React.FC<ReadOnlyArtistsGridProps> = ({ artist
           className="bg-slate-700/50 border border-[#FF0751]/20 rounded-lg p-4 hover:bg-slate-700/70 hover:border-[#FF0751]/40 transition-all duration-300 hover:shadow-lg hover:scale-105"
         >
           <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 relative">
+            <div className="flex-shrink-0">
               {artist.image_url ? (
                 <img
                   src={artist.image_url}
@@ -53,24 +53,13 @@ export const ReadOnlyArtistsGrid: React.FC<ReadOnlyArtistsGridProps> = ({ artist
                   className="w-16 h-16 rounded-lg object-cover shadow-md"
                   onError={(e) => {
                     console.log('Image failed to load for artist:', artist.name, 'URL:', artist.image_url);
-                    const target = e.currentTarget;
-                    const container = target.parentElement;
-                    if (container) {
-                      target.style.display = 'none';
-                      const fallback = container.querySelector('.fallback-icon') as HTMLElement;
-                      if (fallback) {
-                        fallback.style.display = 'flex';
-                      }
-                    }
                   }}
                 />
-              ) : null}
-              <div 
-                className={`fallback-icon w-16 h-16 rounded-lg bg-gradient-to-r ${getPlatformColor(artist.platform)} items-center justify-center shadow-md absolute top-0 left-0`}
-                style={{ display: artist.image_url ? 'none' : 'flex' }}
-              >
-                <Music className="h-8 w-8 text-white" />
-              </div>
+              ) : (
+                <div className={`w-16 h-16 rounded-lg bg-gradient-to-r ${getPlatformColor(artist.platform)} flex items-center justify-center shadow-md`}>
+                  <Music className="h-8 w-8 text-white" />
+                </div>
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-white text-lg truncate mb-1">{artist.name}</h3>
