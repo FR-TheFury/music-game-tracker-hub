@@ -58,7 +58,7 @@ export const useUserSearch = () => {
           user_id,
           role,
           created_at,
-          profiles!inner(username, avatar_url)
+          profiles!user_roles_user_id_fkey(username, avatar_url)
         `)
         .eq('role', 'viewer')
         .or('role.eq.editor,role.eq.admin')
