@@ -12,6 +12,7 @@ import ResetPassword from "./pages/ResetPassword";
 import Admin from "./pages/Admin";
 import NotificationSettingsPage from "./pages/NotificationSettingsPage";
 import UserProfilePage from "./pages/UserProfilePage";
+import CompleteProfilePage from "./pages/CompleteProfilePage";
 import FriendsSearch from "./pages/FriendsSearch";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/admin" element={<Admin />} />
             <Route path="/notifications" element={<NotificationSettingsPage />} />
             <Route path="/profile" element={<UserProfilePage />} />
+            <Route path="/complete-profile" element={<CompleteProfilePage />} />
             <Route path="/friends" element={<FriendsSearch />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

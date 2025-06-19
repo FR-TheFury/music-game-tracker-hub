@@ -2,10 +2,9 @@
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield, Users, Bell, Settings } from 'lucide-react';
+import { Shield, Users, Bell, Settings, RefreshCw } from 'lucide-react';
 import { PendingValidationsTab } from '@/components/admin/PendingValidationsTab';
 import { UsersManagementTab } from '@/components/admin/UsersManagementTab';
-import { NotificationSettingsWrapper } from '@/components/NotificationSettingsWrapper';
 import { ManualReleaseChecker } from '@/components/ManualReleaseChecker';
 import { useUserRoleContext } from '@/contexts/UserRoleContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -34,7 +33,7 @@ export const AdminTabs: React.FC = () => {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="pending" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 bg-slate-700">
+          <TabsList className="grid w-full grid-cols-3 bg-slate-700">
             <TabsTrigger value="pending" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Validation
@@ -44,12 +43,8 @@ export const AdminTabs: React.FC = () => {
               Utilisateurs
             </TabsTrigger>
             <TabsTrigger value="releases" className="flex items-center gap-2">
-              <Bell className="h-4 w-4" />
+              <RefreshCw className="h-4 w-4" />
               Sorties
-            </TabsTrigger>
-            <TabsTrigger value="notifications" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              Notifications
             </TabsTrigger>
           </TabsList>
           
@@ -73,10 +68,6 @@ export const AdminTabs: React.FC = () => {
 
           <TabsContent value="releases" className="mt-6">
             <ManualReleaseChecker />
-          </TabsContent>
-          
-          <TabsContent value="notifications" className="mt-6">
-            <NotificationSettingsWrapper />
           </TabsContent>
         </Tabs>
       </CardContent>
