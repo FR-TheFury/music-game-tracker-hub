@@ -55,6 +55,8 @@ export const useSoundCloud = () => {
     
     setLoading(true);
     try {
+      console.log('Searching SoundCloud artists for:', query);
+      
       const { data, error } = await supabase.functions.invoke('get-soundcloud-info', {
         body: { 
           query,
@@ -64,15 +66,21 @@ export const useSoundCloud = () => {
 
       if (error) {
         console.error('SoundCloud search error:', error);
-        // Si l'API SoundCloud n'est pas disponible, retourner un tableau vide
-        // au lieu de faire planter l'application
+        // Return empty array instead of throwing to avoid breaking multi-platform search
         return [];
       }
 
-      return data?.artists || [];
+      if (!data) {
+        console.log('No SoundCloud data received');
+        return [];
+      }
+
+      const artists = data.artists || [];
+      console.log(`SoundCloud search found ${artists.length} artists`);
+      return artists;
     } catch (error) {
       console.error('SoundCloud API error:', error);
-      // Retourner un tableau vide en cas d'erreur pour éviter de casser la recherche globale
+      // Return empty array to prevent breaking the search flow
       return [];
     } finally {
       setLoading(false);
@@ -135,6 +143,8 @@ export const useSoundCloud = () => {
   const getArtistReleases = async (artistQuery: string, artistUrl?: string, limit: number = 10): Promise<SoundCloudRelease[]> => {
     setLoading(true);
     try {
+      console.log('Fetching SoundCloud releases for:', artistQuery, artistUrl);
+      
       const { data, error } = await supabase.functions.invoke('get-soundcloud-info', {
         body: { 
           query: artistQuery,
@@ -149,7 +159,9 @@ export const useSoundCloud = () => {
         return [];
       }
 
-      return data?.releases || [];
+      const releases = data?.releases || [];
+      console.log(`SoundCloud getArtistReleases returned ${releases.length} releases`);
+      return releases;
     } catch (error) {
       console.error('SoundCloud API error:', error);
       return [];

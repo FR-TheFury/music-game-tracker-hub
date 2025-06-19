@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Music, ExternalLink, Calendar, Play, Heart } from 'lucide-react';
+import { Music, ExternalLink, Calendar, Play, Heart, AlertCircle } from 'lucide-react';
 import { useSoundCloud } from '@/hooks/useSoundCloud';
 
 interface SoundCloudRelease {
@@ -27,6 +27,7 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
   soundcloudUrl 
 }) => {
   const [releases, setReleases] = useState<SoundCloudRelease[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const { getArtistReleases, loading } = useSoundCloud();
 
   useEffect(() => {
@@ -35,7 +36,15 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
 
       try {
         console.log('Fetching SoundCloud releases for:', artistName, soundcloudUrl);
+        setError(null);
+        
         const soundcloudReleases = await getArtistReleases(artistName, soundcloudUrl, 10);
+        
+        if (soundcloudReleases.length === 0) {
+          console.log('No SoundCloud releases found for', artistName);
+          setError('Aucune sortie récente trouvée sur SoundCloud');
+          return;
+        }
         
         // Filtrer les sorties du dernier mois
         const oneMonthAgo = new Date();
@@ -48,8 +57,13 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
         
         console.log(`Found ${recentReleases.length} recent SoundCloud releases`);
         setReleases(recentReleases);
+        
+        if (recentReleases.length === 0) {
+          setError('Aucune sortie récente du dernier mois sur SoundCloud');
+        }
       } catch (error) {
         console.error('Error fetching SoundCloud releases:', error);
+        setError('Erreur lors de la récupération des données SoundCloud');
       }
     };
 
@@ -87,8 +101,25 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
     );
   }
 
+  // Show error state but don't break the page
+  if (error && releases.length === 0) {
+    return (
+      <Card className="card-3d mb-8 border-orange-400/20">
+        <CardContent className="p-6">
+          <div className="flex items-center gap-3 text-orange-400">
+            <AlertCircle className="h-5 w-5" />
+            <div>
+              <p className="font-medium">SoundCloud</p>
+              <p className="text-sm text-gray-400">{error}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (releases.length === 0) {
-    return null; // Ne pas afficher la section s'il n'y a pas de sorties récentes
+    return null;
   }
 
   return (
@@ -164,6 +195,15 @@ export const ArtistSoundCloudReleases: React.FC<ArtistSoundCloudReleasesProps> =
             </div>
           ))}
         </div>
+        
+        {error && releases.length > 0 && (
+          <div className="mt-4 p-3 bg-orange-400/10 border border-orange-400/20 rounded-lg">
+            <div className="flex items-center gap-2 text-orange-400 text-sm">
+              <AlertCircle className="h-4 w-4" />
+              <span>Certaines données SoundCloud peuvent être incomplètes</span>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
