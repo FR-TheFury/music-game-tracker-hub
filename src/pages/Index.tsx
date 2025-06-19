@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Music, Gamepad2, Search, Shield } from 'lucide-react';
+import { Music, Gamepad2, Search, Shield, User } from 'lucide-react';
 import { AddArtistForm } from '@/components/AddArtistForm';
 import { AddGameForm } from '@/components/AddGameForm';
 import { ArtistsGrid } from '@/components/ArtistsGrid';
@@ -12,7 +12,6 @@ import { useGames } from '@/hooks/useGames';
 import { UserStatus } from '@/components/UserStatus';
 import { useUserRoleContext } from '@/contexts/UserRoleContext';
 import { Button } from '@/components/ui/button';
-import { AdminTabs } from '@/components/AdminTabs';
 import { RoleGuard } from '@/components/RoleGuard';
 import { useNavigate } from 'react-router-dom';
 
@@ -75,6 +74,17 @@ export default function Index() {
               </div>
               
               <div className="flex items-center gap-4">
+                {/* Bouton profil pour tous les rôles */}
+                <Button
+                  onClick={() => navigate('/complete-profile')}
+                  variant="outline"
+                  size="sm"
+                  className="border-[#FF0751] text-[#FF0751] hover:bg-[#FF0751]/10 transition-all duration-300"
+                >
+                  <User className="h-4 w-4 mr-2" />
+                  Mon Profil
+                </Button>
+                
                 {/* Bouton de recherche d'amis pour tous les rôles */}
                 <Button
                   onClick={() => navigate('/friends')}
@@ -109,9 +119,6 @@ export default function Index() {
           <div className="space-y-8">
             {/* Section Nouvelles Sorties */}
             <NewReleasesSection />
-
-            {/* Section Admin pour les admins uniquement */}
-            {userRole === 'admin' && <AdminTabs />}
 
             {/* Message d'information pour les viewers */}
             {userRole === 'viewer' && (
