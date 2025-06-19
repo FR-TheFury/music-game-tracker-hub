@@ -9,6 +9,7 @@ serve(async (req) => {
 
   try {
     const { query, platform, searchType } = await req.json()
+    console.log('Received request:', { query, platform, searchType })
     
     if (!query) {
       return new Response(
@@ -25,12 +26,14 @@ serve(async (req) => {
         throw new Error('RAWG API key not found')
       }
 
+      console.log('Searching RAWG for:', query)
       const response = await fetch(
         `https://api.rawg.io/api/games?key=${rawgApiKey}&search=${encodeURIComponent(query)}&page_size=5`
       )
       
       if (response.ok) {
         const data = await response.json()
+        console.log('RAWG API response status:', response.status)
         results = data.results?.map((game: any) => ({
           name: game.name,
           platform: 'Multiplateforme',
@@ -41,36 +44,87 @@ serve(async (req) => {
           genres: game.genres?.map((g: any) => g.name),
           rating: game.rating,
         })) || []
+        console.log('RAWG results count:', results.length)
+      } else {
+        console.error('RAWG API error:', response.status, await response.text())
       }
     } else if (platform === 'steam' && searchType === 'url') {
-      // Extraire l'ID Steam de l'URL
-      const appIdMatch = query.match(/\/app\/(\d+)/)
+      console.log('Processing Steam URL:', query)
+      
+      // Améliorer l'extraction de l'ID Steam
+      const appIdMatch = query.match(/\/app\/(\d+)/) || query.match(/store\.steampowered\.com.*?(\d+)/)
+      console.log('App ID match result:', appIdMatch)
+      
       if (appIdMatch) {
         const appId = appIdMatch[1]
-        const response = await fetch(`https://store.steampowered.com/api/appdetails?appids=${appId}`)
+        console.log('Extracted Steam App ID:', appId)
         
-        if (response.ok) {
-          const data = await response.json()
-          if (data[appId]?.success && data[appId]?.data) {
-            const gameData = data[appId].data
-            results = [{
-              name: gameData.name,
-              platform: 'Steam',
-              url: query,
-              imageUrl: gameData.header_image,
-              price: gameData.price_overview ? gameData.price_overview.final_formatted : 'Gratuit',
-              discount: gameData.price_overview?.discount_percent > 0 ? `${gameData.price_overview.discount_percent}%` : undefined,
-              releaseDate: gameData.release_date?.date,
-              description: gameData.short_description,
-              genres: gameData.genres?.map((g: any) => g.description),
-              developer: gameData.developers?.[0],
-              publisher: gameData.publishers?.[0],
-            }]
+        try {
+          const steamUrl = `https://store.steampowered.com/api/appdetails?appids=${appId}&cc=fr&l=french`
+          console.log('Calling Steam API:', steamUrl)
+          
+          const response = await fetch(steamUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (compatible; GameSearchBot/1.0)'
+            }
+          })
+          
+          console.log('Steam API response status:', response.status)
+          
+          if (response.ok) {
+            const data = await response.json()
+            console.log('Steam API data keys:', Object.keys(data))
+            
+            if (data[appId]?.success && data[appId]?.data) {
+              const gameData = data[appId].data
+              console.log('Steam game found:', gameData.name)
+              
+              // Formater le prix correctement
+              let price = 'Gratuit'
+              let discount = undefined
+              
+              if (gameData.is_free) {
+                price = 'Gratuit'
+              } else if (gameData.price_overview) {
+                price = gameData.price_overview.final_formatted || 'Prix non disponible'
+                if (gameData.price_overview.discount_percent > 0) {
+                  discount = `${gameData.price_overview.discount_percent}%`
+                }
+              } else {
+                price = 'Prix non disponible'
+              }
+              
+              results = [{
+                name: gameData.name,
+                platform: 'Steam',
+                url: query,
+                imageUrl: gameData.header_image,
+                price: price,
+                discount: discount,
+                releaseDate: gameData.release_date?.date,
+                description: gameData.short_description,
+                genres: gameData.genres?.map((g: any) => g.description),
+                developer: gameData.developers?.[0],
+                publisher: gameData.publishers?.[0],
+              }]
+              console.log('Steam game processed successfully')
+            } else {
+              console.log('Steam API returned no data or unsuccessful response for app:', appId)
+              console.log('Full Steam response:', JSON.stringify(data, null, 2))
+            }
+          } else {
+            const errorText = await response.text()
+            console.error('Steam API HTTP error:', response.status, errorText)
           }
+        } catch (steamError) {
+          console.error('Error calling Steam API:', steamError)
         }
+      } else {
+        console.error('Could not extract Steam App ID from URL:', query)
       }
     }
 
+    console.log('Final results count:', results.length)
     return new Response(
       JSON.stringify({ results }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
