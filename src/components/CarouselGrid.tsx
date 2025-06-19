@@ -19,7 +19,7 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
   items, 
   className = '', 
   itemsPerView = 3,
-  hideSideArrows = false
+  hideSideArrows = true // Toujours cacher les flèches par défaut
 }) => {
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
@@ -82,13 +82,7 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
             </CarouselItem>
           ))}
         </CarouselContent>
-        {/* Afficher les flèches seulement si hideSideArrows est false */}
-        {canShowNavigation && !hideSideArrows && (
-          <>
-            <CarouselPrevious className="left-0 -translate-x-full" />
-            <CarouselNext className="right-0 translate-x-full" />
-          </>
-        )}
+        {/* Les flèches sont maintenant toujours cachées */}
       </Carousel>
       
       {/* Toujours afficher les points de navigation */}

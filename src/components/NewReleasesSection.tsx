@@ -97,14 +97,14 @@ export const NewReleasesSection: React.FC = () => {
           )}
         </div>
         
-        {/* Bouton complet pour desktop */}
+        {/* Bouton complet pour desktop avec couleurs améliorées */}
         {!isMobile && (
           <Button
             onClick={handleManualCheck}
             disabled={checking}
             variant="outline"
             size="sm"
-            className="border-yellow-500/30 text-yellow-300 hover:bg-yellow-500/10"
+            className="border-yellow-400/50 bg-yellow-500/10 text-yellow-200 hover:bg-yellow-500/20 hover:border-yellow-400 transition-all duration-300"
           >
             {checking ? (
               <>
