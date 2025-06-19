@@ -1,19 +1,14 @@
 
 import React from 'react';
-import { useArtists } from '@/hooks/useArtists';
+import { Artist } from '@/types/artist';
 import { ArtistCard } from '@/components/ArtistCard';
 
-export const ArtistsGrid: React.FC = () => {
-  const { artists, loading, removeArtist } = useArtists();
+interface ArtistsGridProps {
+  artists: Artist[];
+  onDeleteArtist?: (artistId: string) => Promise<void>;
+}
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400"></div>
-      </div>
-    );
-  }
-
+export const ArtistsGrid: React.FC<ArtistsGridProps> = ({ artists, onDeleteArtist }) => {
   if (artists.length === 0) {
     return (
       <div className="text-center py-12">
@@ -28,7 +23,11 @@ export const ArtistsGrid: React.FC = () => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {artists.map((artist) => (
-        <ArtistCard key={artist.id} artist={artist} onRemove={removeArtist} />
+        <ArtistCard 
+          key={artist.id} 
+          artist={artist} 
+          onRemove={onDeleteArtist} 
+        />
       ))}
     </div>
   );

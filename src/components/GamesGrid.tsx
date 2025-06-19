@@ -1,19 +1,25 @@
 
 import React from 'react';
-import { useGames } from '@/hooks/useGames';
 import { GameCard } from '@/components/GameCard';
 
-export const GamesGrid: React.FC = () => {
-  const { games, loading, removeGame } = useGames();
+interface Game {
+  id: string;
+  name: string;
+  platform: string;
+  url: string;
+  imageUrl?: string;
+  price?: string;
+  discount?: string;
+  releaseDate?: string;
+  addedAt: string;
+}
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
-      </div>
-    );
-  }
+interface GamesGridProps {
+  games: Game[];
+  onDeleteGame?: (gameId: string) => Promise<void>;
+}
 
+export const GamesGrid: React.FC<GamesGridProps> = ({ games, onDeleteGame }) => {
   if (games.length === 0) {
     return (
       <div className="text-center py-12">
@@ -28,7 +34,11 @@ export const GamesGrid: React.FC = () => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {games.map((game) => (
-        <GameCard key={game.id} game={game} onRemove={removeGame} />
+        <GameCard 
+          key={game.id} 
+          game={game} 
+          onRemove={onDeleteGame} 
+        />
       ))}
     </div>
   );
