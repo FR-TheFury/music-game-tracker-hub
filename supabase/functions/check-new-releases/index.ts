@@ -103,17 +103,14 @@ const handler = async (req: Request): Promise<Response> => {
             .eq('user_id', release.user_id)
             .single();
 
-          // Get user's email from auth.users
-          const { data: { user }, error: userError } = await supabaseClient.auth.admin.getUserById(release.user_id);
-          
-          if (user && settings?.email_notifications_enabled && settings?.notification_frequency === 'immediate') {
-            console.log(`Sending email notification to ${user.email} for release: ${release.title}`);
+          if (settings?.email_notifications_enabled && settings?.notification_frequency === 'immediate') {
+            console.log(`Sending email notification to user ${release.user_id} for release: ${release.title}`);
             
-            // Call the email sending function
+            // Call the email sending function with userId instead of userEmail
             const { error: emailError } = await supabaseClient.functions.invoke('send-release-notification', {
               body: { 
                 release, 
-                userEmail: user.email,
+                userId: release.user_id,
                 userSettings: settings 
               }
             });
@@ -121,7 +118,7 @@ const handler = async (req: Request): Promise<Response> => {
             if (emailError) {
               console.error('Failed to send email notification:', emailError);
             } else {
-              console.log(`Email sent successfully to ${user.email}`);
+              console.log(`Email notification request sent for user ${release.user_id}`);
             }
           }
         } catch (emailError) {
