@@ -48,6 +48,97 @@ serve(async (req) => {
       } else {
         console.error('RAWG API error:', response.status, await response.text())
       }
+    } else if (platform === 'steam' && searchType === 'name') {
+      console.log('Searching Steam by name for:', query)
+      
+      try {
+        // Utiliser l'API Steam pour rechercher des jeux par nom
+        const steamSearchUrl = `https://steamcommunity.com/actions/SearchApps/${encodeURIComponent(query)}`
+        console.log('Calling Steam search API:', steamSearchUrl)
+        
+        const searchResponse = await fetch(steamSearchUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; GameSearchBot/1.0)'
+          }
+        })
+        
+        console.log('Steam search API response status:', searchResponse.status)
+        
+        if (searchResponse.ok) {
+          const searchData = await searchResponse.json()
+          console.log('Steam search results count:', searchData.length)
+          
+          // Prendre les 5 premiers résultats
+          const topResults = searchData.slice(0, 5)
+          
+          // Pour chaque résultat, récupérer les détails du jeu
+          const gamePromises = topResults.map(async (searchResult: any) => {
+            try {
+              const appId = searchResult.appid
+              console.log('Fetching Steam details for app ID:', appId)
+              
+              const detailsUrl = `https://store.steampowered.com/api/appdetails?appids=${appId}&cc=fr&l=french`
+              const detailsResponse = await fetch(detailsUrl, {
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (compatible; GameSearchBot/1.0)'
+                }
+              })
+              
+              if (detailsResponse.ok) {
+                const detailsData = await detailsResponse.json()
+                
+                if (detailsData[appId]?.success && detailsData[appId]?.data) {
+                  const gameData = detailsData[appId].data
+                  
+                  // Formater le prix correctement
+                  let price = 'Gratuit'
+                  let discount = undefined
+                  
+                  if (gameData.is_free) {
+                    price = 'Gratuit'
+                  } else if (gameData.price_overview) {
+                    price = gameData.price_overview.final_formatted || 'Prix non disponible'
+                    if (gameData.price_overview.discount_percent > 0) {
+                      discount = `${gameData.price_overview.discount_percent}%`
+                    }
+                  } else {
+                    price = 'Prix non disponible'
+                  }
+                  
+                  return {
+                    name: gameData.name,
+                    platform: 'Steam',
+                    url: `https://store.steampowered.com/app/${appId}`,
+                    imageUrl: gameData.header_image,
+                    price: price,
+                    discount: discount,
+                    releaseDate: gameData.release_date?.date,
+                    description: gameData.short_description,
+                    genres: gameData.genres?.map((g: any) => g.description),
+                    developer: gameData.developers?.[0],
+                    publisher: gameData.publishers?.[0],
+                  }
+                }
+              }
+              
+              return null
+            } catch (error) {
+              console.error(`Error fetching details for app ${searchResult.appid}:`, error)
+              return null
+            }
+          })
+          
+          const gameResults = await Promise.all(gamePromises)
+          results = gameResults.filter(game => game !== null)
+          
+          console.log('Steam games processed successfully, count:', results.length)
+        } else {
+          const errorText = await searchResponse.text()
+          console.error('Steam search API HTTP error:', searchResponse.status, errorText)
+        }
+      } catch (steamError) {
+        console.error('Error calling Steam search API:', steamError)
+      }
     } else if (platform === 'steam' && searchType === 'url') {
       console.log('Processing Steam URL:', query)
       
