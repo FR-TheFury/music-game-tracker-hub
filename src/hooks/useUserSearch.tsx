@@ -54,7 +54,7 @@ export const useUserSearch = () => {
 
     setLoading(true);
     try {
-      // Recherche plus flexible avec ilike pour correspondance partielle
+      // Recherche flexible dans les profils - TOUS les utilisateurs peuvent chercher
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('id, username, avatar_url')
@@ -67,24 +67,21 @@ export const useUserSearch = () => {
         setSearchResults([]);
         toast({
           title: "Aucun résultat",
-          description: `Aucun utilisateur trouvé pour "${searchTerm}". Vérifiez l'orthographe ou essayez un autre terme.`,
+          description: `Aucun utilisateur trouvé pour "${searchTerm}".`,
         });
         return;
       }
 
-      // Extraire les user_ids des profils trouvés
+      // Récupérer les rôles pour ces utilisateurs - TOUS les rôles
       const userIds = profilesData.map(profile => profile.id);
-
-      // Récupérer les rôles pour ces utilisateurs (plus flexible)
       const { data: userRolesData, error: userRolesError } = await supabase
         .from('user_roles')
         .select('user_id, role, created_at')
-        .in('user_id', userIds)
-        .in('role', ['admin', 'editor', 'viewer']);
+        .in('user_id', userIds);
 
       if (userRolesError) throw userRolesError;
 
-      // Combiner les données - inclure tous les utilisateurs même sans rôle approuvé
+      // Combiner les données - INCLURE TOUS les utilisateurs
       const formattedResults = profilesData
         .map(profile => {
           const userRole = userRolesData?.find(ur => ur.user_id === profile.id);
@@ -92,21 +89,14 @@ export const useUserSearch = () => {
           return {
             user_id: profile.id,
             username: profile.username || 'Utilisateur',
-            role: userRole?.role || 'pending',
+            role: userRole?.role || 'non-assigné',
             created_at: userRole?.created_at || new Date().toISOString(),
             avatar_url: profile.avatar_url
           };
-        })
-        .filter(user => user.role !== 'pending') as UserSearchResult[]; // Filtrer seulement les pending
+        }) as UserSearchResult[];
 
       setSearchResults(formattedResults);
       
-      if (formattedResults.length === 0) {
-        toast({
-          title: "Aucun utilisateur approuvé",
-          description: `Des utilisateurs correspondent à votre recherche mais n'ont pas encore été approuvés par un administrateur.`,
-        });
-      }
     } catch (error) {
       console.error('Error searching users:', error);
       toast({
@@ -122,42 +112,39 @@ export const useUserSearch = () => {
   const loadSuggestedUsers = async () => {
     setLoadingSuggestions(true);
     try {
-      // Récupérer les utilisateurs récents avec des rôles approuvés
-      const { data: userRolesData, error: userRolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role, created_at')
-        .in('role', ['admin', 'editor', 'viewer'])
-        .not('approved_at', 'is', null)
+      // Récupérer TOUS les utilisateurs récents comme suggestions
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url')
         .order('created_at', { ascending: false })
         .limit(12);
 
-      if (userRolesError) throw userRolesError;
+      if (profilesError) throw profilesError;
 
-      if (!userRolesData || userRolesData.length === 0) {
+      if (!profilesData || profilesData.length === 0) {
         setSuggestedUsers([]);
         return;
       }
 
-      // Récupérer les profils correspondants
-      const userIds = userRolesData.map(ur => ur.user_id);
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, username, avatar_url')
-        .in('id', userIds);
+      // Récupérer les rôles correspondants
+      const userIds = profilesData.map(p => p.id);
+      const { data: userRolesData, error: userRolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role, created_at')
+        .in('user_id', userIds);
 
-      if (profilesError) throw profilesError;
+      if (userRolesError) throw userRolesError;
 
       // Combiner les données
-      const suggestions = userRolesData
-        .map(userRole => {
-          const profile = profilesData?.find(p => p.id === userRole.user_id);
-          if (!profile) return null;
+      const suggestions = profilesData
+        .map(profile => {
+          const userRole = userRolesData?.find(ur => ur.user_id === profile.id);
           
           return {
-            user_id: userRole.user_id,
+            user_id: profile.id,
             username: profile.username || 'Utilisateur',
-            role: userRole.role,
-            created_at: userRole.created_at,
+            role: userRole?.role || 'non-assigné',
+            created_at: userRole?.created_at || profile.created_at || new Date().toISOString(),
             avatar_url: profile.avatar_url
           };
         })
@@ -174,7 +161,7 @@ export const useUserSearch = () => {
   const getUserData = async (userId: string) => {
     setLoadingUserData(true);
     try {
-      // Récupérer les artistes de l'utilisateur directement
+      // Récupérer les artistes de l'utilisateur - accessible à tous
       const { data: artistsData, error: artistsError } = await supabase
         .from('artists')
         .select('id, name, platform, url, image_url, profile_image_url, spotify_id, followers_count, popularity, created_at')
@@ -182,11 +169,11 @@ export const useUserSearch = () => {
 
       if (artistsError) throw artistsError;
 
-      console.log('Raw artists data from DB:', artistsData);
-
-      // Récupérer les jeux de l'utilisateur
+      // Récupérer les jeux de l'utilisateur - accessible à tous
       const { data: gamesData, error: gamesError } = await supabase
-        .rpc('get_user_games', { target_user_id: userId });
+        .from('games')
+        .select('id, name, platform, url, image_url, price, discount, release_date, created_at')
+        .eq('user_id', userId);
 
       if (gamesError) throw gamesError;
 

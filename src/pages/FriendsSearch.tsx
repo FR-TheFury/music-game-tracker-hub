@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { RoleGuard } from '@/components/RoleGuard';
 import { Input } from '@/components/ui/input';
@@ -64,8 +63,20 @@ export default function FriendsSearch() {
         return 'border-green-400 text-green-400 bg-green-400/10';
       case 'viewer':
         return 'border-blue-400 text-blue-400 bg-blue-400/10';
+      case 'pending':
+        return 'border-yellow-400 text-yellow-400 bg-yellow-400/10';
       default:
         return 'border-gray-400 text-gray-400 bg-gray-400/10';
+    }
+  };
+
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case 'admin': return 'Administrateur';
+      case 'editor': return 'Éditeur';
+      case 'viewer': return 'Utilisateur';
+      case 'pending': return 'En attente';
+      default: return role;
     }
   };
 
@@ -95,7 +106,7 @@ export default function FriendsSearch() {
         variant="outline" 
         className={getRoleBadgeColor(user.role)}
       >
-        {user.role}
+        {getRoleLabel(user.role)}
       </Badge>
     </div>
   );
@@ -135,7 +146,7 @@ export default function FriendsSearch() {
                 <CardHeader>
                   <CardTitle className="text-white flex items-center gap-2">
                     <Search className="h-5 w-5" />
-                    Rechercher des amis
+                    Rechercher tous les utilisateurs
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -157,13 +168,13 @@ export default function FriendsSearch() {
                 </CardContent>
               </Card>
 
-              {/* Suggestions d'utilisateurs */}
+              {/* Utilisateurs suggérés */}
               <Card className="bg-slate-800/90 border-[#FF0751]/30 shadow-2xl backdrop-blur-sm">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-white flex items-center gap-2">
                       <Sparkles className="h-5 w-5 text-yellow-400" />
-                      Utilisateurs suggérés
+                      Tous les utilisateurs
                     </CardTitle>
                     <Button
                       onClick={loadSuggestedUsers}
@@ -184,7 +195,7 @@ export default function FriendsSearch() {
                   {loadingSuggestions ? (
                     <div className="text-center py-8">
                       <LoadingSpinner size="lg" className="mx-auto mb-4" />
-                      <p className="text-gray-400">Chargement des suggestions...</p>
+                      <p className="text-gray-400">Chargement des utilisateurs...</p>
                     </div>
                   ) : suggestedUsers.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -199,7 +210,7 @@ export default function FriendsSearch() {
                   ) : (
                     <div className="text-center py-8">
                       <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-400">Aucun utilisateur suggéré pour le moment</p>
+                      <p className="text-gray-400">Aucun utilisateur trouvé</p>
                     </div>
                   )}
                 </CardContent>
@@ -273,7 +284,7 @@ export default function FriendsSearch() {
                           variant="outline" 
                           className={getRoleBadgeColor(selectedUser.role)}
                         >
-                          {selectedUser.role}
+                          {getRoleLabel(selectedUser.role)}
                         </Badge>
                         <span className="text-sm text-gray-400">
                           Membre depuis {new Date(selectedUser.created_at).toLocaleDateString()}
