@@ -23,15 +23,21 @@ export const useNotificationSettings = () => {
     if (!user) return;
 
     try {
+      console.log('Fetching notification settings for user:', user.id);
+      
       const { data, error } = await supabase
         .from('notification_settings')
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching notification settings:', error);
+        throw error;
+      }
 
       if (data) {
+        console.log('Found existing settings:', data);
         setSettings({
           id: data.id,
           user_id: data.user_id,
@@ -41,8 +47,8 @@ export const useNotificationSettings = () => {
           game_notifications_enabled: data.game_notifications_enabled,
         });
       } else {
+        console.log('No existing settings found, creating defaults');
         // Create default settings if none exist
-        console.log('Creating default notification settings for user:', user.id);
         const defaultSettings: Omit<NotificationSettings, 'id'> = {
           user_id: user.id,
           email_notifications_enabled: true,
@@ -50,10 +56,30 @@ export const useNotificationSettings = () => {
           artist_notifications_enabled: true,
           game_notifications_enabled: true,
         };
-        await updateSettings(defaultSettings);
+        
+        const { data: newData, error: createError } = await supabase
+          .from('notification_settings')
+          .insert(defaultSettings)
+          .select()
+          .single();
+
+        if (createError) {
+          console.error('Error creating default settings:', createError);
+          throw createError;
+        }
+
+        console.log('Created default settings:', newData);
+        setSettings({
+          id: newData.id,
+          user_id: newData.user_id,
+          email_notifications_enabled: newData.email_notifications_enabled,
+          notification_frequency: newData.notification_frequency as 'immediate' | 'daily' | 'disabled',
+          artist_notifications_enabled: newData.artist_notifications_enabled,
+          game_notifications_enabled: newData.game_notifications_enabled,
+        });
       }
     } catch (error) {
-      console.error('Error fetching notification settings:', error);
+      console.error('Error in fetchSettings:', error);
       toast({
         title: "Erreur",
         description: "Impossible de charger les paramètres de notification",
@@ -65,24 +91,38 @@ export const useNotificationSettings = () => {
   };
 
   const updateSettings = async (newSettings: Partial<NotificationSettings>) => {
-    if (!user) return;
+    if (!user || !settings) {
+      console.error('No user or settings available');
+      return;
+    }
 
     try {
-      const settingsData = {
+      console.log('Updating settings with:', newSettings);
+      
+      const updatedSettings = {
         user_id: user.id,
-        email_notifications_enabled: newSettings.email_notifications_enabled ?? settings?.email_notifications_enabled ?? true,
-        notification_frequency: newSettings.notification_frequency ?? settings?.notification_frequency ?? 'immediate',
-        artist_notifications_enabled: newSettings.artist_notifications_enabled ?? settings?.artist_notifications_enabled ?? true,
-        game_notifications_enabled: newSettings.game_notifications_enabled ?? settings?.game_notifications_enabled ?? true,
+        email_notifications_enabled: newSettings.email_notifications_enabled ?? settings.email_notifications_enabled,
+        notification_frequency: newSettings.notification_frequency ?? settings.notification_frequency,
+        artist_notifications_enabled: newSettings.artist_notifications_enabled ?? settings.artist_notifications_enabled,
+        game_notifications_enabled: newSettings.game_notifications_enabled ?? settings.game_notifications_enabled,
       };
 
+      console.log('Final settings to update:', updatedSettings);
+
+      // Update using the ID if we have one
       const { data, error } = await supabase
         .from('notification_settings')
-        .upsert(settingsData)
+        .update(updatedSettings)
+        .eq('user_id', user.id)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating notification settings:', error);
+        throw error;
+      }
+
+      console.log('Successfully updated settings:', data);
 
       setSettings({
         id: data.id,
@@ -98,7 +138,7 @@ export const useNotificationSettings = () => {
         description: "Vos paramètres de notification ont été sauvegardés.",
       });
     } catch (error) {
-      console.error('Error updating notification settings:', error);
+      console.error('Error in updateSettings:', error);
       toast({
         title: "Erreur",
         description: "Impossible de sauvegarder les paramètres",
