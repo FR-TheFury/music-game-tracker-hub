@@ -8,6 +8,7 @@ import {
   CarouselPrevious,
   CarouselApi,
 } from '@/components/ui/carousel';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface CarouselGridProps {
   items: React.ReactNode[];
@@ -24,30 +25,35 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
 }) => {
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
+  const [slidesCount, setSlidesCount] = useState(0);
+  const isMobile = useIsMobile();
 
   if (items.length === 0) {
     return null;
   }
 
+  // Calculer le nombre réel d'éléments par vue selon l'écran
+  const getActualItemsPerView = () => {
+    if (isMobile) return 1;
+    if (window.innerWidth < 768) return 1; // md breakpoint
+    if (window.innerWidth < 1024) return 2; // lg breakpoint
+    return 3;
+  };
+
   // Effet pour gérer les changements d'éléments et repositionner le carousel
   useEffect(() => {
     if (!api) return;
 
+    const actualItemsPerView = getActualItemsPerView();
+    const totalSlides = Math.ceil(items.length / actualItemsPerView);
+    setSlidesCount(totalSlides);
+
     // Calculer la nouvelle position optimale
-    const totalPositions = Math.max(1, items.length - itemsPerView + 1);
     let newPosition = current;
 
-    // Si la position actuelle dépasse le nombre total de positions possibles
-    if (current >= totalPositions) {
-      newPosition = Math.max(0, totalPositions - 1);
-    }
-
-    // Si on est à la fin et qu'il y a encore assez d'éléments pour remplir la vue
-    if (current > 0 && items.length >= itemsPerView) {
-      const itemsAfterCurrent = items.length - (current * itemsPerView);
-      if (itemsAfterCurrent < itemsPerView && totalPositions > 1) {
-        newPosition = Math.max(0, totalPositions - 1);
-      }
+    // Si la position actuelle dépasse le nombre total de slides possibles
+    if (current >= totalSlides) {
+      newPosition = Math.max(0, totalSlides - 1);
     }
 
     // Repositionner le carousel si nécessaire
@@ -58,7 +64,7 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
       // Réinitialiser le carousel pour qu'il recalcule ses positions
       api.reInit();
     }
-  }, [items.length, api, current, itemsPerView]);
+  }, [items.length, api, current]);
 
   // Effet pour suivre l'item actuel
   useEffect(() => {
@@ -76,9 +82,23 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
     };
   }, [api]);
 
-  // Calculer le nombre total de positions possibles
-  const totalPositions = Math.max(1, items.length - itemsPerView + 1);
-  const canShowNavigation = items.length > itemsPerView;
+  // Mettre à jour le nombre de slides lors du redimensionnement
+  useEffect(() => {
+    const handleResize = () => {
+      if (api) {
+        const actualItemsPerView = getActualItemsPerView();
+        const totalSlides = Math.ceil(items.length / actualItemsPerView);
+        setSlidesCount(totalSlides);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    handleResize(); // Calcul initial
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, [api, items.length]);
+
+  const canShowNavigation = items.length > getActualItemsPerView();
 
   return (
     <div className={`relative ${className}`}>
@@ -103,9 +123,9 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
       </Carousel>
       
       {/* Points de navigation */}
-      {canShowNavigation && totalPositions > 1 && (
+      {canShowNavigation && slidesCount > 1 && (
         <div className="flex justify-center mt-4 space-x-2">
-          {Array.from({ length: totalPositions }, (_, index) => (
+          {Array.from({ length: slidesCount }, (_, index) => (
             <button
               key={index}
               onClick={() => api?.scrollTo(index)}
