@@ -100,8 +100,17 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
 
   const canShowNavigation = items.length > getActualItemsPerView();
 
+  // Fonction pour naviguer vers un élément spécifique
+  const goToItem = (itemIndex: number) => {
+    if (!api) return;
+    
+    const actualItemsPerView = getActualItemsPerView();
+    const slideIndex = Math.floor(itemIndex / actualItemsPerView);
+    api.scrollTo(slideIndex);
+  };
+
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative select-none ${className}`}>
       <Carousel 
         className="w-full" 
         setApi={setApi}
@@ -114,28 +123,37 @@ export const CarouselGrid: React.FC<CarouselGridProps> = ({
           {items.map((item, index) => (
             <CarouselItem 
               key={index} 
-              className={`pl-2 md:pl-4 basis-full md:basis-1/2 lg:basis-1/3`}
+              className={`pl-2 md:pl-4 basis-full md:basis-1/2 lg:basis-1/3 select-none`}
             >
-              {item}
+              <div className="select-none">
+                {item}
+              </div>
             </CarouselItem>
           ))}
         </CarouselContent>
       </Carousel>
       
-      {/* Points de navigation */}
-      {canShowNavigation && slidesCount > 1 && (
-        <div className="flex justify-center mt-4 space-x-2">
-          {Array.from({ length: slidesCount }, (_, index) => (
-            <button
-              key={index}
-              onClick={() => api?.scrollTo(index)}
-              className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                index === current 
-                  ? 'bg-gray-300 opacity-100' 
-                  : 'bg-gray-400 opacity-50 hover:opacity-70'
-              }`}
-            />
-          ))}
+      {/* Points de navigation - un point par élément */}
+      {canShowNavigation && items.length > 1 && (
+        <div className="flex justify-center mt-4 space-x-2 select-none">
+          {items.map((_, index) => {
+            const actualItemsPerView = getActualItemsPerView();
+            const slideIndex = Math.floor(index / actualItemsPerView);
+            const isActive = slideIndex === current;
+            
+            return (
+              <button
+                key={index}
+                onClick={() => goToItem(index)}
+                className={`w-2 h-2 rounded-full transition-all duration-200 select-none ${
+                  isActive
+                    ? 'bg-gray-300 opacity-100' 
+                    : 'bg-gray-400 opacity-50 hover:opacity-70'
+                }`}
+                style={{ userSelect: 'none' }}
+              />
+            );
+          })}
         </div>
       )}
     </div>
