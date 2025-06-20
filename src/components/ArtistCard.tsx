@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ExternalLink, Trash2, Music, Calendar, Users, Eye, Play } from 'lucide-react';
+import { ExternalLink, Trash2, Music, Calendar, Users, Eye, Play, Loader2 } from 'lucide-react';
+import { useSoundCloudEnrichment } from '@/hooks/useSoundCloudEnrichment';
 
 interface Artist {
   id: string;
@@ -35,11 +35,31 @@ interface ArtistCardProps {
 export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
   const navigate = useNavigate();
   const [localArtist, setLocalArtist] = useState(artist);
+  const [showSoundCloudStats, setShowSoundCloudStats] = useState(false);
+  
+  const { enrichArtistWithSoundCloud, isEnriching } = useSoundCloudEnrichment();
 
   // Mettre à jour l'artiste local quand les props changent
   useEffect(() => {
     setLocalArtist(artist);
   }, [artist]);
+
+  // Vérifier si l'artiste a SoundCloud
+  const hasSoundCloud = localArtist.multipleUrls?.some(url => 
+    url.platform?.toLowerCase().includes('soundcloud')
+  ) || localArtist.platform?.toLowerCase().includes('soundcloud');
+
+  const handleLoadSoundCloudStats = async () => {
+    if (!hasSoundCloud || localArtist.soundcloudStats) return;
+    
+    setShowSoundCloudStats(true);
+    try {
+      const enrichedArtist = await enrichArtistWithSoundCloud(localArtist);
+      setLocalArtist(enrichedArtist);
+    } catch (error) {
+      console.error('Erreur lors du chargement des stats SoundCloud:', error);
+    }
+  };
 
   const getPlatformColor = (platform: string) => {
     switch (platform.toLowerCase()) {
@@ -173,11 +193,36 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
                 )}
               </div>
               
-              {/* Affichage des stats SoundCloud */}
-              {localArtist.soundcloudStats && (
+              {/* Affichage des stats SoundCloud avec chargement à la demande */}
+              {hasSoundCloud && (
                 <div className="flex items-center gap-1 text-sm text-orange-400 mt-1">
-                  <Play className="h-3 w-3" />
-                  <span>{formatFollowers(localArtist.soundcloudStats.totalPlays)} écoutes SC</span>
+                  {localArtist.soundcloudStats ? (
+                    <>
+                      <Play className="h-3 w-3" />
+                      <span>{formatFollowers(localArtist.soundcloudStats.totalPlays)} écoutes SC</span>
+                    </>
+                  ) : showSoundCloudStats ? (
+                    isEnriching(localArtist.id) ? (
+                      <>
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <span>Chargement SC...</span>
+                      </>
+                    ) : (
+                      <button
+                        onClick={handleLoadSoundCloudStats}
+                        className="text-orange-400 hover:text-orange-300 text-xs underline"
+                      >
+                        Charger stats SoundCloud
+                      </button>
+                    )
+                  ) : (
+                    <button
+                      onClick={handleLoadSoundCloudStats}
+                      className="text-orange-400 hover:text-orange-300 text-xs underline"
+                    >
+                      Voir stats SoundCloud
+                    </button>
+                  )}
                 </div>
               )}
               
