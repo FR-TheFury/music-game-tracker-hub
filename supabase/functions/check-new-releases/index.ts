@@ -22,6 +22,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     let totalNewReleases = 0;
     let totalProcessed = 0;
+    let totalUpdatedStats = 0;
 
     // 1. Vérifier les sorties d'artistes
     console.log('Checking artist releases...');
@@ -44,7 +45,27 @@ const handler = async (req: Request): Promise<Response> => {
     // Délai entre les vérifications pour éviter la surcharge
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // 2. Vérifier les mises à jour de jeux
+    // 2. Mettre à jour les statistiques des artistes
+    console.log('Updating artist statistics...');
+    try {
+      const { data: statsResult, error: statsError } = await supabaseClient.functions.invoke('update-artist-stats', {
+        body: { batchSize: 15 } // Traiter 15 artistes à la fois
+      });
+
+      if (!statsError && statsResult) {
+        totalUpdatedStats = statsResult.updatedArtists || 0;
+        console.log(`Artist stats update completed: ${statsResult.updatedArtists || 0} artists updated`);
+      } else {
+        console.error('Artist stats update error:', statsError);
+      }
+    } catch (statsUpdateError) {
+      console.error('Artist stats update failed:', statsUpdateError);
+    }
+
+    // Délai entre les vérifications pour éviter la surcharge
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // 3. Vérifier les mises à jour de jeux
     console.log('Checking game updates...');
     try {
       const { data: gameResult, error: gameError } = await supabaseClient.functions.invoke('check-game-updates', {
@@ -62,14 +83,15 @@ const handler = async (req: Request): Promise<Response> => {
       console.error('Game check failed:', gameCheckError);
     }
 
-    console.log(`=== CHECK COMPLETED: ${totalProcessed} items processed, ${totalNewReleases} new notifications created ===`);
+    console.log(`=== CHECK COMPLETED: ${totalProcessed} items processed, ${totalNewReleases} new notifications, ${totalUpdatedStats} stats updated ===`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         processed: totalProcessed,
         newReleases: totalNewReleases,
-        message: `Global check completed: ${totalProcessed} items processed, ${totalNewReleases} new notifications`
+        updatedStats: totalUpdatedStats,
+        message: `Global check completed: ${totalProcessed} items processed, ${totalNewReleases} new notifications, ${totalUpdatedStats} artist stats updated`
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

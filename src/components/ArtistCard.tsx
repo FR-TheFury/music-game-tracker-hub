@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ExternalLink, Trash2, Music, Calendar, Users, Eye, Play, Loader2 } from 'lucide-react';
+import { ExternalLink, Trash2, Music, Calendar, Users, Eye, Play, Loader2, RefreshCw } from 'lucide-react';
 import { useSoundCloudEnrichment } from '@/hooks/useSoundCloudEnrichment';
+import { useArtistStatsUpdate } from '@/hooks/useArtistStatsUpdate';
 
 interface Artist {
   id: string;
@@ -38,6 +39,7 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
   const [showSoundCloudStats, setShowSoundCloudStats] = useState(false);
   
   const { enrichArtistWithSoundCloud, isEnriching } = useSoundCloudEnrichment();
+  const { updateSingleArtistStats, updating: updatingStats } = useArtistStatsUpdate();
 
   // Mettre à jour l'artiste local quand les props changent
   useEffect(() => {
@@ -58,6 +60,17 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
       setLocalArtist(enrichedArtist);
     } catch (error) {
       console.error('Erreur lors du chargement des stats SoundCloud:', error);
+    }
+  };
+
+  const handleUpdateStats = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await updateSingleArtistStats(localArtist.id);
+      // La mise à jour sera reflétée lors du prochain rechargement de la page
+      // ou via une invalidation de query
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour des stats:', error);
     }
   };
 
@@ -233,14 +246,41 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onRemove }) => {
               )}
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleRemoveClick}
-            className="text-gray-400 hover:text-red-400 hover:bg-red-500/10 flex-shrink-0"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {/* Bouton de mise à jour des statistiques */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleUpdateStats}
+                    disabled={updatingStats}
+                    className="text-gray-400 hover:text-blue-400 hover:bg-blue-500/10"
+                  >
+                    {updatingStats ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Mettre à jour les statistiques</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRemoveClick}
+              className="text-gray-400 hover:text-red-400 hover:bg-red-500/10"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         <div className="flex-1 flex flex-col justify-between">
